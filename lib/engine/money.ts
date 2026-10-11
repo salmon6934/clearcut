@@ -52,7 +52,7 @@ export function parseMoneyToMinor(text: string, currency: string): number | null
     const normalized = cleanDigits.replace(/^0+(?=\d)/, '');
     try {
       const bigVal = BigInt(normalized);
-      if (bigVal <= 0n || bigVal > BigInt(MAX_AMOUNT_MINOR)) return null;
+      if (bigVal <= BigInt(0) || bigVal > BigInt(MAX_AMOUNT_MINOR)) return null;
       return Number(bigVal);
     } catch {
       return null;
@@ -90,7 +90,7 @@ export function parseMoneyToMinor(text: string, currency: string): number | null
 
   try {
     const bigVal = BigInt(normalizedStr);
-    if (bigVal <= 0n || bigVal > BigInt(MAX_AMOUNT_MINOR)) {
+    if (bigVal <= BigInt(0) || bigVal > BigInt(MAX_AMOUNT_MINOR)) {
       return null;
     }
     return Number(bigVal);

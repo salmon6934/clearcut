@@ -32,7 +32,7 @@ export function allocate(totalMinor: number, weights: number[]): number[] {
   const base = weights.map((w) => (T * BigInt(w)) / BW);
   const rem = weights.map((w) => (T * BigInt(w)) % BW);
 
-  const allocatedSum = base.reduce((a, b) => a + b, 0n);
+  const allocatedSum = base.reduce((a, b) => a + b, BigInt(0));
   const left = Number(T - allocatedSum);
 
   // Deterministic tie-breaking: higher remainder first, then original index ascending
@@ -49,7 +49,7 @@ export function allocate(totalMinor: number, weights: number[]): number[] {
   for (let k = 0; k < left; k++) {
     const idx = order[k];
     if (idx !== undefined) {
-      base[idx] = (base[idx] ?? 0n) + 1n;
+      base[idx] = (base[idx] ?? BigInt(0)) + BigInt(1);
     }
   }
 
