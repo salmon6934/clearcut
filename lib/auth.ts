@@ -1,0 +1,243 @@
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from './supabase';
+import { isNativePlatform } from './native/platform';
+import { LocalStorageAdapter } from './data/storage-adapter';
+import type { Profile } from './data/types';
+
+export interface AuthState {
+  user: User | null;
+  profile: Profile | null;
+  session: Session | null;
+  isLoading: boolean;
+}
+
+type AuthListener = (state: AuthState) => void;
+
+let currentAuthState: AuthState = {
+  user: null,
+  profile: null,
+  session: null,
+  isLoading: true,
+};
+
+const listeners = new Set<AuthListener>();
+
+export function getAuthState(): AuthState {
+  return currentAuthState;
+}
+
+function notifyListeners() {
+  for (const listener of listeners) {
+    listener(currentAuthState);
+  }
+}
+
+export function subscribeAuth(listener: AuthListener): () => void {
+  listeners.add(listener);
+  listener(currentAuthState);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+async function fetchProfile(userId: string): Promise<Profile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error || !data) {
+      // Fallback: return default profile structure
+      return {
+        id: userId,
+        displayName: currentAuthState.user?.email?.split('@')[0] || 'User',
+        defaultCurrency: 'INR',
+      };
+    }
+
+    return {
+      id: data.id,
+      displayName: data.display_name,
+      avatarUrl: data.avatar_url,
+      defaultCurrency: data.default_currency || 'INR',
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  } catch {
+    return {
+      id: userId,
+      displayName: currentAuthState.user?.email?.split('@')[0] || 'User',
+      defaultCurrency: 'INR',
+    };
+  }
+}
+
+/**
+ * Initializes Supabase session watcher and Capacitor App state listeners.
+ */
+export function initAuth(): () => void {
+  // 1. Initial session load
+  supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const user = session?.user ?? null;
+    let profile: Profile | null = null;
+    if (user) {
+      profile = await fetchProfile(user.id);
+    }
+    currentAuthState = {
+      user,
+      profile,
+      session,
+      isLoading: false,
+    };
+    notifyListeners();
+  });
+
+  // 2. Auth state change listener
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const user = session?.user ?? null;
+    let profile: Profile | null = null;
+
+    if (user) {
+      profile = await fetchProfile(user.id);
+    }
+
+    currentAuthState = {
+      user,
+      profile,
+      session,
+      isLoading: false,
+    };
+    notifyListeners();
+  });
+
+  // 3. Capacitor appStateChange: pause autoRefresh in background, resume in foreground
+  let appStateCleanup = () => {};
+  if (isNativePlatform()) {
+    import('@capacitor/app').then(({ App }) => {
+      const handlePromise = App.addListener('appStateChange', (state) => {
+        if (state.isActive) {
+          supabase.auth.startAutoRefresh();
+        } else {
+          supabase.auth.stopAutoRefresh();
+        }
+      });
+      appStateCleanup = () => {
+        handlePromise.then((h) => h.remove());
+      };
+    });
+  }
+
+  return () => {
+    subscription.unsubscribe();
+    appStateCleanup();
+  };
+}
+
+/**
+ * Send 6-digit OTP code to email.
+ */
+export async function signInWithOtp(email: string): Promise<{ error: Error | null }> {
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: {
+        shouldCreateUser: true,
+      },
+    });
+    return { error: error ? new Error(error.message) : null };
+  } catch (err) {
+    return { error: err as Error };
+  }
+}
+
+/**
+ * Verify 6-digit OTP code.
+ */
+export async function verifyOtp(
+  email: string,
+  token: string
+): Promise<{ session: Session | null; error: Error | null }> {
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: token.trim(),
+      type: 'email',
+    });
+
+    if (error) {
+      return { session: null, error: new Error(error.message) };
+    }
+
+    return { session: data.session, error: null };
+  } catch (err) {
+    return { session: null, error: err as Error };
+  }
+}
+
+/**
+ * Sign out and wipe namespaced local user data.
+ */
+export async function signOut(): Promise<void> {
+  const userId = currentAuthState.user?.id;
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // Graceful fallback
+  }
+
+  if (userId) {
+    const userStorage = new LocalStorageAdapter(userId);
+    userStorage.clear();
+  }
+
+  currentAuthState = {
+    user: null,
+    profile: null,
+    session: null,
+    isLoading: false,
+  };
+  notifyListeners();
+}
+
+/**
+ * Update current user profile display name or default currency.
+ */
+export async function updateProfile(
+  displayName: string,
+  defaultCurrency = 'INR'
+): Promise<{ error: Error | null }> {
+  const user = currentAuthState.user;
+  if (!user) return { error: new Error('User not authenticated') };
+
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        display_name: displayName.trim(),
+        default_currency: defaultCurrency.toUpperCase(),
+        updated_at: new Date().toISOString(),
+      });
+
+    if (!error) {
+      currentAuthState = {
+        ...currentAuthState,
+        profile: {
+          ...currentAuthState.profile,
+          id: user.id,
+          displayName: displayName.trim(),
+          defaultCurrency: defaultCurrency.toUpperCase(),
+        },
+      };
+      notifyListeners();
+    }
+
+    return { error: error ? new Error(error.message) : null };
+  } catch (err) {
+    return { error: err as Error };
+  }
+}

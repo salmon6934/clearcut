@@ -16,6 +16,31 @@ export class QuotaExceededStorageError extends Error {
   }
 }
 
+export interface StorageWarningEvent {
+  type: 'quota_exceeded' | 'low_storage';
+  key: string;
+  message: string;
+}
+
+export type StorageWarningListener = (event: StorageWarningEvent) => void;
+
+const storageWarningListeners: Set<StorageWarningListener> = new Set();
+
+export function onStorageWarning(listener: StorageWarningListener): () => void {
+  storageWarningListeners.add(listener);
+  return () => storageWarningListeners.delete(listener);
+}
+
+function notifyStorageWarning(event: StorageWarningEvent): void {
+  storageWarningListeners.forEach((listener) => {
+    try {
+      listener(event);
+    } catch (e) {
+      console.error('[StorageAdapter] Listener error:', e);
+    }
+  });
+}
+
 export interface StorageBenchmarkResult {
   dataSizeBytes: number;
   writeDurationMs: number;
@@ -23,6 +48,37 @@ export interface StorageBenchmarkResult {
   writeThroughputMbSec: number;
   readThroughputMbSec: number;
   itemsCount: number;
+}
+
+/**
+ * In-memory fallback Storage implementation conforming to Storage interface.
+ */
+export class MemoryStorage implements Storage {
+  private map = new Map<string, string>();
+
+  get length(): number {
+    return this.map.size;
+  }
+
+  clear(): void {
+    this.map.clear();
+  }
+
+  getItem(key: string): string | null {
+    return this.map.has(key) ? this.map.get(key)! : null;
+  }
+
+  key(index: number): string | null {
+    return Array.from(this.map.keys())[index] || null;
+  }
+
+  removeItem(key: string): void {
+    this.map.delete(key);
+  }
+
+  setItem(key: string, value: string): void {
+    this.map.set(key, String(value));
+  }
 }
 
 /**
@@ -37,7 +93,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   constructor(userId?: string, storageEngine?: Storage) {
     const ns = userId ? userId.trim() : '_device';
     this.prefix = `sw:v1:${ns}:`;
-    
+
     if (storageEngine) {
       this.storage = storageEngine;
     } else if (typeof window !== 'undefined' && window.localStorage) {
@@ -74,9 +130,15 @@ export class LocalStorageAdapter implements StorageAdapter {
         domError?.code === 22 ||
         domError?.code === 1014
       ) {
-        throw new QuotaExceededStorageError(
+        const error = new QuotaExceededStorageError(
           `LocalStorage quota exceeded while saving key "${formattedKey}" (${value.length} bytes)`
         );
+        notifyStorageWarning({
+          type: 'quota_exceeded',
+          key: formattedKey,
+          message: error.message,
+        });
+        throw error;
       }
       throw err;
     }
@@ -117,6 +179,14 @@ export class LocalStorageAdapter implements StorageAdapter {
       console.error('[StorageAdapter] Key listing error:', err);
     }
     return matching;
+  }
+
+  /**
+   * Wipes a specific user namespace directly from storage.
+   */
+  static clearUserNamespace(userId: string, storageEngine?: Storage): void {
+    const adapter = new LocalStorageAdapter(userId, storageEngine);
+    adapter.clear();
   }
 
   /**
@@ -183,36 +253,5 @@ export class LocalStorageAdapter implements StorageAdapter {
       readThroughputMbSec,
       itemsCount: Array.isArray(parsed) ? parsed.length : 0,
     };
-  }
-}
-
-/**
- * In-memory fallback Storage implementation conforming to Storage interface.
- */
-class MemoryStorage implements Storage {
-  private map = new Map<string, string>();
-
-  get length(): number {
-    return this.map.size;
-  }
-
-  clear(): void {
-    this.map.clear();
-  }
-
-  getItem(key: string): string | null {
-    return this.map.has(key) ? this.map.get(key)! : null;
-  }
-
-  key(index: number): string | null {
-    return Array.from(this.map.keys())[index] || null;
-  }
-
-  removeItem(key: string): void {
-    this.map.delete(key);
-  }
-
-  setItem(key: string, value: string): void {
-    this.map.set(key, String(value));
   }
 }

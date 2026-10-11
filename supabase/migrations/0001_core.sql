@@ -1,7 +1,7 @@
 -- 0001_core.sql: PostgreSQL DDL Migration for Clearcut Core Ledger
 -- Specification Baseline: Technical Specification v1.0 Section 4.2 & 4.4
 
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 
 -- 1. Profiles (1:1 with auth.users)
 create table if not exists profiles (
@@ -19,7 +19,7 @@ create table if not exists groups (
   name text not null check (char_length(name) between 1 and 80),
   type text not null default 'trip' check (type in ('trip', 'home', 'couple', 'other')),
   currency char(3) not null check (currency ~ '^[A-Z]{3}$'),
-  invite_code varchar(16) not null unique default upper(encode(gen_random_bytes(8), 'hex')),
+  invite_code varchar(16) not null unique default upper(encode(extensions.gen_random_bytes(8), 'hex')),
   created_by uuid not null references profiles(id),
   version int not null default 1,
   archived_at timestamptz,

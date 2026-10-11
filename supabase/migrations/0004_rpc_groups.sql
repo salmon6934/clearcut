@@ -62,7 +62,7 @@ begin
   end if;
 
   -- Generate 8-byte hexadecimal invite code
-  v_invite_code := upper(encode(gen_random_bytes(8), 'hex'));
+  v_invite_code := upper(encode(extensions.gen_random_bytes(8), 'hex'));
 
   -- Insert group
   insert into groups (id, name, type, currency, invite_code, created_by, version)
