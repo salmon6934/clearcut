@@ -106,3 +106,34 @@ export interface SuggestedPayment {
   amountMinor: number;
   currency: string;
 }
+
+export interface CreateGroupDraft {
+  name: string;
+  type?: GroupType;
+  currency: string;
+}
+
+export interface ExpenseDraft {
+  id?: string;
+  groupId: string;
+  title: string;
+  notes?: string | null;
+  amountMinor: number;
+  currency: string;
+  category?: string | null;
+  expenseDate?: string;
+  splitType: SplitType;
+  splits: Split[];
+}
+
+export interface SettlementDraft {
+  id?: string;
+  groupId: string;
+  fromMemberId: string;
+  toMemberId: string;
+  amountMinor: number;
+  method?: SettlementMethod | null;
+  note?: string | null;
+  settledOn?: string;
+}
+
