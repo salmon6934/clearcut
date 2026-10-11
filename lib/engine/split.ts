@@ -224,3 +224,259 @@ export function buildMultiPayerSplits(
 
   return Array.from(map.values()).sort((a, b) => a.memberId.localeCompare(b.memberId));
 }
+
+/**
+ * Splits totalMinor by percentage basis points (bps) where 10,000 bp = 100.00%.
+ * Basis points must sum to exactly 10,000.
+ * Allocates integer minor units using largest-remainder method (allocate).
+ */
+export function splitPercent(
+  totalMinor: number,
+  participants: number[] | { memberId: string; bps: number }[],
+  memberIds?: string[],
+  payerId?: string
+): Split[] {
+  if (!Number.isInteger(totalMinor) || totalMinor < 0) {
+    throw new EngineError('EXPENSE_INVALID_AMOUNT', `Invalid totalMinor: ${totalMinor}`);
+  }
+  if (!participants || participants.length === 0) {
+    throw new EngineError('EXPENSE_INVALID_SPLIT', 'At least one participant required for percentage split');
+  }
+
+  let bpsList: number[] = [];
+  let mIds: string[] = [];
+
+  if (typeof participants[0] === 'number') {
+    bpsList = participants as number[];
+    mIds = memberIds && memberIds.length === bpsList.length
+      ? memberIds
+      : bpsList.map((_, i) => `member_${i}`);
+  } else {
+    const list = participants as { memberId: string; bps: number }[];
+    bpsList = list.map((p) => p.bps);
+    mIds = list.map((p) => p.memberId);
+  }
+
+  let totalBps = 0;
+  for (const b of bpsList) {
+    if (!Number.isInteger(b) || b < 0) {
+      throw new EngineError('EXPENSE_INVALID_SPLIT', 'Basis points must be non-negative integers');
+    }
+    totalBps += b;
+  }
+
+  if (totalBps !== 10000) {
+    throw new EngineError(
+      'EXPENSE_INVALID_SPLIT',
+      `Basis points must sum to exactly 10,000 (got ${totalBps})`
+    );
+  }
+
+  const allocated = allocate(totalMinor, bpsList);
+  const splitsMap = new Map<string, Split>();
+
+  for (let i = 0; i < mIds.length; i++) {
+    const mId = mIds[i]!;
+    splitsMap.set(mId, {
+      memberId: mId,
+      paidMinor: 0,
+      owedMinor: allocated[i]!,
+      splitValue: bpsList[i],
+    });
+  }
+
+  if (payerId) {
+    const payerSplit = splitsMap.get(payerId);
+    if (payerSplit) {
+      payerSplit.paidMinor = totalMinor;
+    } else {
+      splitsMap.set(payerId, {
+        memberId: payerId,
+        paidMinor: totalMinor,
+        owedMinor: 0,
+      });
+    }
+  }
+
+  return Array.from(splitsMap.values()).sort((a, b) => a.memberId.localeCompare(b.memberId));
+}
+
+/**
+ * Splits totalMinor proportionally by positive shares (weights).
+ * Supports decimal weights up to 2 decimal places (converted to integer basis by * 100).
+ * Allocates integer minor units using largest-remainder method (allocate).
+ */
+export function splitShares(
+  totalMinor: number,
+  participants: number[] | { memberId: string; weight: number }[],
+  memberIds?: string[],
+  payerId?: string
+): Split[] {
+  if (!Number.isInteger(totalMinor) || totalMinor < 0) {
+    throw new EngineError('EXPENSE_INVALID_AMOUNT', `Invalid totalMinor: ${totalMinor}`);
+  }
+  if (!participants || participants.length === 0) {
+    throw new EngineError('EXPENSE_INVALID_SPLIT', 'At least one participant required for shares split');
+  }
+
+  let rawWeights: number[] = [];
+  let mIds: string[] = [];
+
+  if (typeof participants[0] === 'number') {
+    rawWeights = participants as number[];
+    mIds = memberIds && memberIds.length === rawWeights.length
+      ? memberIds
+      : rawWeights.map((_, i) => `member_${i}`);
+  } else {
+    const list = participants as { memberId: string; weight: number }[];
+    rawWeights = list.map((p) => p.weight);
+    mIds = list.map((p) => p.memberId);
+  }
+
+  const integerWeights: number[] = [];
+  let totalWeight = 0;
+
+  for (const w of rawWeights) {
+    if (typeof w !== 'number' || isNaN(w) || w <= 0) {
+      throw new EngineError('EXPENSE_INVALID_SPLIT', 'Share weights must be positive numbers');
+    }
+    const scaled = Math.round(w * 100);
+    if (scaled <= 0) {
+      throw new EngineError('EXPENSE_INVALID_SPLIT', 'Share weights must be greater than zero');
+    }
+    integerWeights.push(scaled);
+    totalWeight += scaled;
+  }
+
+  if (totalWeight <= 0) {
+    throw new EngineError('EXPENSE_INVALID_SPLIT', 'Total shares must be greater than zero');
+  }
+
+  const allocated = allocate(totalMinor, integerWeights);
+  const splitsMap = new Map<string, Split>();
+
+  for (let i = 0; i < mIds.length; i++) {
+    const mId = mIds[i]!;
+    splitsMap.set(mId, {
+      memberId: mId,
+      paidMinor: 0,
+      owedMinor: allocated[i]!,
+      splitValue: rawWeights[i],
+    });
+  }
+
+  if (payerId) {
+    const payerSplit = splitsMap.get(payerId);
+    if (payerSplit) {
+      payerSplit.paidMinor = totalMinor;
+    } else {
+      splitsMap.set(payerId, {
+        memberId: payerId,
+        paidMinor: totalMinor,
+        owedMinor: 0,
+      });
+    }
+  }
+
+  return Array.from(splitsMap.values()).sort((a, b) => a.memberId.localeCompare(b.memberId));
+}
+
+/**
+ * Splits totalMinor equally as a base, then adds/subtracts individual adjustments.
+ * Pool = totalMinor - sum(adjustments).
+ * Base equal share is distributed using largest-remainder method on the pool.
+ * Each member's owed share = base share + adjustment.
+ * Rejects if pool < 0 or if any member's resulting owed share is negative.
+ */
+export function splitAdjust(
+  totalMinor: number,
+  memberIdsOrParticipants: string[] | { memberId: string; adjustmentMinor: number }[],
+  adjustmentsOrPayerId?: number[] | string,
+  payerId?: string
+): Split[] {
+  if (!Number.isInteger(totalMinor) || totalMinor < 0) {
+    throw new EngineError('EXPENSE_INVALID_AMOUNT', `Invalid totalMinor: ${totalMinor}`);
+  }
+
+  let mIds: string[] = [];
+  let adjustments: number[] = [];
+  let activePayerId = payerId;
+
+  if (
+    Array.isArray(memberIdsOrParticipants) &&
+    memberIdsOrParticipants.length > 0 &&
+    typeof memberIdsOrParticipants[0] === 'object'
+  ) {
+    const list = memberIdsOrParticipants as { memberId: string; adjustmentMinor: number }[];
+    mIds = list.map((p) => p.memberId);
+    adjustments = list.map((p) => p.adjustmentMinor);
+    if (typeof adjustmentsOrPayerId === 'string') {
+      activePayerId = adjustmentsOrPayerId;
+    }
+  } else {
+    mIds = (memberIdsOrParticipants as string[]) || [];
+    adjustments = (adjustmentsOrPayerId as number[]) || [];
+  }
+
+  if (mIds.length === 0) {
+    throw new EngineError('EXPENSE_INVALID_SPLIT', 'At least one member required for adjustment split');
+  }
+
+  if (mIds.length !== adjustments.length) {
+    throw new EngineError('EXPENSE_INVALID_SPLIT', 'Member IDs and adjustments length mismatch');
+  }
+
+  let sumAdjustments = 0;
+  for (const adj of adjustments) {
+    if (!Number.isInteger(adj)) {
+      throw new EngineError('EXPENSE_INVALID_SPLIT', 'Adjustments must be integers in minor units');
+    }
+    sumAdjustments += adj;
+  }
+
+  const pool = totalMinor - sumAdjustments;
+  if (pool < 0) {
+    throw new EngineError(
+      'EXPENSE_INVALID_SPLIT',
+      `Total adjustments (${sumAdjustments}) exceed total amount (${totalMinor})`
+    );
+  }
+
+  // Distribute pool equally among members
+  const baseWeights = mIds.map(() => 1);
+  const baseShares = allocate(pool, baseWeights);
+
+  const splitsMap = new Map<string, Split>();
+  for (let i = 0; i < mIds.length; i++) {
+    const mId = mIds[i]!;
+    const finalOwed = baseShares[i]! + adjustments[i]!;
+    if (finalOwed < 0) {
+      throw new EngineError(
+        'EXPENSE_INVALID_SPLIT',
+        `Adjusted share for ${mId} cannot be negative (got ${finalOwed})`
+      );
+    }
+
+    splitsMap.set(mId, {
+      memberId: mId,
+      paidMinor: 0,
+      owedMinor: finalOwed,
+      splitValue: adjustments[i],
+    });
+  }
+
+  if (activePayerId) {
+    const payerSplit = splitsMap.get(activePayerId);
+    if (payerSplit) {
+      payerSplit.paidMinor = totalMinor;
+    } else {
+      splitsMap.set(activePayerId, {
+        memberId: activePayerId,
+        paidMinor: totalMinor,
+        owedMinor: 0,
+      });
+    }
+  }
+
+  return Array.from(splitsMap.values()).sort((a, b) => a.memberId.localeCompare(b.memberId));
+}

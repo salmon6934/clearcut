@@ -191,6 +191,44 @@ export class DomainRepository {
   }
 
   /**
+   * Restores a soft-deleted expense locally, cancels any pending DELETE_EXPENSE,
+   * bumps version, and enqueues UPSERT_EXPENSE to clear deleted_at on remote.
+   */
+  restoreExpense(expenseId: string): Expense | null {
+    const existing = this.store.getExpense(expenseId);
+    if (!existing) return null;
+
+    const now = new Date().toISOString();
+    const restored: Expense = {
+      ...existing,
+      deletedAt: null,
+      version: existing.version + 1,
+      updatedAt: now,
+      _sync: 'pending',
+    };
+
+    this.store.upsertExpense(restored);
+
+    // Cancel pending DELETE_EXPENSE in queue if it hasn't been pushed yet
+    const pendingDelete = this.queue
+      .getAllItems()
+      .find((m) => m.entityId === expenseId && m.type === 'DELETE_EXPENSE');
+    if (pendingDelete) {
+      this.queue.markSynced(pendingDelete.id);
+    }
+
+    this.queue.enqueue('UPSERT_EXPENSE', expenseId, {
+      expense: restored,
+      baseVersion: existing.version,
+    });
+
+    haptics.tap().catch(() => {});
+    this.syncManager?.kick('restore_expense').catch(() => {});
+
+    return restored;
+  }
+
+  /**
    * Synchronously records a settlement transaction locally and enqueues UPSERT_SETTLEMENT.
    */
   addSettlement(draft: SettlementDraft, currentUserId: string): Settlement {

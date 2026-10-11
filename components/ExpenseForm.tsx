@@ -100,6 +100,7 @@ export function ExpenseForm({
         memberId: m.id,
         paidMinor: payerEntry ? payerEntry.paidMinor : 0,
         owedMinor: owedEntry ? owedEntry.owedMinor : 0,
+        splitValue: owedEntry?.splitValue,
       };
     });
 

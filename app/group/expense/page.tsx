@@ -1,21 +1,23 @@
 'use client';
 
 // app/group/expense/page.tsx
-// Full-Screen Expense Creation and Edit Route Hosting ExpenseForm
+// Full-Screen Expense Creation and Edit Route Hosting ExpenseForm with Conflict Resolution
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useRepository, useGroup, useGroupMembers } from '../../../lib/data/hooks';
 import { getAuthState } from '../../../lib/auth';
 import { ExpenseForm } from '../../../components/ExpenseForm';
+import { ConflictResolutionSheet } from '../../../components/ConflictResolutionSheet';
+import { resolveExpenseConflict } from '../../../lib/sync/merge';
 import type { ExpenseDraft } from '../../../lib/data/types';
 
 function ExpenseEntryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const groupId = searchParams.get('id') || '';
-  const expenseId = searchParams.get('expenseId') || undefined;
+  const expenseId = searchParams.get('expenseId') || searchParams.get('edit') || undefined;
 
   const repo = useRepository();
   const group = useGroup(repo, groupId);
@@ -23,8 +25,17 @@ function ExpenseEntryContent() {
   const authState = getAuthState();
   const currentUserId = authState.user?.id || 'local_user';
 
+  const [showConflictSheet, setShowConflictSheet] = useState(false);
+
   // If editing, find existing expense
   const existingExpense = expenseId ? repo.store.getExpense(expenseId) : undefined;
+  const isConflict = existingExpense?._sync === 'conflict';
+
+  // Conflict mutation detail if available
+  const conflictMutation = expenseId
+    ? repo.queue.getAllItems().find((m) => m.entityId === expenseId && m.status === 'conflict')
+    : undefined;
+  const serverSnapshot = conflictMutation?.conflictDetail?.server_snapshot || conflictMutation?.conflictDetail;
 
   if (!groupId || !group) {
     return (
@@ -46,6 +57,33 @@ function ExpenseEntryContent() {
     } else {
       repo.addExpense(draft, currentUserId);
     }
+    router.push(`/group?id=${groupId}`);
+  };
+
+  const handleKeepMine = () => {
+    if (!existingExpense) return;
+    resolveExpenseConflict({
+      mode: 'keep_mine',
+      expenseId: existingExpense.id,
+      store: repo.store,
+      queue: repo.queue,
+      serverSnapshot,
+    });
+    repo.syncManager?.kick('conflict_resolved_keep_mine');
+    setShowConflictSheet(false);
+    router.push(`/group?id=${groupId}`);
+  };
+
+  const handleUseTheirs = () => {
+    if (!existingExpense) return;
+    resolveExpenseConflict({
+      mode: 'use_theirs',
+      expenseId: existingExpense.id,
+      store: repo.store,
+      queue: repo.queue,
+      serverSnapshot,
+    });
+    setShowConflictSheet(false);
     router.push(`/group?id=${groupId}`);
   };
 
@@ -85,6 +123,31 @@ function ExpenseEntryContent() {
           <div className="w-9" />
         </header>
 
+        {/* Conflict Warning Banner */}
+        {isConflict && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg">⚠️</span>
+              <div>
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  Version Conflict (409)
+                </p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Remote server has a newer version of this expense.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowConflictSheet(true)}
+              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold shadow-sm transition shrink-0"
+            >
+              Resolve
+            </button>
+          </div>
+        )}
+
         {/* Expense Form */}
         <ExpenseForm
           groupId={groupId}
@@ -95,6 +158,19 @@ function ExpenseEntryContent() {
           onSave={handleSave}
           onCancel={() => router.push(`/group?id=${groupId}`)}
         />
+
+        {/* Conflict Resolution Modal */}
+        {existingExpense && (
+          <ConflictResolutionSheet
+            isOpen={showConflictSheet}
+            onClose={() => setShowConflictSheet(false)}
+            localExpense={existingExpense}
+            serverExpense={serverSnapshot}
+            members={members}
+            onKeepMine={handleKeepMine}
+            onUseTheirs={handleUseTheirs}
+          />
+        )}
       </div>
     </div>
   );

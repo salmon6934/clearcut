@@ -23,6 +23,7 @@ export interface MutationRecord<T = any> {
   status: MutationStatus;
   retryCount: number;
   lastError?: string;
+  conflictDetail?: any;
   createdAt: string;
   updatedAt: string;
 }
@@ -197,7 +198,8 @@ export class MutationQueue {
     id: string,
     error: string,
     permanent: boolean = false,
-    maxRetries: number = 5
+    maxRetries: number = 5,
+    conflictDetail?: any
   ): void {
     const item = this.queue.find((m) => m.id === id);
     if (!item) return;
@@ -208,6 +210,9 @@ export class MutationQueue {
 
     if (permanent) {
       item.status = 'conflict';
+      if (conflictDetail) {
+        item.conflictDetail = conflictDetail;
+      }
     } else if (item.retryCount >= maxRetries) {
       item.status = 'dead';
     } else {

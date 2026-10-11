@@ -70,10 +70,16 @@ export function selectGroupLedger(store: LocalStore, groupId: string): GroupLedg
 
   const expenses = store.getGroupExpenses(groupId, false);
   const settlements = store.getGroupSettlements(groupId, false);
+  const members = store.getGroupMembers(groupId, false);
+
+  const initialMap = new Map<string, number>();
+  for (const m of members) {
+    initialMap.set(m.id, 0);
+  }
 
   if (expenses.length === 0 && settlements.length === 0) {
     const emptyResult: GroupLedgerResult = {
-      balances: new Map<string, number>(),
+      balances: initialMap,
       suggestedPayments: [],
     };
     ledgerCache.set(cacheKey, emptyResult);
@@ -81,9 +87,12 @@ export function selectGroupLedger(store: LocalStore, groupId: string): GroupLedg
   }
 
   try {
-    const balances = computeBalances(expenses, settlements);
-    const suggestedPayments = simplifyDebts(balances, currency);
-    const result: GroupLedgerResult = { balances, suggestedPayments };
+    const computed = computeBalances(expenses, settlements);
+    for (const [mId, bal] of computed.entries()) {
+      initialMap.set(mId, bal);
+    }
+    const suggestedPayments = simplifyDebts(initialMap, currency);
+    const result: GroupLedgerResult = { balances: initialMap, suggestedPayments };
     ledgerCache.set(cacheKey, result);
     return result;
   } catch (err) {

@@ -9,13 +9,21 @@ import { LocalStorageAdapter } from '../../../lib/data/storage-adapter';
 import { MutationQueue, MutationRecord } from '../../../lib/data/queue';
 import { LocalStore } from '../../../lib/data/local-store';
 import { drainQueue } from '../../../lib/sync/push';
+import { resolveExpenseConflict } from '../../../lib/sync/merge';
 import { supabase } from '../../../lib/supabase';
 import { haptics } from '../../../lib/native/haptics';
+import { ConflictResolutionSheet } from '../../../components/ConflictResolutionSheet';
+import type { Expense, Member } from '../../../lib/data/types';
 
 function SyncDiagnosticsContent() {
   const [items, setItems] = useState<MutationRecord[]>([]);
   const [isRetrying, setIsRetrying] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  // Conflict modal state
+  const [activeConflictItem, setActiveConflictItem] = useState<MutationRecord | null>(null);
+  const [conflictExpense, setConflictExpense] = useState<Expense | null>(null);
+  const [conflictMembers, setConflictMembers] = useState<Member[]>([]);
 
   const loadItems = () => {
     const adapter = new LocalStorageAdapter();
@@ -26,6 +34,57 @@ function SyncDiagnosticsContent() {
   useEffect(() => {
     loadItems();
   }, []);
+
+  const handleOpenConflict = (item: MutationRecord) => {
+    const adapter = new LocalStorageAdapter();
+    const store = new LocalStore(adapter);
+    const exp = store.getExpense(item.entityId);
+    if (exp) {
+      setConflictExpense(exp);
+      setConflictMembers(store.getGroupMembers(exp.groupId));
+      setActiveConflictItem(item);
+    }
+  };
+
+  const handleKeepMine = () => {
+    if (!activeConflictItem || !conflictExpense) return;
+    const adapter = new LocalStorageAdapter();
+    const store = new LocalStore(adapter);
+    const queue = new MutationQueue(adapter);
+
+    resolveExpenseConflict({
+      mode: 'keep_mine',
+      expenseId: conflictExpense.id,
+      store,
+      queue,
+      serverSnapshot: activeConflictItem.conflictDetail?.server_snapshot || activeConflictItem.conflictDetail,
+    });
+
+    setMessage('Changes kept! Marked as pending and queued for next sync.');
+    setActiveConflictItem(null);
+    setConflictExpense(null);
+    loadItems();
+  };
+
+  const handleUseTheirs = () => {
+    if (!activeConflictItem || !conflictExpense) return;
+    const adapter = new LocalStorageAdapter();
+    const store = new LocalStore(adapter);
+    const queue = new MutationQueue(adapter);
+
+    resolveExpenseConflict({
+      mode: 'use_theirs',
+      expenseId: conflictExpense.id,
+      store,
+      queue,
+      serverSnapshot: activeConflictItem.conflictDetail?.server_snapshot || activeConflictItem.conflictDetail,
+    });
+
+    setMessage('Server version accepted and local entity updated.');
+    setActiveConflictItem(null);
+    setConflictExpense(null);
+    loadItems();
+  };
 
   const handleRetryItem = async (item: MutationRecord) => {
     await haptics.tap();
@@ -137,13 +196,23 @@ function SyncDiagnosticsContent() {
               )}
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleRetryItem(item)}
-                  disabled={isRetrying}
-                  className="flex-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {isRetrying ? 'Retrying...' : 'Retry Push'}
-                </button>
+                {item.status === 'conflict' && item.type === 'UPSERT_EXPENSE' ? (
+                  <button
+                    onClick={() => handleOpenConflict(item)}
+                    className="flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-colors"
+                  >
+                    Resolve Conflict
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleRetryItem(item)}
+                    disabled={isRetrying}
+                    className="flex-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {isRetrying ? 'Retrying...' : 'Retry Push'}
+                  </button>
+                )}
+
                 <button
                   onClick={() => handleDiscardItem(item.id)}
                   disabled={isRetrying}
@@ -155,6 +224,22 @@ function SyncDiagnosticsContent() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Conflict Resolution Modal */}
+      {conflictExpense && activeConflictItem && (
+        <ConflictResolutionSheet
+          isOpen={true}
+          onClose={() => {
+            setActiveConflictItem(null);
+            setConflictExpense(null);
+          }}
+          localExpense={conflictExpense}
+          serverExpense={activeConflictItem.conflictDetail?.server_snapshot || activeConflictItem.conflictDetail}
+          members={conflictMembers}
+          onKeepMine={handleKeepMine}
+          onUseTheirs={handleUseTheirs}
+        />
       )}
     </div>
   );

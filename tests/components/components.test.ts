@@ -1,7 +1,7 @@
 // tests/components/components.test.ts
 import { describe, it, expect } from 'vitest';
 import { formatMinor, parseMoneyToMinor } from '../../lib/engine/money';
-import { splitEqual, type Split } from '../../lib/engine/split';
+import { splitEqual, splitPercent, splitShares, splitAdjust, type Split } from '../../lib/engine/split';
 import { validateExpense } from '../../lib/engine/validate';
 import type { Expense } from '../../lib/data/types';
 
@@ -83,5 +83,41 @@ describe('T-1.9: Core UI Components Logic & Validation', () => {
 
     const invalid = parseMoneyToMinor('-50', 'INR');
     expect(invalid).toBeNull();
+  });
+
+  it('verifies advanced split modes (percentages, shares, adjustments) satisfy Invariant I2', () => {
+    const totalMinor = 15000;
+    const members = [
+      { id: 'm-1', groupId: 'g-1', displayName: 'Member 1', role: 'owner' as const, userId: null },
+      { id: 'm-2', groupId: 'g-1', displayName: 'Member 2', role: 'member' as const, userId: null },
+      { id: 'm-3', groupId: 'g-1', displayName: 'Member 3', role: 'member' as const, userId: null },
+    ];
+
+    // 1. Percentage split: 40%, 30%, 30% -> 6000, 4500, 4500
+    const pctSplits = splitPercent(totalMinor, [
+      { memberId: 'm-1', bps: 4000 },
+      { memberId: 'm-2', bps: 3000 },
+      { memberId: 'm-3', bps: 3000 },
+    ]);
+    expect(pctSplits.reduce((acc, s) => acc + s.owedMinor, 0)).toBe(totalMinor);
+    expect(pctSplits.find((s) => s.memberId === 'm-1')?.owedMinor).toBe(6000);
+
+    // 2. Shares split: 3 shares, 1 share, 1 share -> 9000, 3000, 3000
+    const shareSplits = splitShares(totalMinor, [
+      { memberId: 'm-1', weight: 3 },
+      { memberId: 'm-2', weight: 1 },
+      { memberId: 'm-3', weight: 1 },
+    ]);
+    expect(shareSplits.reduce((acc, s) => acc + s.owedMinor, 0)).toBe(totalMinor);
+    expect(shareSplits.find((s) => s.memberId === 'm-1')?.owedMinor).toBe(9000);
+
+    // 3. Adjustment split: Base 5000 with adjustments +2000, -1000, -1000 -> 7000, 4000, 4000
+    const adjSplits = splitAdjust(totalMinor, [
+      { memberId: 'm-1', adjustmentMinor: 2000 },
+      { memberId: 'm-2', adjustmentMinor: -1000 },
+      { memberId: 'm-3', adjustmentMinor: -1000 },
+    ]);
+    expect(adjSplits.reduce((acc, s) => acc + s.owedMinor, 0)).toBe(totalMinor);
+    expect(adjSplits.find((s) => s.memberId === 'm-1')?.owedMinor).toBe(7000);
   });
 });

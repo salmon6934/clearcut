@@ -157,3 +157,86 @@ export function mergeRemoteSettlement(
 
   store.upsertSettlement(mergedSettlement);
 }
+
+export interface ResolveConflictOptions {
+  mode: 'keep_mine' | 'use_theirs';
+  expenseId: string;
+  store: LocalStore;
+  queue: MutationQueue;
+  serverSnapshot?: any;
+}
+
+/**
+ * Resolves an optimistic concurrency conflict (HTTP 409) on an expense.
+ * - 'keep_mine': updates local entity version to serverVersion + 1,
+ *   clears the conflict mutation, and re-enqueues UPSERT_EXPENSE with baseVersion = serverVersion.
+ * - 'use_theirs': clears the conflict mutation, overwrites local store with server snapshot
+ *   (or soft-deletes if tombstone), and sets _sync to 'synced'.
+ */
+export function resolveExpenseConflict(options: ResolveConflictOptions): Expense | null {
+  const { mode, expenseId, store, queue, serverSnapshot } = options;
+  const localExpense = store.getExpense(expenseId);
+  const conflictMutation = queue
+    .getAllItems()
+    .find((m) => m.entityId === expenseId && m.status === 'conflict');
+
+  if (mode === 'keep_mine') {
+    if (!localExpense) return null;
+    const serverVersion =
+      serverSnapshot?.version ||
+      conflictMutation?.conflictDetail?.server_version ||
+      conflictMutation?.conflictDetail?.version ||
+      localExpense.version;
+    const bumpedVersion = serverVersion + 1;
+
+    const resolvedExpense: Expense = {
+      ...localExpense,
+      version: bumpedVersion,
+      _sync: 'pending',
+    };
+
+    store.upsertExpense(resolvedExpense);
+
+    if (conflictMutation) {
+      queue.clearDeadLetter(conflictMutation.id);
+    }
+
+    queue.enqueue('UPSERT_EXPENSE', expenseId, {
+      expense: resolvedExpense,
+      baseVersion: serverVersion,
+    });
+
+    return resolvedExpense;
+  } else {
+    // 'use_theirs': Discard any local pending or conflict mutation for this entity
+    const entityMutations = queue.getAllItems().filter((m) => m.entityId === expenseId);
+    for (const m of entityMutations) {
+      queue.markSynced(m.id);
+    }
+
+    const snapshot =
+      serverSnapshot ||
+      conflictMutation?.conflictDetail?.server_snapshot ||
+      conflictMutation?.conflictDetail;
+
+    if (snapshot?.deleted_at || snapshot?.deletedAt) {
+      store.softDeleteExpense(expenseId);
+      return null;
+    }
+
+    if (snapshot) {
+      mergeRemoteExpense(snapshot, store, queue);
+      const serverUpdated = store.getExpense(expenseId);
+      if (serverUpdated) {
+        store.upsertExpense({ ...serverUpdated, _sync: 'synced' });
+        return serverUpdated;
+      }
+    } else if (localExpense) {
+      store.upsertExpense({ ...localExpense, _sync: 'synced' });
+      return localExpense;
+    }
+
+    return null;
+  }
+}
+

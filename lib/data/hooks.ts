@@ -17,12 +17,13 @@ import {
   selectGroup,
   selectGroupMembers,
   selectGroupExpenses,
+  selectGroupSettlements,
   selectGroupLedger,
   selectDashboardTotals,
   type GroupLedgerResult,
   type DashboardTotals,
 } from './selectors';
-import type { Group, Member, Expense } from './types';
+import type { Group, Member, Expense, Settlement } from './types';
 
 let singletonAdapter: LocalStorageAdapter | null = null;
 let singletonStore: LocalStore | null = null;
@@ -66,8 +67,20 @@ export function useGroupMembers(repo: DomainRepository, groupId: string): Member
   return useStoreSelector(repo.store, (s) => selectGroupMembers(s, groupId, false));
 }
 
-export function useGroupExpenses(repo: DomainRepository, groupId: string): Expense[] {
-  return useStoreSelector(repo.store, (s) => selectGroupExpenses(s, groupId, false));
+export function useGroupExpenses(
+  repo: DomainRepository,
+  groupId: string,
+  includeDeleted = false
+): Expense[] {
+  return useStoreSelector(repo.store, (s) => selectGroupExpenses(s, groupId, includeDeleted));
+}
+
+export function useGroupSettlements(
+  repo: DomainRepository,
+  groupId: string,
+  includeDeleted = false
+): Settlement[] {
+  return useStoreSelector(repo.store, (s) => selectGroupSettlements(s, groupId, includeDeleted));
 }
 
 export function useGroupLedger(repo: DomainRepository, groupId: string): GroupLedgerResult {

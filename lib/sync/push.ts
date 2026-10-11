@@ -140,7 +140,15 @@ export async function drainQueue(
 
         if (classified.type === 'CONFLICT') {
           // 409 Conflict: Flag entity and continue drain for other entities
-          queue.markFailed(pendingItem.id, classified.message, true);
+          let conflictDetailObj = classified.detail;
+          if (typeof conflictDetailObj === 'string') {
+            try {
+              conflictDetailObj = JSON.parse(conflictDetailObj);
+            } catch {
+              // keep as string
+            }
+          }
+          queue.markFailed(pendingItem.id, classified.message, true, 5, conflictDetailObj);
           markLocalEntitySyncState(pendingItem, store, 'conflict');
           result.conflicts++;
         } else if (classified.type === 'PERMANENT') {
