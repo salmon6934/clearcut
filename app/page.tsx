@@ -34,7 +34,10 @@ export default function DashboardPage() {
   const authState = getAuthState();
   const currentUserId = authState.user?.id || 'local_user';
 
-  const groups = useAllGroups(repo);
+  const activeGroups = useAllGroups(repo, false);
+  const allGroups = useAllGroups(repo, true);
+  const archivedGroups = allGroups.filter((g) => Boolean(g.archivedAt));
+  const [showArchived, setShowArchived] = useState(false);
   const dashboardTotals = useDashboardTotals(repo, currentUserId);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -182,7 +185,7 @@ export default function DashboardPage() {
         <section className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-400">
-              Groups ({groups.length})
+              Groups ({activeGroups.length})
             </h2>
             <button
               onClick={() => setIsCreateModalOpen(true)}
@@ -192,17 +195,17 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {groups.length === 0 ? (
+          {activeGroups.length === 0 ? (
             <EmptyState
               icon={<span className="text-2xl">🌴</span>}
-              title="No groups yet"
+              title="No active groups"
               description="Create a group for your next road trip, apartment rent, or dinner party to track shared expenses."
               actionText="+ Create Group"
               onAction={() => setIsCreateModalOpen(true)}
             />
           ) : (
             <div className="space-y-2">
-              {groups.map((g) => {
+              {activeGroups.map((g) => {
                 const members = repo.store.getGroupMembers(g.id);
                 const userMember = members.find((m) => m.userId === currentUserId);
                 const ledger = selectGroupLedger(repo.store, g.id);
@@ -261,6 +264,46 @@ export default function DashboardPage() {
                   </Link>
                 );
               })}
+            </div>
+          )}
+
+          {/* Archived Groups Collapsible Section */}
+          {archivedGroups.length > 0 && (
+            <div className="pt-3">
+              <button
+                type="button"
+                onClick={() => setShowArchived(!showArchived)}
+                className="flex items-center justify-between w-full px-2 py-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span>📦</span>
+                  <span>Archived Groups ({archivedGroups.length})</span>
+                </span>
+                <span>{showArchived ? '▲ Hide' : '▼ View'}</span>
+              </button>
+
+              {showArchived && (
+                <div className="space-y-2 mt-2 opacity-80">
+                  {archivedGroups.map((g) => (
+                    <Link
+                      key={g.id}
+                      href={`/group?id=${g.id}`}
+                      className="flex items-center justify-between p-3.5 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 hover:border-zinc-400 transition"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-lg opacity-60">📦</span>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-zinc-700 dark:text-zinc-300 truncate">
+                            {g.name}
+                          </h4>
+                          <span className="text-[10px] text-zinc-400">Read-only • Archived</span>
+                        </div>
+                      </div>
+                      <span className="text-xs text-zinc-400 font-medium">Open →</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </section>

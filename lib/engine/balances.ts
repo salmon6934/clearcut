@@ -74,7 +74,6 @@ export function computePairwise(
   for (const exp of expenses) {
     if (exp.deletedAt) continue;
 
-    // For single expense: debtors owe creditors proportionally
     const creditors: { memberId: string; net: number }[] = [];
     const debtors: { memberId: string; net: number }[] = [];
 
@@ -84,50 +83,51 @@ export function computePairwise(
       else if (net < 0) debtors.push({ memberId: s.memberId, net: -net });
     }
 
-    const totalCredit = creditors.reduce((a, b) => a + b.net, 0);
-    if (totalCredit <= 0) continue;
+    if (creditors.length === 0 || debtors.length === 0) continue;
 
-    for (const d of debtors) {
-      let allocatedForDebtor = 0;
-      for (let i = 0; i < creditors.length; i++) {
-        const c = creditors[i]!;
-        // allocate proportional share
-        const isLast = i === creditors.length - 1;
-        const share = isLast
-          ? d.net - allocatedForDebtor
-          : Math.floor((d.net * c.net) / totalCredit);
-        allocatedForDebtor += share;
+    // Allocate debt proportionally across creditors using two-pointer cumulative sweep.
+    // Guarantees exact integer conservation for both debtor and creditor marginals.
+    let dIdx = 0;
+    let cIdx = 0;
+    let dRemaining = debtors[0]?.net ?? 0;
+    let cRemaining = creditors[0]?.net ?? 0;
 
-        if (share > 0) {
-          const key = `${d.memberId}->${c.memberId}`;
-          edgeMap.set(key, (edgeMap.get(key) ?? 0) + share);
-        }
+    while (dIdx < debtors.length && cIdx < creditors.length) {
+      const debtor = debtors[dIdx]!;
+      const creditor = creditors[cIdx]!;
+      const transfer = Math.min(dRemaining, cRemaining);
+
+      if (transfer > 0) {
+        const key = `${debtor.memberId}->${creditor.memberId}`;
+        edgeMap.set(key, (edgeMap.get(key) ?? 0) + transfer);
+      }
+
+      dRemaining -= transfer;
+      cRemaining -= transfer;
+
+      if (dRemaining === 0) {
+        dIdx++;
+        dRemaining = debtors[dIdx]?.net ?? 0;
+      }
+      if (cRemaining === 0) {
+        cIdx++;
+        cRemaining = creditors[cIdx]?.net ?? 0;
       }
     }
   }
 
-  // Factor in settlements
+  // Factor in settlements: fromMemberId paid toMemberId, reducing debt from->to
   for (const s of settlements) {
     if (s.deletedAt) continue;
-    // from paid to
-    const forwardKey = `${s.fromMemberId}->${s.toMemberId}`;
-    const reverseKey = `${s.toMemberId}->${s.fromMemberId}`;
-
-    const forwardDebt = edgeMap.get(forwardKey) ?? 0;
-    if (forwardDebt >= s.amountMinor) {
-      edgeMap.set(forwardKey, forwardDebt - s.amountMinor);
-    } else {
-      edgeMap.set(forwardKey, 0);
-      const remainingPaid = s.amountMinor - forwardDebt;
-      edgeMap.set(reverseKey, (edgeMap.get(reverseKey) ?? 0) - remainingPaid);
-    }
+    const key = `${s.fromMemberId}->${s.toMemberId}`;
+    edgeMap.set(key, (edgeMap.get(key) ?? 0) - s.amountMinor);
   }
 
   // Net opposing directions between every pair
   const result: PairwiseDebt[] = [];
   const processedPairs = new Set<string>();
 
-  for (const [key, amount] of edgeMap.entries()) {
+  for (const key of edgeMap.keys()) {
     const [from, to] = key.split('->');
     if (!from || !to) continue;
     const pairId = [from, to].sort().join(':');

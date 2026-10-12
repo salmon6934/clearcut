@@ -4,12 +4,13 @@
 import { useSyncExternalStore } from 'react';
 import type { LocalStore } from './local-store';
 import type { Group, Member, Expense, Settlement, SuggestedPayment } from './types';
-import { computeBalances } from '../engine/balances';
+import { computeBalances, computePairwise, type PairwiseDebt } from '../engine/balances';
 import { simplifyDebts } from '../engine/simplify';
 
 export interface GroupLedgerResult {
   balances: Map<string, number>;
   suggestedPayments: SuggestedPayment[];
+  pairwiseDebts: PairwiseDebt[];
 }
 
 export interface DashboardTotals {
@@ -81,6 +82,7 @@ export function selectGroupLedger(store: LocalStore, groupId: string): GroupLedg
     const emptyResult: GroupLedgerResult = {
       balances: initialMap,
       suggestedPayments: [],
+      pairwiseDebts: [],
     };
     ledgerCache.set(cacheKey, emptyResult);
     return emptyResult;
@@ -92,7 +94,8 @@ export function selectGroupLedger(store: LocalStore, groupId: string): GroupLedg
       initialMap.set(mId, bal);
     }
     const suggestedPayments = simplifyDebts(initialMap, currency);
-    const result: GroupLedgerResult = { balances: initialMap, suggestedPayments };
+    const pairwiseDebts = computePairwise(expenses, settlements);
+    const result: GroupLedgerResult = { balances: initialMap, suggestedPayments, pairwiseDebts };
     ledgerCache.set(cacheKey, result);
     return result;
   } catch (err) {
@@ -100,6 +103,7 @@ export function selectGroupLedger(store: LocalStore, groupId: string): GroupLedg
     const fallback: GroupLedgerResult = {
       balances: new Map<string, number>(),
       suggestedPayments: [],
+      pairwiseDebts: [],
     };
     return fallback;
   }

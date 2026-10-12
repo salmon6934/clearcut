@@ -7,14 +7,18 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { SyncStateSnapshot, SyncLifecycleManager } from '../lib/sync/lifecycle';
 
+import type { RealtimeStatus } from '../lib/sync/realtime';
+
 interface SyncBadgeProps {
   manager?: SyncLifecycleManager;
+  realtimeStatus?: RealtimeStatus;
   onClickKick?: () => void;
   showLinkToDiagnostics?: boolean;
 }
 
 export function SyncBadge({
   manager,
+  realtimeStatus,
   onClickKick,
   showLinkToDiagnostics = true,
 }: SyncBadgeProps) {
@@ -121,6 +125,29 @@ export function SyncBadge({
           />
         </svg>
         <span>{pendingCount} pending</span>
+      </>
+    );
+  } else if (realtimeStatus === 'disconnected' || realtimeStatus === 'error') {
+    badgeColorClass = 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 border-zinc-500/20';
+    badgeContent = (
+      <>
+        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+        <span>Live updates off</span>
+      </>
+    );
+  } else if (realtimeStatus === 'connecting') {
+    badgeColorClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+    badgeContent = (
+      <>
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+        <span>Connecting...</span>
+      </>
+    );
+  } else if (realtimeStatus === 'connected') {
+    badgeContent = (
+      <>
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <span>Live</span>
       </>
     );
   } else {

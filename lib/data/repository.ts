@@ -86,6 +86,48 @@ export class DomainRepository {
   }
 
   /**
+   * Archives a group, marking it read-only and hiding it from default dashboard list.
+   */
+  archiveGroup(groupId: string): Group | null {
+    const existing = this.store.getGroup(groupId);
+    if (!existing) return null;
+
+    const now = new Date().toISOString();
+    const updated: Group = {
+      ...existing,
+      archivedAt: now,
+      version: existing.version + 1,
+      updatedAt: now,
+      _sync: 'pending',
+    };
+
+    this.store.upsertGroup(updated);
+    haptics.warning().catch(() => {});
+    return updated;
+  }
+
+  /**
+   * Unarchives a previously archived group, restoring write operations.
+   */
+  unarchiveGroup(groupId: string): Group | null {
+    const existing = this.store.getGroup(groupId);
+    if (!existing) return null;
+
+    const now = new Date().toISOString();
+    const updated: Group = {
+      ...existing,
+      archivedAt: null,
+      version: existing.version + 1,
+      updatedAt: now,
+      _sync: 'pending',
+    };
+
+    this.store.upsertGroup(updated);
+    haptics.success().catch(() => {});
+    return updated;
+  }
+
+  /**
    * Synchronously validates and saves a new expense,
    * then enqueues UPSERT_EXPENSE for background replication.
    */

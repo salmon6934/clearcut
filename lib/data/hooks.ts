@@ -55,8 +55,8 @@ export function useRepository(userId?: string): DomainRepository {
   return useMemo(() => getRepositoryInstance(userId), [userId]);
 }
 
-export function useAllGroups(repo: DomainRepository): Group[] {
-  return useStoreSelector(repo.store, (s) => selectAllGroups(s, false));
+export function useAllGroups(repo: DomainRepository, includeArchived = false): Group[] {
+  return useStoreSelector(repo.store, (s) => selectAllGroups(s, includeArchived));
 }
 
 export function useGroup(repo: DomainRepository, groupId: string): Group | undefined {
