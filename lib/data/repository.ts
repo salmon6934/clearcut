@@ -48,12 +48,18 @@ export class DomainRepository {
     const now = new Date().toISOString();
     const groupId = crypto.randomUUID();
     const ownerMemberId = crypto.randomUUID();
+    const inviteChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let inviteCode = '';
+    for (let i = 0; i < 6; i++) {
+      inviteCode += inviteChars.charAt(Math.floor(Math.random() * inviteChars.length));
+    }
 
     const group: Group = {
       id: groupId,
       name: trimmedName,
       type: draft.type || 'trip',
       currency,
+      inviteCode,
       createdBy: currentUserId,
       version: 1,
       createdAt: now,

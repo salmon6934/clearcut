@@ -19,6 +19,22 @@ export interface DashboardTotals {
   totalYouOweByCurrency: Record<string, number>;
 }
 
+export interface FriendGroupDetail {
+  groupId: string;
+  groupName: string;
+  currency: string;
+  netMinor: number;
+  memberId: string;
+}
+
+export interface FriendSummary {
+  id: string;
+  displayName: string;
+  userId?: string;
+  netPerCurrency: Record<string, number>;
+  groups: FriendGroupDetail[];
+}
+
 // Memoization caches keyed by `${id/args}:${revision}`
 const allGroupsCache = new Map<string, Group[]>();
 const membersCache = new Map<string, Member[]>();
@@ -26,6 +42,7 @@ const expensesCache = new Map<string, Expense[]>();
 const settlementsCache = new Map<string, Settlement[]>();
 const ledgerCache = new Map<string, GroupLedgerResult>();
 const dashboardCache = new Map<string, DashboardTotals>();
+const friendsCache = new Map<string, FriendSummary[]>();
 
 export function selectGroup(store: LocalStore, groupId: string): Group | undefined {
   return store.getGroup(groupId);
@@ -177,6 +194,79 @@ export function selectDashboardTotals(
 
   dashboardCache.set(cacheKey, totals);
   return totals;
+}
+
+/**
+ * Computes individual friend balances aggregated across all shared groups for the current user.
+ * Memoized against store revision and userId.
+ */
+export function selectFriendsBalances(
+  store: LocalStore,
+  currentUserId: string
+): FriendSummary[] {
+  const cacheKey = `${currentUserId}:${store.getRevision()}`;
+  const cached = friendsCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const friendsMap = new Map<string, FriendSummary>();
+  const groups = store.getAllGroups(false);
+
+  for (const group of groups) {
+    const members = store.getGroupMembers(group.id, false);
+    const userMember =
+      members.find((m) => m.userId === currentUserId) ||
+      (currentUserId === 'local_user' ? members.find((m) => m.role === 'owner') : undefined);
+    if (!userMember) continue;
+
+    const ledger = selectGroupLedger(store, group.id);
+    const pairwiseDebts = ledger.pairwiseDebts;
+
+    for (const member of members) {
+      if (member.id === userMember.id) continue;
+
+      let netMinor = 0;
+      for (const debt of pairwiseDebts) {
+        if (debt.fromMemberId === member.id && debt.toMemberId === userMember.id) {
+          netMinor += debt.amountMinor;
+        } else if (debt.fromMemberId === userMember.id && debt.toMemberId === member.id) {
+          netMinor -= debt.amountMinor;
+        }
+      }
+
+      const friendKey = member.userId || member.displayName.trim().toLowerCase();
+
+      let friend = friendsMap.get(friendKey);
+      if (!friend) {
+        friend = {
+          id: friendKey,
+          displayName: member.displayName,
+          userId: member.userId || undefined,
+          netPerCurrency: {},
+          groups: [],
+        };
+        friendsMap.set(friendKey, friend);
+      }
+
+      const cur = group.currency;
+      friend.netPerCurrency[cur] = (friend.netPerCurrency[cur] ?? 0) + netMinor;
+      friend.groups.push({
+        groupId: group.id,
+        groupName: group.name,
+        currency: group.currency,
+        netMinor,
+        memberId: member.id,
+      });
+    }
+  }
+
+  const result = Array.from(friendsMap.values()).sort((a, b) =>
+    a.displayName.localeCompare(b.displayName)
+  );
+
+  friendsCache.set(cacheKey, result);
+  return result;
 }
 
 /**

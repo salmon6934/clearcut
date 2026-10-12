@@ -119,8 +119,6 @@ function GroupDetailContent() {
     );
   }
 
-  const isArchived = Boolean(group.archivedAt);
-
   // Active vs Deleted expenses
   const activeExpenses = allExpenses.filter((e) => !e.deletedAt);
   const deletedExpenses = allExpenses.filter((e) => Boolean(e.deletedAt));
@@ -233,17 +231,6 @@ function GroupDetailContent() {
             >
               <span>{isExporting ? '...' : 'CSV'}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (isArchived) repo.unarchiveGroup(group.id);
-                else repo.archiveGroup(group.id);
-              }}
-              title={isArchived ? 'Unarchive Group' : 'Archive Group'}
-              className="px-2.5 py-1.5 rounded-lg border-2 border-black bg-white text-xs font-mono font-black text-black shadow-[2px_2px_0px_0px_#000] hover:bg-[#ffd600] transition active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
-            >
-              {isArchived ? 'UNARCHIVE' : 'ARCHIVE'}
-            </button>
             <Link
               href={`/group/members?id=${group.id}`}
               className="px-2.5 py-1.5 rounded-lg border-2 border-black bg-white text-xs font-mono font-black text-black shadow-[2px_2px_0px_0px_#000] hover:bg-[#ffd600] transition active:translate-x-0.5 active:translate-y-0.5"
@@ -255,25 +242,6 @@ function GroupDetailContent() {
       </header>
 
       <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-5">
-        {/* Read-Only Banner if Group is Archived */}
-        {isArchived && (
-          <div className="rounded-xl border-2 border-black bg-[#ffd600] p-3.5 flex items-center justify-between gap-3 text-black text-xs font-bold shadow-[3px_3px_0px_0px_#000]">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-base shrink-0">📦</span>
-              <span>
-                This group is archived and is read-only. Unarchive to add expenses or settle up.
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => repo.unarchiveGroup(group.id)}
-              className="px-3 py-1.5 rounded-lg bg-black text-white font-mono font-black text-xs shrink-0 transition active:scale-95"
-            >
-              UNARCHIVE
-            </button>
-          </div>
-        )}
-
         {/* Balance Summary Header Banner */}
         <BalanceSummary
           netBalanceMinor={userNetBalanceMinor}
@@ -400,16 +368,13 @@ function GroupDetailContent() {
               members={members}
               currency={group.currency}
               currentMemberId={currentMemberId}
-              onSettleUp={
-                !isArchived
-                  ? (from, to, amt) =>
-                      handleOpenSettleWithSuggestion({
-                        fromMemberId: from,
-                        toMemberId: to,
-                        amountMinor: amt,
-                        currency: group.currency,
-                      })
-                  : undefined
+              onSettleUp={(from, to, amt) =>
+                handleOpenSettleWithSuggestion({
+                  fromMemberId: from,
+                  toMemberId: to,
+                  amountMinor: amt,
+                  currency: group.currency,
+                })
               }
             />
 
@@ -476,24 +441,22 @@ function GroupDetailContent() {
                       members={members}
                       currency={group.currency}
                       currentUserId={currentUserId}
-                      onDelete={!isArchived ? (id) => handleDeleteSettlement(id) : undefined}
+                      onDelete={(id) => handleDeleteSettlement(id)}
                     />
                   ))}
                 </div>
               )}
             </div>
 
-            {!isArchived && (
-              <button
-                onClick={() => {
-                  setSelectedSuggestion(null);
-                  setIsSettleModalOpen(true);
-                }}
-                className="w-full py-3 text-xs font-mono font-black uppercase rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
-              >
-                RECORD CUSTOM SETTLEMENT
-              </button>
-            )}
+            <button
+              onClick={() => {
+                setSelectedSuggestion(null);
+                setIsSettleModalOpen(true);
+              }}
+              className="w-full py-3 text-xs font-mono font-black uppercase rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
+            >
+              RECORD CUSTOM SETTLEMENT
+            </button>
           </div>
         )}
 
@@ -525,29 +488,27 @@ function GroupDetailContent() {
         )}
       </div>
 
-      {/* Floating Action Bar matching neo-brutalist style (hidden if group is archived) */}
-      {!isArchived && (
-        <div className="fixed bottom-4 left-0 right-0 z-40 px-4 max-w-xl mx-auto">
-          <div className="grid grid-cols-2 gap-3">
-            <Link
-              href={`/group/expense?id=${group.id}`}
-              className="py-3.5 px-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] text-black font-black text-xs sm:text-sm tracking-wider uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
-            >
-              <span>+ ADD EXPENSE</span>
-            </Link>
+      {/* Floating Action Bar */}
+      <div className="fixed bottom-4 left-0 right-0 z-40 px-4 max-w-xl mx-auto">
+        <div className="grid grid-cols-2 gap-3">
+          <Link
+            href={`/group/expense?id=${group.id}`}
+            className="py-3.5 px-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] text-black font-black text-xs sm:text-sm tracking-wider uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+          >
+            <span>+ ADD EXPENSE</span>
+          </Link>
 
-            <button
-              onClick={() => {
-                setSelectedSuggestion(null);
-                setIsSettleModalOpen(true);
-              }}
-              className="py-3.5 px-4 rounded-xl bg-[#00e5ff] hover:bg-[#00cbe6] text-black font-black text-xs sm:text-sm tracking-wider uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
-            >
-              <span>⚡ SETTLE UP</span>
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setSelectedSuggestion(null);
+              setIsSettleModalOpen(true);
+            }}
+            className="py-3.5 px-4 rounded-xl bg-[#00e5ff] hover:bg-[#00cbe6] text-black font-black text-xs sm:text-sm tracking-wider uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+          >
+            <span>⚡ SETTLE UP</span>
+          </button>
         </div>
-      )}
+      </div>
 
       {/* Settle Up Modal */}
       <SettleModal

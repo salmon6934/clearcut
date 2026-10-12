@@ -4,7 +4,7 @@
 // Advanced Member & Group Management: Member Removal, Role Management, Ownership Transfer & Placeholder Claims
 // Specification Baseline: Technical Specification v1.0 Section 5.2, US-04, US-20 & Tasks 2.7.1, 2.7.2
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -90,21 +90,32 @@ function GroupMembersContent() {
     }
   };
 
+  const inviteCode =
+    group?.inviteCode ||
+    (group ? group.id.replace(/-/g, '').slice(0, 6).toUpperCase() : '');
+
+  // Persist fallback code if group lacked one
+  useEffect(() => {
+    if (group && !group.inviteCode && inviteCode) {
+      repo.store.upsertGroup({ ...group, inviteCode });
+    }
+  }, [group, inviteCode, repo]);
+
   const handleCopyInviteCode = () => {
-    if (!group.inviteCode) return;
-    navigator.clipboard.writeText(group.inviteCode);
+    if (!inviteCode) return;
+    navigator.clipboard.writeText(inviteCode);
     setCopiedInvite(true);
     setTimeout(() => setCopiedInvite(false), 2000);
   };
 
   const handleGenerateClaimLink = async (member: Member) => {
     try {
-      const claimUrl = `${window.location.origin}/join?code=${group.inviteCode}&claimMemberId=${member.id}`;
+      const claimUrl = `${window.location.origin}/join?code=${inviteCode}&claimMemberId=${member.id}`;
       await navigator.clipboard.writeText(claimUrl);
       setClaimLinkStatus(`Claim link copied for ${member.displayName}!`);
       setTimeout(() => setClaimLinkStatus(null), 3500);
     } catch {
-      setClaimLinkStatus(`Invite code: ${group.inviteCode}`);
+      setClaimLinkStatus(`Invite code: ${inviteCode}`);
       setTimeout(() => setClaimLinkStatus(null), 3500);
     }
   };
@@ -251,16 +262,14 @@ function GroupMembersContent() {
 
           <div className="flex items-center gap-2 pt-1">
             <div className="flex-1 px-3.5 py-2.5 rounded-lg border-2 border-black bg-[#f0f0ea] font-mono text-sm font-black text-center tracking-widest text-black select-all">
-              {group.inviteCode || 'GENERATING...'}
+              {inviteCode}
             </div>
-            {group.inviteCode && (
-              <button
-                onClick={handleCopyInviteCode}
-                className="px-4 py-2.5 text-xs font-mono font-black rounded-lg border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
-              >
-                {copiedInvite ? 'COPIED!' : 'COPY'}
-              </button>
-            )}
+            <button
+              onClick={handleCopyInviteCode}
+              className="px-4 py-2.5 text-xs font-mono font-black rounded-lg border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+            >
+              {copiedInvite ? 'COPIED!' : 'COPY'}
+            </button>
           </div>
         </div>
 

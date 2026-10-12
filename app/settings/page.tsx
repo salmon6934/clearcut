@@ -14,11 +14,15 @@ import {
   deleteAccount,
   type AuthState,
 } from '../../lib/auth';
+import { BottomNav } from '../../components/BottomNav';
+import { SyncBadge } from '../../components/SyncBadge';
+import { useRepository } from '../../lib/data/hooks';
 
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'SGD', 'JPY'];
 
 export default function SettingsPage() {
   const router = useRouter();
+  const repo = useRepository();
   const [authState, setAuthState] = useState<AuthState>(getAuthState());
 
   const [displayName, setDisplayName] = useState(authState.profile?.displayName || '');
@@ -85,22 +89,26 @@ export default function SettingsPage() {
   const email = authState.user?.email || 'Offline Account';
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0] text-black p-4 sm:p-6 pb-20">
-      <div className="max-w-lg mx-auto space-y-5">
-        {/* Header */}
-        <header className="flex items-center justify-between pt-1">
-          <Link
-            href="/"
-            className="w-10 h-10 rounded-lg border-2 border-black bg-white flex items-center justify-center text-black hover:bg-[#ffd600] transition active:translate-x-0.5 active:translate-y-0.5 shadow-[2px_2px_0px_0px_#000]"
-          >
-            <svg className="w-4 h-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
-          <h1 className="text-base sm:text-lg font-black uppercase font-mono tracking-tight">SETTINGS & PROFILE</h1>
-          <div className="w-10" />
-        </header>
+    <div className="min-h-screen bg-[#f5f5f0] text-black pb-28">
+      {/* Top Header matching Dashboard/Friends/Activity */}
+      <header className="sticky top-0 z-30 bg-[#f5f5f0] border-b-2 border-black px-4 py-3">
+        <div className="max-w-xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[#ffd600] border-2 border-black flex items-center justify-center font-mono font-black text-sm shadow-[2px_2px_0px_0px_#000]">
+              ⚙️
+            </div>
+            <div>
+              <h1 className="text-base font-black tracking-tight uppercase leading-none">
+                SETTINGS
+              </h1>
+            </div>
+          </div>
 
+          <SyncBadge manager={repo.syncManager} />
+        </div>
+      </header>
+
+      <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-4">
         {/* Profile Details Card */}
         <div className="p-5 rounded-2xl bg-white border-2 border-black shadow-[4px_4px_0px_0px_#000] space-y-4">
           <div className="flex items-center gap-3 pb-3 border-b-2 border-black">
@@ -188,38 +196,39 @@ export default function SettingsPage() {
           </Link>
         </div>
 
-        {/* Session Management */}
-        <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-between">
-          <div>
-            <p className="text-xs font-mono font-black text-black uppercase">Session</p>
-            <p className="text-[11px] text-black/60 font-mono font-bold">Log out and clear session</p>
+        {/* Account Actions: Logout & Delete Account */}
+        <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[3px_3px_0px_0px_#000] space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono font-black text-black uppercase">
+              ACCOUNT ACTIONS
+            </span>
+            <span className="text-[11px] font-mono text-black/60 font-bold">
+              {authState.user ? authState.user.email : 'Offline Mode'}
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="px-4 py-2 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-white hover:bg-[#ffd600] text-black shadow-[2px_2px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
-          >
-            Sign Out
-          </button>
-        </div>
 
-        {/* Danger Zone: Account Deletion */}
-        <div className="p-5 rounded-2xl border-2 border-black bg-[#ffebee] shadow-[4px_4px_0px_0px_#000] space-y-3">
-          <h3 className="text-xs font-mono font-black uppercase tracking-wider text-black">
-            ⚠️ DANGER ZONE
-          </h3>
-          <p className="text-xs text-black font-mono leading-relaxed">
-            Deleting your account will permanently wipe your profile, login credentials, and notification tokens. Your historical group expenses and balances will be anonymized to maintain financial consistency.
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowDeleteModal(true)}
-            className="px-4 py-2.5 text-xs font-mono font-black uppercase rounded-xl bg-[#ff8a80] hover:bg-[#ff7060] text-black border-2 border-black shadow-[3px_3px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
-          >
-            Delete Account
-          </button>
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="py-2.5 px-3 text-xs font-mono font-black uppercase rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black shadow-[2px_2px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 cursor-pointer text-center"
+            >
+              LOGOUT
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="py-2.5 px-3 text-xs font-mono font-black uppercase rounded-xl border-2 border-black bg-[#ff8a80] hover:bg-[#ff7060] text-black shadow-[2px_2px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 cursor-pointer text-center"
+            >
+              DELETE ACCOUNT
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Persistent Bottom Nav */}
+      <BottomNav />
 
       {/* Confirmation Modal */}
       {showDeleteModal && (

@@ -63,9 +63,6 @@ export default function DashboardPage() {
   const currentUserId = authState.user?.id || 'local_user';
 
   const activeGroups = useAllGroups(repo, false);
-  const allGroups = useAllGroups(repo, true);
-  const archivedGroups = allGroups.filter((g) => Boolean(g.archivedAt));
-  const [showArchived, setShowArchived] = useState(false);
   const dashboardTotals = useDashboardTotals(repo, currentUserId);
 
   const [mounted, setMounted] = useState(false);
@@ -136,9 +133,6 @@ export default function DashboardPage() {
               <div>
                 <span className="text-xl font-black text-black tracking-tight uppercase block leading-tight">
                   Clearcut
-                </span>
-                <span className="font-mono text-[10px] text-black/60 font-bold uppercase tracking-wider block">
-                  P2P LEDGER V2.4
                 </span>
               </div>
             </div>
@@ -225,19 +219,18 @@ export default function DashboardPage() {
           <div className="space-y-2">
             <div>
               <span
-                className={`inline-block px-2.5 py-0.5 border-2 border-black text-[11px] font-mono font-black uppercase tracking-wider shadow-[2px_2px_0px_0px_#000] ${
-                  primaryNet > 0
+                className={`inline-block px-2.5 py-0.5 border-2 border-black text-[11px] font-mono font-black uppercase tracking-wider shadow-[2px_2px_0px_0px_#000] ${primaryNet > 0
                     ? 'bg-[#ccff00] text-black'
                     : primaryNet < 0
-                    ? 'bg-[#ff8a80] text-black'
-                    : 'bg-[#ffd600] text-black'
-                }`}
+                      ? 'bg-[#ff8a80] text-black'
+                      : 'bg-[#ffd600] text-black'
+                  }`}
               >
                 {primaryNet > 0
                   ? 'TOTAL SURPLUS'
                   : primaryNet < 0
-                  ? 'TOTAL DEFICIT'
-                  : 'SETTLED UP'}
+                    ? 'TOTAL DEFICIT'
+                    : 'SETTLED UP'}
               </span>
             </div>
 
@@ -245,8 +238,8 @@ export default function DashboardPage() {
               {primaryNet > 0
                 ? `+${formatMinor(primaryNet, primaryCurrency)}`
                 : primaryNet < 0
-                ? `-${formatMinor(Math.abs(primaryNet), primaryCurrency)}`
-                : formatMinor(0, primaryCurrency)}
+                  ? `-${formatMinor(Math.abs(primaryNet), primaryCurrency)}`
+                  : formatMinor(0, primaryCurrency)}
             </div>
 
             <p className="text-xs text-black/70 flex items-center gap-2 font-mono font-bold">
@@ -398,8 +391,8 @@ export default function DashboardPage() {
                           {userBalance > 0
                             ? `+${formatMinor(userBalance, g.currency)}`
                             : userBalance < 0
-                            ? `-${formatMinor(Math.abs(userBalance), g.currency)}`
-                            : formatMinor(0, g.currency)}
+                              ? `-${formatMinor(Math.abs(userBalance), g.currency)}`
+                              : formatMinor(0, g.currency)}
                         </div>
 
                         <div>
@@ -425,50 +418,6 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
-
-        {/* Archived Ledgers Accordion */}
-        {archivedGroups.length > 0 && (
-          <section className="space-y-3 pt-1">
-            <button
-              onClick={() => setShowArchived(!showArchived)}
-              className="w-full bg-white rounded-2xl border-2 border-black shadow-[3px_3px_0px_0px_#000] p-3.5 flex items-center justify-between text-xs font-mono font-black text-black uppercase active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <span>🗄️ ARCHIVED LEDGERS</span>
-                <span className="px-1.5 py-0.5 rounded border border-black bg-[#f0f0ea] text-[10px]">
-                  {archivedGroups.length}
-                </span>
-              </div>
-              <svg
-                className={`w-4 h-4 text-black transition-transform ${showArchived ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {showArchived && (
-              <div className="space-y-2 pl-2">
-                {archivedGroups.map((g) => (
-                  <Link
-                    key={g.id}
-                    href={`/group?id=${g.id}`}
-                    className="block p-3 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_#000] text-xs text-black hover:bg-[#fafaf6] transition"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-black">{g.name}</span>
-                      <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded border border-black bg-[#ffd600]">
-                        {g.currency}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
       </div>
 
       {/* Persistent Bottom Navigation matching Stitch */}
@@ -526,11 +475,10 @@ export default function DashboardPage() {
                         key={t}
                         type="button"
                         onClick={() => setNewGroupType(t)}
-                        className={`p-2.5 rounded-xl border-2 border-black text-xs font-mono font-black flex items-center gap-2 transition cursor-pointer shadow-[2px_2px_0px_0px_#000] ${
-                          newGroupType === t
+                        className={`p-2.5 rounded-xl border-2 border-black text-xs font-mono font-black flex items-center gap-2 transition cursor-pointer shadow-[2px_2px_0px_0px_#000] ${newGroupType === t
                             ? 'bg-[#ccff00] text-black'
                             : 'bg-white text-black/70 hover:bg-[#fafaf6]'
-                        }`}
+                          }`}
                       >
                         <span>{cfg.emoji}</span>
                         <span>{cfg.label}</span>

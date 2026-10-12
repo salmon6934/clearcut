@@ -128,7 +128,7 @@ function SyncDiagnosticsContent() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 pt-2">
         <Link
-          href="/"
+          href="/settings"
           className="w-10 h-10 rounded-lg border-2 border-black bg-white flex items-center justify-center font-black text-black hover:bg-[#ffd600] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
         >
           ←

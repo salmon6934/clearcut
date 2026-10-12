@@ -20,8 +20,10 @@ import {
   selectGroupSettlements,
   selectGroupLedger,
   selectDashboardTotals,
+  selectFriendsBalances,
   type GroupLedgerResult,
   type DashboardTotals,
+  type FriendSummary,
 } from './selectors';
 import type { Group, Member, Expense, Settlement } from './types';
 
@@ -90,4 +92,9 @@ export function useGroupLedger(repo: DomainRepository, groupId: string): GroupLe
 export function useDashboardTotals(repo: DomainRepository, userId?: string): DashboardTotals {
   const uid = userId || getAuthState().user?.id || 'local_user';
   return useStoreSelector(repo.store, (s) => selectDashboardTotals(s, uid));
+}
+
+export function useFriendsBalances(repo: DomainRepository, userId?: string): FriendSummary[] {
+  const uid = userId || getAuthState().user?.id || 'local_user';
+  return useStoreSelector(repo.store, (s) => selectFriendsBalances(s, uid));
 }
