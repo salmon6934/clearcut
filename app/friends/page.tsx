@@ -13,6 +13,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { BottomNav } from '../../components/BottomNav';
 import { SyncBadge } from '../../components/SyncBadge';
 import { haptics } from '../../lib/native/haptics';
+import { sendFriendPushReminder } from '../../lib/native/push';
 import type { FriendSummary } from '../../lib/data/selectors';
 
 const AVATAR_COLORS = [
@@ -40,6 +41,8 @@ export default function FriendsPage() {
   const [reminderFriend, setReminderFriend] = useState<FriendSummary | null>(null);
   const [reminderMessage, setReminderMessage] = useState('');
   const [copiedReminder, setCopiedReminder] = useState(false);
+  const [isSendingPush, setIsSendingPush] = useState(false);
+  const [pushStatus, setPushStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -81,7 +84,42 @@ export default function FriendsPage() {
     setReminderFriend(friend);
     setReminderMessage(text);
     setCopiedReminder(false);
+    setPushStatus(null);
     haptics.tap().catch(() => {});
+  };
+
+  const handleSendPush = async () => {
+    if (!reminderFriend) return;
+    setIsSendingPush(true);
+    setPushStatus(null);
+    haptics.tap().catch(() => {});
+
+    try {
+      const net = reminderFriend.netPerCurrency[primaryCurrency] ?? 0;
+      const res = await sendFriendPushReminder({
+        friendUserId: reminderFriend.userId,
+        friendName: reminderFriend.displayName,
+        amountMinor: net,
+        currency: primaryCurrency,
+        customMessage: reminderMessage,
+        senderName: currentUserId === 'local_user' ? 'You' : undefined,
+      });
+
+      if (res.success) {
+        haptics.success().catch(() => {});
+        setPushStatus({ success: true, message: res.message });
+      } else {
+        haptics.warning().catch(() => {});
+        setPushStatus({ success: false, message: res.message });
+      }
+    } catch (err: any) {
+      setPushStatus({
+        success: false,
+        message: err?.message || 'Failed to dispatch push notification',
+      });
+    } finally {
+      setIsSendingPush(false);
+    }
   };
 
   const handleSendWhatsApp = () => {
@@ -422,7 +460,7 @@ export default function FriendsPage() {
       {reminderFriend && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
           <div
-            className="w-full max-w-md bg-white border-2 border-black rounded-2xl p-5 shadow-[5px_5px_0px_0px_#000] space-y-4"
+            className="w-full max-w-md bg-white border-2 border-black rounded-2xl p-5 shadow-[5px_5px_0px_0px_#000] space-y-4 max-h-[90vh] overflow-y-auto"
             role="dialog"
             aria-modal="true"
           >
@@ -450,9 +488,42 @@ export default function FriendsPage() {
               </button>
             </div>
 
+            {/* Recipient Account Status Indicator */}
+            <div>
+              {reminderFriend.userId ? (
+                <div className="px-3 py-2 rounded-xl border-2 border-black bg-[#eaff96] flex items-center gap-2 shadow-[2px_2px_0px_0px_#000]">
+                  <span className="text-sm">🔔</span>
+                  <div className="text-[10px] font-mono font-bold text-black uppercase leading-tight">
+                    <span className="font-black text-black">REGISTERED USER:</span> Direct push notifications supported
+                  </div>
+                </div>
+              ) : (
+                <div className="px-3 py-2 rounded-xl border-2 border-black bg-[#fff3cd] flex items-center gap-2 shadow-[2px_2px_0px_0px_#000]">
+                  <span className="text-sm">👤</span>
+                  <div className="text-[10px] font-mono font-bold text-black uppercase leading-tight">
+                    <span className="font-black text-black">PLACEHOLDER CONTACT:</span> No linked app account yet
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Push Notification Feedback Banner */}
+            {pushStatus && (
+              <div
+                className={`p-3 rounded-xl border-2 border-black text-xs font-mono font-bold flex items-center gap-2 shadow-[2px_2px_0px_0px_#000] animate-fadeIn ${
+                  pushStatus.success
+                    ? 'bg-[#ccff00] text-black'
+                    : 'bg-[#ffcdd2] text-[#b71c1c]'
+                }`}
+              >
+                <span>{pushStatus.success ? '✓' : '⚠️'}</span>
+                <span>{pushStatus.message}</span>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <label className="text-[11px] font-mono font-black uppercase tracking-wider text-black block">
-                Reminder Message
+                Reminder Message (Push Notification Content)
               </label>
               <textarea
                 rows={3}
@@ -462,32 +533,60 @@ export default function FriendsPage() {
               />
             </div>
 
-            {/* Notification Dispatch Actions */}
+            {/* Notification Actions */}
             <div className="space-y-2 pt-1">
-              <button
-                type="button"
-                onClick={handleSendWhatsApp}
-                className="w-full py-3 px-4 rounded-xl border-2 border-black bg-[#25D366] hover:bg-[#20ba5a] text-black font-mono font-black text-xs uppercase shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
-              >
-                <span>💬 SEND VIA WHATSAPP</span>
-              </button>
-
-              <div className="grid grid-cols-2 gap-2">
+              {reminderFriend.userId ? (
                 <button
                   type="button"
-                  onClick={handleShareReminder}
-                  className="py-2.5 px-3 rounded-xl border-2 border-black bg-[#00e5ff] hover:bg-[#00cbe6] text-black font-mono font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000] flex items-center justify-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+                  disabled={isSendingPush}
+                  onClick={handleSendPush}
+                  className="w-full py-3.5 px-4 rounded-xl border-2 border-black bg-[#ccff00] hover:bg-[#bbf000] text-black font-mono font-black text-xs uppercase shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer disabled:opacity-50"
                 >
-                  <span>📲 SHARE / SMS</span>
+                  <span>{isSendingPush ? '⏳ SENDING PUSH NOTIFICATION...' : '⚡ SEND PUSH NOTIFICATION'}</span>
                 </button>
+              ) : (
+                <div className="p-3 rounded-xl border-2 border-dashed border-black bg-[#fafaf6] text-center space-y-1">
+                  <p className="font-mono text-[11px] font-bold text-black">
+                    Push notifications require a registered Clearcut account.
+                  </p>
+                  <p className="font-mono text-[10px] text-black/60 font-medium">
+                    Send them a reminder via WhatsApp or SMS below:
+                  </p>
+                </div>
+              )}
 
-                <button
-                  type="button"
-                  onClick={handleCopyReminder}
-                  className="py-2.5 px-3 rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black font-mono font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000] flex items-center justify-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
-                >
-                  <span>{copiedReminder ? '✓ COPIED!' : '📋 COPY TEXT'}</span>
-                </button>
+              {/* External Share Fallbacks */}
+              <div className="pt-2">
+                <div className="text-[10px] font-mono font-black uppercase tracking-wider text-black/60 mb-1.5">
+                  {reminderFriend.userId ? 'Or share externally:' : 'External share options:'}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSendWhatsApp}
+                    className="py-2.5 px-3 rounded-xl border-2 border-black bg-[#25D366] hover:bg-[#20ba5a] text-black font-mono font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000] flex items-center justify-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+                  >
+                    <span>💬 WHATSAPP</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleShareReminder}
+                    className="py-2.5 px-3 rounded-xl border-2 border-black bg-[#00e5ff] hover:bg-[#00cbe6] text-black font-mono font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000] flex items-center justify-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+                  >
+                    <span>📲 SMS / SHARE</span>
+                  </button>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyReminder}
+                    className="w-full py-2 px-3 rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black font-mono font-black text-xs uppercase shadow-[1px_1px_0px_0px_#000] flex items-center justify-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+                  >
+                    <span>{copiedReminder ? '✓ COPIED TO CLIPBOARD!' : '📋 COPY MESSAGE'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

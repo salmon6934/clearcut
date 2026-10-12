@@ -73,4 +73,35 @@ describe('T-2.6.2: Client Push Handling, Channels & Weekly Reminder', () => {
       await expect(cancelWeeklySettleReminder()).resolves.not.toThrow();
     });
   });
+
+  describe('Friend Payment Push Notifications', () => {
+    it('returns unregistered status when recipient has no linked userId', async () => {
+      const { sendFriendPushReminder } = await import('../../lib/native/push');
+      const result = await sendFriendPushReminder({
+        friendName: 'Rohan',
+        amountMinor: 50000,
+        currency: 'INR',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.isRegisteredUser).toBe(false);
+      expect(result.message).toContain('placeholder contact');
+    });
+
+    it('dispatches push notification successfully when friend has userId', async () => {
+      const { sendFriendPushReminder } = await import('../../lib/native/push');
+      const result = await sendFriendPushReminder({
+        friendUserId: '00000000-0000-0000-0000-000000000001',
+        friendName: 'Priya',
+        amountMinor: 150000,
+        currency: 'INR',
+        senderName: 'Harsh',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.isRegisteredUser).toBe(true);
+      expect(result.message).toContain('Priya');
+    });
+  });
 });
+

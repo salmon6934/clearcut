@@ -160,7 +160,7 @@ export function filterRecipientsByPrefs(
     settlement_added: boolean;
     muted_until: string | null;
   }>,
-  eventType: 'expense_added' | 'settlement_added',
+  eventType: 'expense_added' | 'settlement_added' | 'payment_reminder',
   nowIso = new Date().toISOString()
 ): string[] {
   const nowDate = new Date(nowIso);
@@ -197,12 +197,13 @@ export async function resolveNotificationDetails(
   rawBody: any,
   supabase: SupabaseClient
 ): Promise<{
-  groupId: string;
+  groupId?: string;
+  recipientUserId?: string;
   excludeUserId?: string;
   title: string;
   body: string;
   route: string;
-  eventType: 'expense_added' | 'settlement_added';
+  eventType: 'expense_added' | 'settlement_added' | 'payment_reminder';
 } | null> {
   // Case A: Supabase Database Webhook payload on expenses / settlements INSERT
   if (rawBody?.table && rawBody?.record) {
@@ -257,7 +258,19 @@ export async function resolveNotificationDetails(
     }
   }
 
-  // Case B: Direct invocation
+  // Case B: Direct friend payment reminder push notification
+  if (rawBody?.type === 'payment_reminder' || rawBody?.recipientUserId) {
+    const senderName = rawBody.senderName || 'A friend';
+    return {
+      recipientUserId: rawBody.recipientUserId,
+      title: rawBody.title || `Clearcut: Payment Reminder from ${senderName}`,
+      body: rawBody.body || rawBody.message || `${senderName} sent a friendly reminder to settle up on Clearcut.`,
+      route: rawBody.route || '/friends',
+      eventType: 'payment_reminder',
+    };
+  }
+
+  // Case C: Direct invocation for group
   if (rawBody?.groupId) {
     return {
       groupId: rawBody.groupId,
@@ -283,12 +296,13 @@ serve(async (req) => {
     });
   }
 
-  // 1. Authenticate webhook secret if configured
+  // 1. Authenticate webhook secret or bearer token if configured
   const expectedSecret = Deno.env.get('WEBHOOK_SECRET');
   if (expectedSecret) {
     const providedSecret = req.headers.get('x-webhook-secret');
-    if (providedSecret !== expectedSecret) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid x-webhook-secret header' }), {
+    const authHeader = req.headers.get('authorization');
+    if (providedSecret !== expectedSecret && !authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid credentials' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -305,30 +319,36 @@ serve(async (req) => {
 
     const details = await resolveNotificationDetails(rawBody, supabase);
     if (!details) {
-      return new Response(JSON.stringify({ error: 'Invalid payload: Unable to determine group notification details' }), {
+      return new Response(JSON.stringify({ error: 'Invalid payload: Unable to determine notification details' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const { groupId, excludeUserId, title, body, route, eventType } = details;
+    const { groupId, recipientUserId, excludeUserId, title, body, route, eventType } = details;
 
-    // 2. Fetch active group members excluding the actor
-    let membersQuery = supabase
-      .from('group_members')
-      .select('user_id')
-      .eq('group_id', groupId)
-      .is('left_at', null)
-      .not('user_id', 'is', null);
+    // 2. Fetch candidate recipient user IDs
+    let candidateUserIds: string[] = [];
 
-    if (excludeUserId) {
-      membersQuery = membersQuery.neq('user_id', excludeUserId);
+    if (recipientUserId) {
+      candidateUserIds = [recipientUserId];
+    } else if (groupId) {
+      let membersQuery = supabase
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', groupId)
+        .is('left_at', null)
+        .not('user_id', 'is', null);
+
+      if (excludeUserId) {
+        membersQuery = membersQuery.neq('user_id', excludeUserId);
+      }
+
+      const { data: members, error: mErr } = await membersQuery;
+      if (mErr) throw mErr;
+
+      candidateUserIds = (members || []).map((m: any) => m.user_id as string);
     }
-
-    const { data: members, error: mErr } = await membersQuery;
-    if (mErr) throw mErr;
-
-    const candidateUserIds = (members || []).map((m: any) => m.user_id as string);
     if (candidateUserIds.length === 0) {
       return new Response(JSON.stringify({ sent: 0, reason: 'No eligible recipient members' }), {
         headers: { 'Content-Type': 'application/json' },

@@ -4,6 +4,7 @@ import {
   filterRecipientsByPrefs,
   formatExpenseNotification,
   formatSettlementNotification,
+  formatPaymentReminderNotification,
   validateWebhookSecret,
   NotificationPrefRecord,
 } from '../../lib/sync/notifications-fanout';
@@ -97,6 +98,18 @@ describe('T-2.6.1: Edge Function notify-group & Fanout Logic', () => {
       // user-1 is muted; user-2 has settlement_added: true; user-3 and user-4 eligible
       expect(eligible).toEqual(['user-2', 'user-3', 'user-4']);
     });
+
+    it('allows non-muted users for payment_reminder notifications', () => {
+      const eligible = filterRecipientsByPrefs(
+        candidateUsers,
+        prefs,
+        'payment_reminder',
+        nowIso
+      );
+
+      // user-1 is muted globally; user-2, user-3, and user-4 are eligible
+      expect(eligible).toEqual(['user-2', 'user-3', 'user-4']);
+    });
   });
 
   describe('Payload Formatting', () => {
@@ -112,6 +125,13 @@ describe('T-2.6.1: Edge Function notify-group & Fanout Logic', () => {
       expect(payload.title).toBe('Flatmates: Settlement');
       expect(payload.body).toBe('Alice paid Bob ₹1,500.00');
       expect(payload.route).toBe('/group?id=grp-2');
+    });
+
+    it('formats payment reminder notification correctly with sender and friend route', () => {
+      const payload = formatPaymentReminderNotification('Harsh', 'Bob', '₹500.00');
+      expect(payload.title).toBe('Clearcut: Payment Reminder from Harsh');
+      expect(payload.body).toBe('Hey Bob! Friendly reminder to settle up ₹500.00 on Clearcut.');
+      expect(payload.route).toBe('/friends');
     });
   });
 });

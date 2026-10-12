@@ -159,9 +159,6 @@ export default function DashboardPage() {
               <span className="text-xl font-black text-black tracking-tight uppercase block leading-none">
                 Clearcut
               </span>
-              <span className="font-mono text-[10px] text-black/60 font-black uppercase tracking-wider block mt-1">
-                P2P LEDGER V2.4
-              </span>
             </div>
           </div>
 
@@ -220,10 +217,10 @@ export default function DashboardPage() {
             <div>
               <span
                 className={`inline-block px-2.5 py-0.5 border-2 border-black text-[11px] font-mono font-black uppercase tracking-wider shadow-[2px_2px_0px_0px_#000] ${primaryNet > 0
-                    ? 'bg-[#ccff00] text-black'
-                    : primaryNet < 0
-                      ? 'bg-[#ff8a80] text-black'
-                      : 'bg-[#ffd600] text-black'
+                  ? 'bg-[#ccff00] text-black'
+                  : primaryNet < 0
+                    ? 'bg-[#ff8a80] text-black'
+                    : 'bg-[#ffd600] text-black'
                   }`}
               >
                 {primaryNet > 0
@@ -476,8 +473,8 @@ export default function DashboardPage() {
                         type="button"
                         onClick={() => setNewGroupType(t)}
                         className={`p-2.5 rounded-xl border-2 border-black text-xs font-mono font-black flex items-center gap-2 transition cursor-pointer shadow-[2px_2px_0px_0px_#000] ${newGroupType === t
-                            ? 'bg-[#ccff00] text-black'
-                            : 'bg-white text-black/70 hover:bg-[#fafaf6]'
+                          ? 'bg-[#ccff00] text-black'
+                          : 'bg-white text-black/70 hover:bg-[#fafaf6]'
                           }`}
                       >
                         <span>{cfg.emoji}</span>

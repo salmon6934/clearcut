@@ -31,7 +31,7 @@ export function isDeadFcmError(status?: number, errorText?: string): boolean {
 export function filterRecipientsByPrefs(
   candidateUserIds: string[],
   prefsRows: NotificationPrefRecord[],
-  eventType: 'expense_added' | 'settlement_added',
+  eventType: 'expense_added' | 'settlement_added' | 'payment_reminder',
   nowIso = new Date().toISOString()
 ): string[] {
   const nowDate = new Date(nowIso);
@@ -91,6 +91,24 @@ export function formatSettlementNotification(
     title: `${groupName}: Settlement`,
     body: `${fromName} paid ${toName} ${amountFormatted}`.trim(),
     route: `/group?id=${groupId}`,
+  };
+}
+
+/**
+ * Formats FCM title, body and route for a friend payment reminder push notification.
+ */
+export function formatPaymentReminderNotification(
+  senderName: string,
+  recipientName: string,
+  amountFormatted: string,
+  customMessage?: string
+): { title: string; body: string; route: string } {
+  return {
+    title: `Clearcut: Payment Reminder from ${senderName || 'a friend'}`,
+    body:
+      customMessage ||
+      `Hey ${recipientName}! Friendly reminder to settle up ${amountFormatted} on Clearcut.`,
+    route: '/friends',
   };
 }
 
