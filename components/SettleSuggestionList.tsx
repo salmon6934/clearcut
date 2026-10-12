@@ -36,16 +36,14 @@ export function SettleSuggestionList({
 
   if (suggestions.length === 0) {
     return (
-      <div className="text-center py-8 px-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-200 dark:border-zinc-800">
-        <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-2">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-          </svg>
+      <div className="text-center py-6 px-4 rounded-xl bg-white border-2 border-black shadow-[3px_3px_0px_0px_#000]">
+        <div className="w-8 h-8 rounded border-2 border-black bg-[#ccff00] text-black flex items-center justify-center mx-auto mb-2 font-mono font-black text-sm shadow-[1px_1px_0px_0px_#000]">
+          ✓
         </div>
-        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          No payments needed
+        <p className="text-xs font-mono font-black uppercase text-black">
+          NO PAYMENTS NEEDED
         </p>
-        <p className="text-xs text-zinc-400 mt-0.5">
+        <p className="text-[11px] font-mono text-black/60 mt-0.5">
           All group debts are completely settled.
         </p>
       </div>
@@ -54,9 +52,11 @@ export function SettleSuggestionList({
 
   return (
     <div className="space-y-2.5">
-      <div className="flex items-center justify-between text-xs font-semibold text-zinc-400 uppercase tracking-wider px-1">
-        <span>Suggested Settlements</span>
-        <span>{suggestions.length} payment{suggestions.length > 1 ? 's' : ''}</span>
+      <div className="flex items-center justify-between text-xs font-mono font-black text-black uppercase tracking-wider px-1">
+        <span>SUGGESTED SETTLEMENTS</span>
+        <span className="px-2 py-0.5 rounded border border-black bg-[#ffd600] text-[10px]">
+          {suggestions.length} PAYMENT{suggestions.length > 1 ? 'S' : ''}
+        </span>
       </div>
 
       <div className="space-y-2">
@@ -69,34 +69,34 @@ export function SettleSuggestionList({
           return (
             <div
               key={`${sug.fromMemberId}-${sug.toMemberId}-${idx}`}
-              className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+              className="flex items-center justify-between p-3 rounded-xl border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] hover:bg-[#fafaf6] transition-colors"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-600 dark:text-zinc-300 shrink-0">
+                <div className="w-8 h-8 rounded-lg border-2 border-black bg-[#00e5ff] flex items-center justify-center text-xs font-mono font-black text-black shrink-0 shadow-[1px_1px_0px_0px_#000]">
                   {fromName.charAt(0).toUpperCase()}
                 </div>
 
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                    <span className={isYouDebtor ? 'font-bold text-orange-600 dark:text-orange-400' : ''}>
+                  <div className="text-xs sm:text-sm font-mono font-bold text-black truncate">
+                    <span className={isYouDebtor ? 'font-black bg-[#ff8a80] px-1 rounded border border-black' : ''}>
                       {fromName}
                     </span>{' '}
-                    <span className="text-zinc-400 font-normal">owes</span>{' '}
-                    <span className={isYouCreditor ? 'font-bold text-emerald-600 dark:text-emerald-400' : ''}>
+                    <span className="text-black/60 font-normal">→</span>{' '}
+                    <span className={isYouCreditor ? 'font-black bg-[#ccff00] px-1 rounded border border-black' : ''}>
                       {toName}
                     </span>
                   </div>
-                  <div className="text-xs text-zinc-400 font-mono">
-                    {formatMinor(sug.amountMinor, currency)}
+                  <div className="text-xs font-mono font-black text-black">
+                    ₹ {formatMinor(sug.amountMinor, currency)}
                   </div>
                 </div>
               </div>
 
               <button
                 onClick={() => onSettleClick(sug)}
-                className="ml-3 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-sm transition-all shrink-0"
+                className="ml-3 px-3 py-1.5 text-xs font-mono font-black rounded-lg border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition shrink-0 uppercase"
               >
-                Settle up
+                SETTLE UP
               </button>
             </div>
           );

@@ -28,6 +28,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { SyncBadge } from '../../components/SyncBadge';
 import { Toast } from '../../components/Toast';
 import { GroupRealtimeManager, type RealtimeStatus } from '../../lib/sync/realtime';
+import { exportAndShareGroupCsv } from '../../lib/data/export-csv';
 import type { SuggestedPayment, SettlementDraft, Expense } from '../../lib/data/types';
 
 type GroupTab = 'expenses' | 'balances' | 'activity';
@@ -57,6 +58,7 @@ function GroupDetailContent() {
 
   const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<SuggestedPayment | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Realtime postgres_changes subscription
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>('disconnected');
@@ -79,9 +81,33 @@ function GroupDetailContent() {
     };
   }, [groupId, repo]);
 
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f0] text-black pb-28">
+        <header className="sticky top-0 z-30 bg-[#f5f5f0] border-b-2 border-black px-4 py-3 animate-pulse">
+          <div className="max-w-xl mx-auto flex items-center justify-between">
+            <div className="h-9 w-9 rounded-lg bg-[#e0e0d8] border-2 border-black" />
+            <div className="h-5 w-32 bg-[#e0e0d8] rounded-lg border border-black" />
+            <div className="h-7 w-16 bg-[#e0e0d8] rounded-lg border border-black" />
+          </div>
+        </header>
+        <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-5 animate-pulse">
+          <div className="h-32 w-full bg-white rounded-2xl border-2 border-black" />
+          <div className="h-11 w-full bg-white rounded-xl border-2 border-black" />
+        </div>
+      </div>
+    );
+  }
+
   if (!groupId || !group) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-6 flex flex-col items-center justify-center text-center">
+      <div className="min-h-screen bg-[#f5f5f0] text-black p-6 flex flex-col items-center justify-center text-center">
         <EmptyState
           icon={<span className="text-2xl">🔍</span>}
           title="Group not found"
@@ -162,25 +188,27 @@ function GroupDetailContent() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 pb-28">
+    <div className="min-h-screen bg-[#f5f5f0] text-black pb-28 relative">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/80 px-4 py-3">
+      <header className="sticky top-0 z-30 bg-[#f5f5f0] border-b-2 border-black px-4 py-3">
         <div className="max-w-xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="w-9 h-9 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+              className="w-10 h-10 rounded-lg border-2 border-black bg-white flex items-center justify-center text-black hover:bg-[#ffd600] transition active:translate-x-0.5 active:translate-y-0.5 shadow-[2px_2px_0px_0px_#000]"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg className="w-4 h-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
             <div>
-              <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+              <h1 className="text-base font-black text-black leading-tight uppercase tracking-tight">
                 {group.name}
               </h1>
-              <p className="text-[11px] text-zinc-400 capitalize">
-                {group.type} • {members.length} members
+              <p className="text-[11px] text-black/60 font-mono uppercase flex items-center gap-1.5 font-bold">
+                <span>{group.type}</span>
+                <span>•</span>
+                <span>{members.length} member{members.length > 1 ? 's' : ''}</span>
               </p>
             </div>
           </div>
@@ -189,20 +217,38 @@ function GroupDetailContent() {
             <SyncBadge manager={repo.syncManager} realtimeStatus={realtimeStatus} />
             <button
               type="button"
+              onClick={async () => {
+                setIsExporting(true);
+                try {
+                  await exportAndShareGroupCsv(group, activeExpenses, members, settlements);
+                } catch (e: any) {
+                  alert(`Export failed: ${e?.message || 'Unknown error'}`);
+                } finally {
+                  setIsExporting(false);
+                }
+              }}
+              disabled={isExporting}
+              title="Export Group Ledger to CSV"
+              className="px-2.5 py-1.5 rounded-lg border-2 border-black bg-white text-xs font-mono font-black text-black shadow-[2px_2px_0px_0px_#000] hover:bg-[#ffd600] transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer active:translate-x-0.5 active:translate-y-0.5"
+            >
+              <span>{isExporting ? '...' : 'CSV'}</span>
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 if (isArchived) repo.unarchiveGroup(group.id);
                 else repo.archiveGroup(group.id);
               }}
               title={isArchived ? 'Unarchive Group' : 'Archive Group'}
-              className="px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition shadow-sm"
+              className="px-2.5 py-1.5 rounded-lg border-2 border-black bg-white text-xs font-mono font-black text-black shadow-[2px_2px_0px_0px_#000] hover:bg-[#ffd600] transition active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
             >
-              {isArchived ? 'Unarchive' : 'Archive'}
+              {isArchived ? 'UNARCHIVE' : 'ARCHIVE'}
             </button>
             <Link
               href={`/group/members?id=${group.id}`}
-              className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition shadow-sm"
+              className="px-2.5 py-1.5 rounded-lg border-2 border-black bg-white text-xs font-mono font-black text-black shadow-[2px_2px_0px_0px_#000] hover:bg-[#ffd600] transition active:translate-x-0.5 active:translate-y-0.5"
             >
-              Members
+              MEMBERS
             </Link>
           </div>
         </div>
@@ -211,19 +257,19 @@ function GroupDetailContent() {
       <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-5">
         {/* Read-Only Banner if Group is Archived */}
         {isArchived && (
-          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3.5 flex items-center justify-between gap-3 text-amber-800 dark:text-amber-200 text-xs sm:text-sm">
+          <div className="rounded-xl border-2 border-black bg-[#ffd600] p-3.5 flex items-center justify-between gap-3 text-black text-xs font-bold shadow-[3px_3px_0px_0px_#000]">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-base shrink-0">📦</span>
-              <span className="font-medium">
+              <span>
                 This group is archived and is read-only. Unarchive to add expenses or settle up.
               </span>
             </div>
             <button
               type="button"
               onClick={() => repo.unarchiveGroup(group.id)}
-              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shrink-0 transition active:scale-95 shadow-sm"
+              className="px-3 py-1.5 rounded-lg bg-black text-white font-mono font-black text-xs shrink-0 transition active:scale-95"
             >
-              Unarchive
+              UNARCHIVE
             </button>
           </div>
         )}
@@ -236,36 +282,36 @@ function GroupDetailContent() {
         />
 
         {/* Tab Navigation */}
-        <div className="flex p-1 rounded-2xl bg-zinc-200/80 dark:bg-zinc-900/80 text-xs font-semibold">
+        <div className="grid grid-cols-3 gap-2 p-1.5 rounded-2xl bg-white border-2 border-black shadow-[3px_3px_0px_0px_#000] text-xs font-mono font-black">
           <button
             onClick={() => setActiveTab('expenses')}
-            className={`flex-1 py-2 rounded-xl transition-all ${
+            className={`py-2 rounded-xl transition-all uppercase ${
               activeTab === 'expenses'
-                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+                ? 'bg-[#ccff00] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]'
+                : 'text-black/60 hover:text-black'
             }`}
           >
-            Expenses ({activeExpenses.length})
+            EXPENSES ({activeExpenses.length})
           </button>
           <button
             onClick={() => setActiveTab('balances')}
-            className={`flex-1 py-2 rounded-xl transition-all ${
+            className={`py-2 rounded-xl transition-all uppercase ${
               activeTab === 'balances'
-                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+                ? 'bg-[#ccff00] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]'
+                : 'text-black/60 hover:text-black'
             }`}
           >
-            Balances ({ledger.suggestedPayments.length})
+            BALANCES ({ledger.suggestedPayments.length})
           </button>
           <button
             onClick={() => setActiveTab('activity')}
-            className={`flex-1 py-2 rounded-xl transition-all ${
+            className={`py-2 rounded-xl transition-all uppercase ${
               activeTab === 'activity'
-                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+                ? 'bg-[#ccff00] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]'
+                : 'text-black/60 hover:text-black'
             }`}
           >
-            Activity
+            ACTIVITY
           </button>
         </div>
 
@@ -284,14 +330,14 @@ function GroupDetailContent() {
 
             {/* Filter Toggle: Active vs Deleted */}
             {deletedExpenses.length > 0 && (
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-200/80 dark:bg-zinc-800/80 text-xs font-semibold w-fit">
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#f0f0ea] border-2 border-black text-xs font-mono font-black w-fit">
                 <button
                   type="button"
                   onClick={() => setExpenseFilter('active')}
-                  className={`px-3 py-1 rounded-lg transition-all ${
+                  className={`px-3 py-1 rounded-lg uppercase transition-all ${
                     expenseFilter === 'active'
-                      ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                      : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+                      ? 'bg-black text-[#ccff00] border-2 border-black shadow-[1px_1px_0px_0px_#000]'
+                      : 'text-black/60 hover:text-black'
                   }`}
                 >
                   Active ({activeExpenses.length})
@@ -299,10 +345,10 @@ function GroupDetailContent() {
                 <button
                   type="button"
                   onClick={() => setExpenseFilter('deleted')}
-                  className={`px-3 py-1 rounded-lg transition-all ${
+                  className={`px-3 py-1 rounded-lg uppercase transition-all ${
                     expenseFilter === 'deleted'
-                      ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 shadow-sm'
-                      : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+                      ? 'bg-[#ff8a80] text-black border-2 border-black shadow-[1px_1px_0px_0px_#000]'
+                      : 'text-black/60 hover:text-black'
                   }`}
                 >
                   Deleted ({deletedExpenses.length})
@@ -369,39 +415,41 @@ function GroupDetailContent() {
 
             {/* Individual Members Breakdown */}
             <div className="space-y-2.5">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 px-1">
-                Individual Balances
+              <h3 className="text-xs font-mono font-black uppercase tracking-wider text-black px-1">
+                INDIVIDUAL BALANCES
               </h3>
-              <div className="divide-y divide-zinc-200 dark:divide-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm overflow-hidden">
+              <div className="divide-y-2 divide-black rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] overflow-hidden">
                 {members.map((m) => {
                   const balance = ledger.balances.get(m.id) ?? 0;
                   const isYou = m.userId === currentUserId;
 
                   return (
-                    <div key={m.id} className="flex items-center justify-between p-3.5">
+                    <div key={m.id} className="flex items-center justify-between p-3.5 hover:bg-[#fafaf6] transition-colors">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-600 dark:text-zinc-300">
+                        <div className="w-8 h-8 rounded-lg border-2 border-black bg-[#00e5ff] flex items-center justify-center text-xs font-mono font-black text-black shadow-[1px_1px_0px_0px_#000]">
                           {m.displayName.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                          <span className="text-xs sm:text-sm font-mono font-black text-black">
                             {m.displayName} {isYou ? '(You)' : ''}
                           </span>
-                          <span className="text-[10px] text-zinc-400 block capitalize">{m.role}</span>
+                          <span className="text-[10px] font-mono text-black/60 block uppercase font-bold">{m.role}</span>
                         </div>
                       </div>
 
                       <div className="text-right">
                         {balance > 0 ? (
-                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                          <span className="px-2 py-0.5 rounded border border-black bg-[#ccff00] text-xs font-mono font-black text-black">
                             +{formatMinor(balance, group.currency)}
                           </span>
                         ) : balance < 0 ? (
-                          <span className="text-sm font-bold text-orange-600 dark:text-orange-400 font-mono">
+                          <span className="px-2 py-0.5 rounded border border-black bg-[#ff8a80] text-xs font-mono font-black text-black">
                             -{formatMinor(Math.abs(balance), group.currency)}
                           </span>
                         ) : (
-                          <span className="text-xs text-zinc-400 font-medium">settled</span>
+                          <span className="px-2 py-0.5 rounded border border-black bg-[#f0f0ea] text-[10px] font-mono font-bold text-black/60 uppercase">
+                            settled
+                          </span>
                         )}
                       </div>
                     </div>
@@ -412,11 +460,11 @@ function GroupDetailContent() {
 
             {/* Settlement History */}
             <div className="space-y-2.5 pt-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 px-1">
-                Settlement History ({settlements.length})
+              <h3 className="text-xs font-mono font-black uppercase tracking-wider text-black px-1">
+                SETTLEMENT HISTORY ({settlements.length})
               </h3>
               {settlements.length === 0 ? (
-                <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-zinc-500 text-center">
+                <div className="p-4 rounded-xl border-2 border-black bg-white text-xs font-mono font-bold text-black/60 text-center shadow-[2px_2px_0px_0px_#000]">
                   No settlements recorded yet.
                 </div>
               ) : (
@@ -441,9 +489,9 @@ function GroupDetailContent() {
                   setSelectedSuggestion(null);
                   setIsSettleModalOpen(true);
                 }}
-                className="w-full py-3 text-sm font-semibold rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300"
+                className="w-full py-3 text-xs font-mono font-black uppercase rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
               >
-                Record Custom Settlement
+                RECORD CUSTOM SETTLEMENT
               </button>
             )}
           </div>
@@ -452,24 +500,24 @@ function GroupDetailContent() {
         {/* Tab 3: Activity Feed */}
         {activeTab === 'activity' && (
           <div className="space-y-2">
-            <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-zinc-500 space-y-3">
+            <div className="p-4 rounded-xl border-2 border-black bg-white text-xs font-mono font-bold text-black space-y-3 shadow-[3px_3px_0px_0px_#000]">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ccff00] border border-black" />
                 <span>Group &ldquo;{group.name}&rdquo; initialized</span>
-                <span className="text-zinc-400 ml-auto">{new Date(group.createdAt || '').toLocaleDateString()}</span>
+                <span className="text-black/60 ml-auto">{new Date(group.createdAt || '').toLocaleDateString()}</span>
               </div>
               {activeExpenses.slice(0, 5).map((e) => (
-                <div key={e.id} className="flex items-center gap-2 border-t border-zinc-100 dark:border-zinc-800/80 pt-2.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span className="truncate">Added expense &ldquo;{e.title}&rdquo; ({formatMinor(e.amountMinor, e.currency)})</span>
-                  <span className="text-zinc-400 ml-auto shrink-0">{new Date(e.createdAt || e.expenseDate || '').toLocaleDateString()}</span>
+                <div key={e.id} className="flex items-center gap-2 border-t-2 border-black pt-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#00e5ff] border border-black" />
+                  <span className="truncate">Added expense &ldquo;{e.title}&rdquo; (₹ {formatMinor(e.amountMinor, e.currency)})</span>
+                  <span className="text-black/60 ml-auto shrink-0">{new Date(e.createdAt || e.expenseDate || '').toLocaleDateString()}</span>
                 </div>
               ))}
               {settlements.slice(0, 5).map((s) => (
-                <div key={s.id} className="flex items-center gap-2 border-t border-zinc-100 dark:border-zinc-800/80 pt-2.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="truncate">Recorded payment of {formatMinor(s.amountMinor, group.currency)}</span>
-                  <span className="text-zinc-400 ml-auto shrink-0">{new Date(s.createdAt || s.settledOn || '').toLocaleDateString()}</span>
+                <div key={s.id} className="flex items-center gap-2 border-t-2 border-black pt-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ccff00] border border-black" />
+                  <span className="truncate">Recorded payment of ₹ {formatMinor(s.amountMinor, group.currency)}</span>
+                  <span className="text-black/60 ml-auto shrink-0">{new Date(s.createdAt || s.settledOn || '').toLocaleDateString()}</span>
                 </div>
               ))}
             </div>
@@ -477,18 +525,27 @@ function GroupDetailContent() {
         )}
       </div>
 
-      {/* Floating Action Button for Adding Expense (hidden if group is archived) */}
+      {/* Floating Action Bar matching neo-brutalist style (hidden if group is archived) */}
       {!isArchived && (
-        <div className="fixed bottom-6 right-6 z-40 max-w-xl mx-auto">
-          <Link
-            href={`/group/expense?id=${group.id}`}
-            className="flex items-center gap-2 px-5 py-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-xl shadow-emerald-600/30 active:scale-95 transition-all"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>Add Expense</span>
-          </Link>
+        <div className="fixed bottom-4 left-0 right-0 z-40 px-4 max-w-xl mx-auto">
+          <div className="grid grid-cols-2 gap-3">
+            <Link
+              href={`/group/expense?id=${group.id}`}
+              className="py-3.5 px-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] text-black font-black text-xs sm:text-sm tracking-wider uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+            >
+              <span>+ ADD EXPENSE</span>
+            </Link>
+
+            <button
+              onClick={() => {
+                setSelectedSuggestion(null);
+                setIsSettleModalOpen(true);
+              }}
+              className="py-3.5 px-4 rounded-xl bg-[#00e5ff] hover:bg-[#00cbe6] text-black font-black text-xs sm:text-sm tracking-wider uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+            >
+              <span>⚡ SETTLE UP</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -521,7 +578,7 @@ function GroupDetailContent() {
 
 export default function GroupDetailPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-sm text-zinc-500">Loading group...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-xs font-mono font-black uppercase text-black">Loading group...</div>}>
       <GroupDetailContent />
     </Suspense>
   );

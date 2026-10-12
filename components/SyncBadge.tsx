@@ -43,120 +43,55 @@ export function SyncBadge({
 
   // Render badge content based on state
   let badgeContent = null;
-  let badgeColorClass = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+  let badgeColorClass = 'bg-[#ffd600] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]';
 
   if (status === 'offline') {
-    badgeColorClass = 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20';
+    badgeColorClass = 'bg-[#e0e0d8] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]';
     badgeContent = (
       <>
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M3 3l18 18M9.88 9.88A3 3 0 1014.12 14.12M6.5 17.5H4a4 4 0 01-1.38-7.75 5 5 0 019.57-2.88"
-          />
-        </svg>
-        <span>Offline</span>
+        <span className="w-2 h-2 rounded-full bg-black/40 border border-black" />
+        <span className="font-mono font-black text-[11px] tracking-wide">OFFLINE</span>
       </>
     );
   } else if (status === 'syncing') {
-    badgeColorClass = 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20';
+    badgeColorClass = 'bg-[#00e5ff] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]';
     badgeContent = (
       <>
-        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          ></circle>
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v8H4z"
-          ></path>
-        </svg>
-        <span>Syncing...</span>
+        <span className="w-2 h-2 rounded-full bg-black animate-ping" />
+        <span className="font-mono font-black text-[11px] tracking-wide">SYNCING</span>
       </>
     );
   } else if (conflictCount > 0) {
-    badgeColorClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+    badgeColorClass = 'bg-[#ff5c5c] text-white border-2 border-black shadow-[2px_2px_0px_0px_#000]';
     badgeContent = (
       <>
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
-        <span>{conflictCount} conflict{conflictCount > 1 ? 's' : ''}</span>
+        <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+        <span className="font-mono font-black text-[11px] tracking-wide">{conflictCount} CONFLICT</span>
       </>
     );
   } else if (deadCount > 0) {
-    badgeColorClass = 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
+    badgeColorClass = 'bg-[#ff5c5c] text-white border-2 border-black shadow-[2px_2px_0px_0px_#000]';
     badgeContent = (
       <>
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <span>Sync issue</span>
+        <span className="w-2 h-2 rounded-full bg-white" />
+        <span className="font-mono font-black text-[11px] tracking-wide">ERROR</span>
       </>
     );
   } else if (pendingCount > 0) {
-    badgeColorClass = 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
+    badgeColorClass = 'bg-[#ffd600] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]';
     badgeContent = (
       <>
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <span>{pendingCount} pending</span>
-      </>
-    );
-  } else if (realtimeStatus === 'disconnected' || realtimeStatus === 'error') {
-    badgeColorClass = 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 border-zinc-500/20';
-    badgeContent = (
-      <>
-        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
-        <span>Live updates off</span>
-      </>
-    );
-  } else if (realtimeStatus === 'connecting') {
-    badgeColorClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
-    badgeContent = (
-      <>
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-        <span>Connecting...</span>
-      </>
-    );
-  } else if (realtimeStatus === 'connected') {
-    badgeContent = (
-      <>
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-        <span>Live</span>
+        <span className="w-2 h-2 rounded-full bg-black animate-pulse" />
+        <span className="font-mono font-black text-[11px] tracking-wide">{pendingCount} PENDING</span>
       </>
     );
   } else {
+    // Default LIVE state matching Stitch design
+    badgeColorClass = 'bg-[#ffd600] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]';
     badgeContent = (
       <>
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-        <span>Synced</span>
+        <span className="w-2.5 h-2.5 rounded-full bg-black" />
+        <span className="font-mono font-black text-[11px] tracking-wider">LIVE</span>
       </>
     );
   }
@@ -165,10 +100,10 @@ export function SyncBadge({
     <div
       onClick={onClickKick}
       role="status"
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border transition-all select-none ${
-        onClickKick ? 'cursor-pointer active:scale-95' : ''
+      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all select-none ${
+        onClickKick ? 'cursor-pointer active:translate-x-0.5 active:translate-y-0.5' : ''
       } ${badgeColorClass}`}
-      title={state.lastSyncedAt ? `Last synced: ${new Date(state.lastSyncedAt).toLocaleTimeString()}` : 'Offline-first sync active'}
+      title={state.lastSyncedAt ? `Last synced: ${new Date(state.lastSyncedAt).toLocaleTimeString()}` : 'Real-time ledger sync active'}
     >
       {badgeContent}
     </div>

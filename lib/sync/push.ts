@@ -265,6 +265,7 @@ async function executeMutationRpc(
           category: expense.category || null,
           expense_date: expense.expenseDate ? expense.expenseDate.split('T')[0] : null,
           split_type: expense.splitType,
+          receipt_path: expense.receiptPath || null,
           created_by: expense.createdBy,
           splits: splitsPayload,
         },

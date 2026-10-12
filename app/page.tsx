@@ -1,7 +1,7 @@
 'use client';
 
 // app/page.tsx
-// Production Dashboard with Currency Net Balances, Group List & Create Modal
+// Stitch Neo-Brutalist Financial Ledger Dashboard (P2P LEDGER V2.4)
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -15,15 +15,43 @@ import { selectGroupLedger } from '../lib/data/selectors';
 import { formatMinor } from '../lib/engine/money';
 import { SyncBadge } from '../components/SyncBadge';
 import { EmptyState } from '../components/EmptyState';
-import { getAuthState, signOut } from '../lib/auth';
+import { BottomNav } from '../components/BottomNav';
+import { getAuthState } from '../lib/auth';
 import type { GroupType } from '../lib/data/types';
 import { initDeepLinkListener } from '../lib/native/deeplink';
 
-const GROUP_TYPE_ICONS: Record<GroupType, string> = {
-  trip: '✈️',
-  home: '🏠',
-  couple: '❤️',
-  other: '📁',
+const GROUP_TYPE_CONFIG: Record<
+  GroupType,
+  { emoji: string; badgeIcon: string; label: string; tagBg: string; thumbnailBg: string }
+> = {
+  trip: {
+    emoji: '🏖️',
+    badgeIcon: '✈️',
+    label: 'TRIP',
+    tagBg: 'bg-[#ffd600] text-black',
+    thumbnailBg: 'bg-[#fff5cc]',
+  },
+  home: {
+    emoji: '🏠',
+    badgeIcon: '📶',
+    label: 'HOME',
+    tagBg: 'bg-[#00e5ff] text-black',
+    thumbnailBg: 'bg-[#e0fbff]',
+  },
+  couple: {
+    emoji: '🍷',
+    badgeIcon: '❤️',
+    label: 'COUPLE',
+    tagBg: 'bg-[#ff80bf] text-black',
+    thumbnailBg: 'bg-[#ffe6f2]',
+  },
+  other: {
+    emoji: '🚗',
+    badgeIcon: '🚙',
+    label: 'SHARED',
+    tagBg: 'bg-[#ffd600] text-black',
+    thumbnailBg: 'bg-[#f0f0ea]',
+  },
 };
 
 const SUPPORTED_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'AED', 'SGD'];
@@ -40,11 +68,16 @@ export default function DashboardPage() {
   const [showArchived, setShowArchived] = useState(false);
   const dashboardTotals = useDashboardTotals(repo, currentUserId);
 
+  const [mounted, setMounted] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState<GroupType>('trip');
   const [newGroupCurrency, setNewGroupCurrency] = useState('INR');
   const [createError, setCreateError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Initialize native deep link router
   useEffect(() => {
@@ -82,317 +115,454 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/auth');
-  };
-
-  // Group currencies with activity
   const activeCurrencies = Object.keys(dashboardTotals.netPerCurrency);
+  const primaryCurrency = activeCurrencies.includes('INR')
+    ? 'INR'
+    : activeCurrencies[0] || 'INR';
+
+  const primaryNet = dashboardTotals.netPerCurrency[primaryCurrency] || 0;
+  const primaryOwed = dashboardTotals.totalOwedToYouByCurrency[primaryCurrency] || 0;
+  const primaryOwe = dashboardTotals.totalYouOweByCurrency[primaryCurrency] || 0;
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[#f5f5f0] text-black flex flex-col justify-between pb-24">
+        <div className="max-w-xl mx-auto w-full p-4 sm:p-5 space-y-6">
+          <header className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#ccff00] border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_#000]">
+                <span className="text-black font-black text-xl font-mono">C</span>
+              </div>
+              <div>
+                <span className="text-xl font-black text-black tracking-tight uppercase block leading-tight">
+                  Clearcut
+                </span>
+                <span className="font-mono text-[10px] text-black/60 font-bold uppercase tracking-wider block">
+                  P2P LEDGER V2.4
+                </span>
+              </div>
+            </div>
+            <div className="w-16 h-8 bg-[#e0e0d8] border-2 border-black rounded-lg animate-pulse" />
+          </header>
+
+          <section className="h-56 bg-white rounded-2xl border-2 border-black shadow-[4px_4px_0px_0px_#000] animate-pulse" />
+          <section className="h-44 bg-white rounded-2xl border-2 border-black shadow-[3px_3px_0px_0px_#000] animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col justify-between">
-      <div className="max-w-xl mx-auto w-full p-4 sm:p-6 space-y-6">
-        {/* Header Bar */}
-        <header className="flex items-center justify-between pt-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-emerald-600/20">
-              C
+    <div className="min-h-screen bg-[#f5f5f0] text-black flex flex-col justify-between relative pb-28">
+      <div className="max-w-xl mx-auto w-full p-4 sm:p-5 space-y-5">
+        {/* Top Header Bar matching Stitch */}
+        <header className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#ccff00] border-2 border-black flex items-center justify-center shadow-[2px_2px_0px_0px_#000]">
+              <span className="text-black font-black text-xl font-mono leading-none">C</span>
             </div>
             <div>
-              <h1 className="text-xl font-black tracking-tight leading-none">Clearcut</h1>
-              <span className="text-[10px] text-zinc-400 font-medium">Splitwise Clone • Offline First</span>
+              <span className="text-xl font-black text-black tracking-tight uppercase block leading-none">
+                Clearcut
+              </span>
+              <span className="font-mono text-[10px] text-black/60 font-black uppercase tracking-wider block mt-1">
+                P2P LEDGER V2.4
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            {/* Live Status Pill */}
             <SyncBadge
               manager={repo.syncManager}
               onClickKick={() => repo.syncManager?.kick('manual_badge_tap')}
             />
-            {authState.user && (
-              <button
-                onClick={handleSignOut}
-                title="Sign out"
-                className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition"
-              >
-                {authState.profile?.displayName?.charAt(0).toUpperCase() || 'U'}
-              </button>
-            )}
+
+            {/* Profile Avatar */}
+            <Link
+              href="/settings"
+              title="Settings & Profile"
+              className="w-10 h-10 bg-white border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_#000] flex items-center justify-center font-mono font-black text-xs text-black active:translate-x-0.5 active:translate-y-0.5 overflow-hidden transition-all"
+            >
+              {authState.profile?.avatarUrl ? (
+                <img
+                  src={authState.profile.avatarUrl}
+                  alt="Prof"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-[11px] font-bold">
+                  {authState.profile?.displayName ? authState.profile.displayName.slice(0, 4) : 'Prof'}
+                </span>
+              )}
+            </Link>
           </div>
         </header>
 
-        {/* Total Net Balance Card */}
-        <section className="p-5 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-zinc-400">
-            <span>Overall Balance</span>
-            <span>{activeCurrencies.length > 0 ? `${activeCurrencies.length} Currencies` : 'Zero Debt'}</span>
+        {/* Hero Net Group Balance Card */}
+        <section className="bg-white rounded-2xl border-2 border-black shadow-[4px_4px_0px_0px_#000] p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-mono text-xs font-black tracking-wider uppercase text-black">
+              <div className="w-6 h-6 bg-[#ccff00] border-2 border-black flex items-center justify-center shadow-[1px_1px_0px_0px_#000]">
+                <svg className="w-3.5 h-3.5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              </div>
+              <span>NET GROUP BALANCE</span>
+            </div>
+
+            <button
+              onClick={() => repo.syncManager?.kick('manual_sync_btn')}
+              className="px-2.5 py-1 bg-white hover:bg-[#ffd600] text-black border-2 border-black rounded-lg text-xs font-mono font-bold shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 flex items-center gap-1.5 cursor-pointer transition"
+            >
+              <svg className="w-3.5 h-3.5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>SYNC</span>
+            </button>
           </div>
 
-          {activeCurrencies.length === 0 ? (
-            <div className="py-2">
-              <span className="text-2xl font-bold text-zinc-400">All settled up</span>
-              <p className="text-xs text-zinc-500 mt-1">You do not owe or have outstanding balances in any group.</p>
+          <div className="space-y-2">
+            <div>
+              <span
+                className={`inline-block px-2.5 py-0.5 border-2 border-black text-[11px] font-mono font-black uppercase tracking-wider shadow-[2px_2px_0px_0px_#000] ${
+                  primaryNet > 0
+                    ? 'bg-[#ccff00] text-black'
+                    : primaryNet < 0
+                    ? 'bg-[#ff8a80] text-black'
+                    : 'bg-[#ffd600] text-black'
+                }`}
+              >
+                {primaryNet > 0
+                  ? 'TOTAL SURPLUS'
+                  : primaryNet < 0
+                  ? 'TOTAL DEFICIT'
+                  : 'SETTLED UP'}
+              </span>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {activeCurrencies.map((cur) => {
-                const net = dashboardTotals.netPerCurrency[cur] || 0;
-                const owed = dashboardTotals.totalOwedToYouByCurrency[cur] || 0;
-                const owes = dashboardTotals.totalYouOweByCurrency[cur] || 0;
 
-                return (
-                  <div key={cur} className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800/80 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold font-mono px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
-                        {cur}
-                      </span>
-                      <span
-                        className={`text-lg font-bold font-mono ${
-                          net > 0
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : net < 0
-                            ? 'text-orange-600 dark:text-orange-400'
-                            : 'text-zinc-500'
-                        }`}
-                      >
-                        {net > 0 ? `+${formatMinor(net, cur)}` : net < 0 ? `-${formatMinor(Math.abs(net), cur)}` : formatMinor(0, cur)}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-zinc-200/50 dark:border-zinc-700/50">
-                      <div>
-                        <span className="text-zinc-400 text-[10px] uppercase font-medium block">You are owed</span>
-                        <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
-                          {formatMinor(owed, cur)}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-zinc-400 text-[10px] uppercase font-medium block">You owe</span>
-                        <span className="font-semibold text-orange-600 dark:text-orange-400 font-mono">
-                          {formatMinor(owes, cur)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-black">
+              {primaryNet > 0
+                ? `+${formatMinor(primaryNet, primaryCurrency)}`
+                : primaryNet < 0
+                ? `-${formatMinor(Math.abs(primaryNet), primaryCurrency)}`
+                : formatMinor(0, primaryCurrency)}
             </div>
-          )}
+
+            <p className="text-xs text-black/70 flex items-center gap-2 font-mono font-bold">
+              <span className="w-2 h-2 rounded-full bg-black shrink-0" />
+              <span>Calculated across {activeGroups.length || 1} active ledgers</span>
+            </p>
+          </div>
+
+          {/* Sub-cards Row: Owed To You & You Owe */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            {/* Owed To You Box */}
+            <div className="bg-[#eaff96] rounded-xl border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px] font-black uppercase tracking-wider text-black">
+                  OWED TO YOU
+                </span>
+                <div className="w-5 h-5 bg-black rounded-sm flex items-center justify-center text-[#ccff00]">
+                  <svg className="w-3 h-3 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M17 7H7M17 7V17" />
+                  </svg>
+                </div>
+              </div>
+              <div className="font-mono text-base sm:text-lg font-black text-black truncate">
+                +{formatMinor(primaryOwed, primaryCurrency)}
+              </div>
+            </div>
+
+            {/* You Owe Box */}
+            <div className="bg-[#ffd2c9] rounded-xl border-2 border-black p-3 shadow-[2px_2px_0px_0px_#000] space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px] font-black uppercase tracking-wider text-black">
+                  YOU OWE
+                </span>
+                <div className="w-5 h-5 bg-black rounded-sm flex items-center justify-center text-[#ff8a80]">
+                  <svg className="w-3 h-3 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 7L7 17M7 17H17M7 17V7" />
+                  </svg>
+                </div>
+              </div>
+              <div className="font-mono text-base sm:text-lg font-black text-black truncate">
+                -{formatMinor(primaryOwe, primaryCurrency)}
+              </div>
+            </div>
+          </div>
         </section>
 
-        {/* Groups List Section */}
+        {/* Primary Action Buttons: Create Group & Join Code */}
+        <div className="grid grid-cols-2 gap-3.5">
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="py-3.5 px-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] text-black font-black text-xs sm:text-sm tracking-wider uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
+          >
+            <div className="w-5 h-5 rounded-full border-2 border-black flex items-center justify-center font-black text-xs leading-none">
+              +
+            </div>
+            <span>CREATE GROUP</span>
+          </button>
+
+          <Link
+            href="/join"
+            className="py-3.5 px-4 rounded-xl bg-[#00e5ff] hover:bg-[#00cbe6] text-black font-black text-xs sm:text-sm tracking-wider uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
+          >
+            <svg className="w-4 h-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <span>JOIN CODE</span>
+          </Link>
+        </div>
+
+        {/* Active Groups Section */}
         <section className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-400">
-              Groups ({activeGroups.length})
-            </h2>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-            >
-              <span>+ New Group</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-black text-black uppercase tracking-tight">ACTIVE GROUPS</h2>
+              <span className="px-2 py-0.5 rounded-md bg-black text-white text-xs font-mono font-bold">
+                {activeGroups.length}
+              </span>
+            </div>
+            <span className="text-[10px] text-black/60 font-mono font-bold uppercase tracking-wider">
+              TAP FOR LEDGER
+            </span>
           </div>
 
           {activeGroups.length === 0 ? (
             <EmptyState
-              icon={<span className="text-2xl">🌴</span>}
-              title="No active groups"
-              description="Create a group for your next road trip, apartment rent, or dinner party to track shared expenses."
-              actionText="+ Create Group"
+              icon={<span>🌴</span>}
+              title="No active groups yet"
+              description="Create a group for your trip, roommates, or split bills to start tracking."
+              actionText="Create Your First Group"
               onAction={() => setIsCreateModalOpen(true)}
+              secondaryActionText="Join with Code"
+              onSecondaryAction={() => router.push('/join')}
             />
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {activeGroups.map((g) => {
                 const members = repo.store.getGroupMembers(g.id);
                 const userMember = members.find((m) => m.userId === currentUserId);
                 const ledger = selectGroupLedger(repo.store, g.id);
                 const userBalance = userMember ? ledger.balances.get(userMember.id) ?? 0 : 0;
+                const expenses = repo.store.getGroupExpenses(g.id);
+                const config = GROUP_TYPE_CONFIG[g.type] || GROUP_TYPE_CONFIG.other;
 
                 return (
                   <Link
                     key={g.id}
                     href={`/group?id=${g.id}`}
-                    className="flex items-center justify-between p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all active:scale-[0.99]"
+                    className="block p-3.5 rounded-2xl bg-white border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
                   >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-11 h-11 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xl shrink-0 shadow-inner">
-                        {GROUP_TYPE_ICONS[g.type] || '📁'}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Visual Thumbnail with Badge Icon */}
+                        <div className="relative shrink-0">
+                          <div
+                            className={`w-13 h-13 rounded-xl border-2 border-black ${config.thumbnailBg} flex items-center justify-center text-2xl shadow-[2px_2px_0px_0px_#000]`}
+                          >
+                            <span>{config.emoji}</span>
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-md bg-black text-white flex items-center justify-center text-[10px] font-bold border border-black">
+                            <span>{config.badgeIcon}</span>
+                          </div>
+                        </div>
+
+                        {/* Details */}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-black text-black truncate">
+                              {g.name}
+                            </h3>
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-black uppercase tracking-wider shrink-0 border border-black ${config.tagBg}`}
+                            >
+                              {config.label}
+                            </span>
+                          </div>
+                          <p className="text-xs text-black/60 font-mono mt-1 flex items-center gap-1.5 truncate">
+                            <span>👥 {members.length} friends</span>
+                            <span>·</span>
+                            <span className="truncate">
+                              {expenses.length > 0 ? `${expenses.length} expenses` : `${g.currency}`}
+                            </span>
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                            {g.name}
-                          </h3>
-                          {g._sync === 'pending' && (
-                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" title="Pending sync" />
+
+                      {/* Right Balance & Status Pill */}
+                      <div className="text-right shrink-0 space-y-1">
+                        <div className="text-sm sm:text-base font-black font-mono text-black">
+                          {userBalance > 0
+                            ? `+${formatMinor(userBalance, g.currency)}`
+                            : userBalance < 0
+                            ? `-${formatMinor(Math.abs(userBalance), g.currency)}`
+                            : formatMinor(0, g.currency)}
+                        </div>
+
+                        <div>
+                          {userBalance > 0 ? (
+                            <span className="px-2 py-0.5 rounded-md bg-[#ccff00] border border-black text-black text-[10px] font-mono font-black shadow-[1px_1px_0px_0px_#000]">
+                              You are owed
+                            </span>
+                          ) : userBalance < 0 ? (
+                            <span className="px-2 py-0.5 rounded-md bg-[#ff8a80] border border-black text-black text-[10px] font-mono font-black shadow-[1px_1px_0px_0px_#000]">
+                              You owe
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md bg-[#f0f0ea] border border-black text-black text-[10px] font-mono font-bold">
+                              Settled up ✓
+                            </span>
                           )}
                         </div>
-                        <p className="text-xs text-zinc-400">
-                          {members.length} member{members.length > 1 ? 's' : ''} • {g.currency}
-                        </p>
                       </div>
-                    </div>
-
-                    <div className="text-right shrink-0 ml-3">
-                      {userBalance > 0 ? (
-                        <div>
-                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
-                            you are owed
-                          </span>
-                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                            +{formatMinor(userBalance, g.currency)}
-                          </span>
-                        </div>
-                      ) : userBalance < 0 ? (
-                        <div>
-                          <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider block">
-                            you owe
-                          </span>
-                          <span className="text-sm font-bold text-orange-600 dark:text-orange-400 font-mono">
-                            -{formatMinor(Math.abs(userBalance), g.currency)}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-xs font-medium text-zinc-400">
-                          settled up
-                        </span>
-                      )}
                     </div>
                   </Link>
                 );
               })}
             </div>
           )}
-
-          {/* Archived Groups Collapsible Section */}
-          {archivedGroups.length > 0 && (
-            <div className="pt-3">
-              <button
-                type="button"
-                onClick={() => setShowArchived(!showArchived)}
-                className="flex items-center justify-between w-full px-2 py-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition"
-              >
-                <span className="flex items-center gap-1.5">
-                  <span>📦</span>
-                  <span>Archived Groups ({archivedGroups.length})</span>
-                </span>
-                <span>{showArchived ? '▲ Hide' : '▼ View'}</span>
-              </button>
-
-              {showArchived && (
-                <div className="space-y-2 mt-2 opacity-80">
-                  {archivedGroups.map((g) => (
-                    <Link
-                      key={g.id}
-                      href={`/group?id=${g.id}`}
-                      className="flex items-center justify-between p-3.5 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 hover:border-zinc-400 transition"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-lg opacity-60">📦</span>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-bold text-zinc-700 dark:text-zinc-300 truncate">
-                            {g.name}
-                          </h4>
-                          <span className="text-[10px] text-zinc-400">Read-only • Archived</span>
-                        </div>
-                      </div>
-                      <span className="text-xs text-zinc-400 font-medium">Open →</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </section>
+
+        {/* Archived Ledgers Accordion */}
+        {archivedGroups.length > 0 && (
+          <section className="space-y-3 pt-1">
+            <button
+              onClick={() => setShowArchived(!showArchived)}
+              className="w-full bg-white rounded-2xl border-2 border-black shadow-[3px_3px_0px_0px_#000] p-3.5 flex items-center justify-between text-xs font-mono font-black text-black uppercase active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <span>🗄️ ARCHIVED LEDGERS</span>
+                <span className="px-1.5 py-0.5 rounded border border-black bg-[#f0f0ea] text-[10px]">
+                  {archivedGroups.length}
+                </span>
+              </div>
+              <svg
+                className={`w-4 h-4 text-black transition-transform ${showArchived ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showArchived && (
+              <div className="space-y-2 pl-2">
+                {archivedGroups.map((g) => (
+                  <Link
+                    key={g.id}
+                    href={`/group?id=${g.id}`}
+                    className="block p-3 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_#000] text-xs text-black hover:bg-[#fafaf6] transition"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-black">{g.name}</span>
+                      <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded border border-black bg-[#ffd600]">
+                        {g.currency}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </div>
+
+      {/* Persistent Bottom Navigation matching Stitch */}
+      <BottomNav />
 
       {/* Create Group Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div
+            className="relative w-full max-w-md bg-white border-2 border-black rounded-2xl p-6 shadow-[5px_5px_0px_0px_#000] space-y-5"
+            role="dialog"
+            aria-modal="true"
+          >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">Create a New Group</h2>
+              <h2 className="text-lg font-black text-black tracking-tight uppercase">CREATE NEW GROUP</h2>
               <button
+                type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-200"
+                className="w-8 h-8 rounded-lg bg-white hover:bg-[#ffd600] border-2 border-black font-mono font-black text-xs flex items-center justify-center transition"
               >
                 ✕
               </button>
             </div>
 
             {createError && (
-              <div className="p-3 rounded-xl text-xs font-medium bg-rose-500/10 text-rose-500 border border-rose-500/20">
+              <div className="p-3 rounded-xl text-xs font-bold bg-[#ff8a80] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]">
                 {createError}
               </div>
             )}
 
             <form onSubmit={handleCreateGroup} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-zinc-400 uppercase mb-1">
+                <label className="block text-xs font-mono font-black text-black uppercase tracking-wider mb-1.5">
                   Group Name
                 </label>
                 <input
                   type="text"
                   required
-                  maxLength={80}
-                  placeholder="e.g. Goa Trip, Apartment 4B"
+                  placeholder="e.g. Goa Villa Trip, Flat 402, Date Nights"
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-3 rounded-xl bg-white border-2 border-black text-black placeholder:text-black/40 focus:outline-none focus:bg-[#faffea] text-sm font-semibold shadow-[2px_2px_0px_0px_#000]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 uppercase mb-1">
-                    Group Type
-                  </label>
-                  <select
-                    value={newGroupType}
-                    onChange={(e) => setNewGroupType(e.target.value as GroupType)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="trip">✈️ Trip</option>
-                    <option value="home">🏠 Home / Apartment</option>
-                    <option value="couple">❤️ Couple</option>
-                    <option value="other">📁 Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 uppercase mb-1">
-                    Currency
-                  </label>
-                  <select
-                    value={newGroupCurrency}
-                    onChange={(e) => setNewGroupCurrency(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                  >
-                    {SUPPORTED_CURRENCIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+              <div>
+                <label className="block text-xs font-mono font-black text-black uppercase tracking-wider mb-1.5">
+                  Group Type
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['trip', 'home', 'couple', 'other'] as GroupType[]).map((t) => {
+                    const cfg = GROUP_TYPE_CONFIG[t];
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setNewGroupType(t)}
+                        className={`p-2.5 rounded-xl border-2 border-black text-xs font-mono font-black flex items-center gap-2 transition cursor-pointer shadow-[2px_2px_0px_0px_#000] ${
+                          newGroupType === t
+                            ? 'bg-[#ccff00] text-black'
+                            : 'bg-white text-black/70 hover:bg-[#fafaf6]'
+                        }`}
+                      >
+                        <span>{cfg.emoji}</span>
+                        <span>{cfg.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition text-zinc-400"
+              <div>
+                <label className="block text-xs font-mono font-black text-black uppercase tracking-wider mb-1.5">
+                  Currency
+                </label>
+                <select
+                  value={newGroupCurrency}
+                  onChange={(e) => setNewGroupCurrency(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border-2 border-black text-black focus:outline-none text-sm font-mono font-bold shadow-[2px_2px_0px_0px_#000]"
                 >
-                  Cancel
-                </button>
+                  {SUPPORTED_CURRENCIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-md active:scale-95 transition"
+                  className="w-full py-3.5 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] text-black font-black text-sm tracking-wider uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
                 >
-                  Create Group
+                  CREATE & OPEN GROUP →
                 </button>
               </div>
             </form>

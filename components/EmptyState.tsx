@@ -1,7 +1,7 @@
 'use client';
 
 // components/EmptyState.tsx
-// Reusable Empty State Component with Icon, Title, and Action Button
+// Neo-Brutalist Empty State Component
 
 import React from 'react';
 
@@ -11,6 +11,8 @@ interface EmptyStateProps {
   description: string;
   actionText?: string;
   onAction?: () => void;
+  secondaryActionText?: string;
+  onSecondaryAction?: () => void;
   className?: string;
 }
 
@@ -20,31 +22,49 @@ export function EmptyState({
   description,
   actionText,
   onAction,
+  secondaryActionText,
+  onSecondaryAction,
   className = '',
 }: EmptyStateProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center p-8 text-center rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 ${className}`}
+      className={`flex flex-col items-center justify-center p-8 sm:p-10 text-center rounded-2xl bg-white border-2 border-black shadow-[4px_4px_0px_0px_#000] ${className}`}
     >
-      {icon && (
-        <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 flex items-center justify-center mb-3">
+      {icon ? (
+        <div className="w-16 h-16 rounded-xl border-2 border-black bg-[#ccff00] flex items-center justify-center text-3xl mb-4 shadow-[2px_2px_0px_0px_#000]">
           {icon}
         </div>
+      ) : (
+        <div className="w-16 h-16 rounded-xl border-2 border-black bg-[#ccff00] flex items-center justify-center text-2xl text-black mb-4 shadow-[2px_2px_0px_0px_#000]">
+          ✨
+        </div>
       )}
-      <h3 className="text-base font-semibold text-zinc-800 dark:text-zinc-200 mb-1">
+
+      <h3 className="text-lg font-black text-black uppercase tracking-tight mb-1.5 font-mono">
         {title}
       </h3>
-      <p className="text-xs text-zinc-400 max-w-xs leading-relaxed mb-4">
+      <p className="text-xs sm:text-sm text-black/60 max-w-sm leading-relaxed mb-6 font-mono font-bold">
         {description}
       </p>
-      {actionText && onAction && (
-        <button
-          onClick={onAction}
-          className="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-sm transition-all"
-        >
-          {actionText}
-        </button>
-      )}
+
+      <div className="flex flex-wrap items-center justify-center gap-3 w-full sm:w-auto">
+        {actionText && onAction && (
+          <button
+            onClick={onAction}
+            className="w-full sm:w-auto px-5 py-3 text-xs font-black uppercase tracking-wider rounded-xl bg-[#ccff00] hover:bg-[#bbf000] active:translate-x-0.5 active:translate-y-0.5 text-black border-2 border-black shadow-[3px_3px_0px_0px_#000] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <span>+</span> {actionText}
+          </button>
+        )}
+        {secondaryActionText && onSecondaryAction && (
+          <button
+            onClick={onSecondaryAction}
+            className="w-full sm:w-auto px-5 py-3 text-xs font-black uppercase tracking-wider rounded-xl bg-white hover:bg-[#ffd600] active:translate-x-0.5 active:translate-y-0.5 text-black border-2 border-black shadow-[3px_3px_0px_0px_#000] transition-all cursor-pointer"
+          >
+            {secondaryActionText}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

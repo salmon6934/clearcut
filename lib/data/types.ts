@@ -55,6 +55,7 @@ export interface Expense {
   expenseDate: string;
   splitType: SplitType;
   splits: Split[];
+  receiptPath?: string | null;
   createdBy: string;
   version: number;
   clientMutationId?: string;
@@ -124,6 +125,7 @@ export interface ExpenseDraft {
   expenseDate?: string;
   splitType: SplitType;
   splits: Split[];
+  receiptPath?: string | null;
 }
 
 export interface SettlementDraft {

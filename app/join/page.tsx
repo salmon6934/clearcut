@@ -87,123 +87,125 @@ function JoinContent() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col justify-between p-6">
-      <div className="max-w-md mx-auto w-full space-y-6 pt-6">
+    <div className="min-h-screen bg-[#f5f5f0] text-black flex flex-col justify-between p-4 sm:p-6 font-sans">
+      <div className="max-w-md mx-auto w-full space-y-6 pt-4">
         <header className="flex items-center justify-between">
           <Link
             href="/"
-            className="w-9 h-9 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+            className="w-10 h-10 rounded-lg border-2 border-black bg-white flex items-center justify-center font-black text-black hover:bg-[#ffd600] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            ←
           </Link>
-          <h1 className="text-base font-bold">
-            {activeTab === 'claim' ? 'Claim Group Profile' : 'Join Group'}
+          <h1 className="text-sm font-mono font-black uppercase tracking-wider">
+            {activeTab === 'claim' ? 'CLAIM PROFILE' : 'JOIN GROUP'}
           </h1>
-          <div className="w-9" />
+          <div className="w-10" />
         </header>
 
         {/* Tab Selector */}
-        <div className="flex bg-zinc-200/60 dark:bg-zinc-800/60 p-1 rounded-2xl">
+        <div className="flex bg-[#f0f0ea] border-2 border-black p-1 rounded-xl">
           <button
             type="button"
             onClick={() => setActiveTab('invite')}
-            className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+            className={`flex-1 py-2 text-xs font-mono font-black uppercase rounded-lg transition-all ${
               activeTab === 'invite'
-                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                ? 'bg-black text-[#ccff00] border-2 border-black shadow-[2px_2px_0px_0px_#000]'
+                : 'text-black/60 hover:text-black'
             }`}
           >
-            Join by Code
+            JOIN BY CODE
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('claim')}
-            className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+            className={`flex-1 py-2 text-xs font-mono font-black uppercase rounded-lg transition-all ${
               activeTab === 'claim'
-                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                ? 'bg-black text-[#ccff00] border-2 border-black shadow-[2px_2px_0px_0px_#000]'
+                : 'text-black/60 hover:text-black'
             }`}
           >
-            Claim Member Profile
+            CLAIM PROFILE
           </button>
         </div>
 
-        <div className="p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm space-y-4">
+        <div className="p-6 rounded-xl border-2 border-black bg-white shadow-[4px_4px_0px_0px_#000] space-y-5">
           {error && (
-            <div className="p-3 rounded-xl text-xs font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-              {error}
+            <div className="p-3 rounded-lg text-xs font-mono font-bold bg-[#ff8a80] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+              ⚠️ {error}
             </div>
           )}
 
           {activeTab === 'invite' ? (
             <>
-              <div className="text-center space-y-1">
-                <span className="text-3xl">🤝</span>
-                <h2 className="text-lg font-bold">You&apos;re Invited!</h2>
-                <p className="text-xs text-zinc-400">
-                  Enter the invite code shared by the group owner.
+              <div className="text-center space-y-1.5">
+                <div className="w-12 h-12 rounded-lg border-2 border-black bg-[#ffd600] flex items-center justify-center mx-auto text-xl shadow-[2px_2px_0px_0px_#000]">
+                  🤝
+                </div>
+                <h2 className="text-base font-mono font-black uppercase">YOU&apos;RE INVITED!</h2>
+                <p className="text-xs font-mono text-black/60">
+                  Enter the 8-character code shared by your group peer.
                 </p>
               </div>
 
               <form onSubmit={handleJoin} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-400 uppercase mb-1">
-                    Invite Code
+                  <label className="block text-xs font-mono font-black uppercase mb-1">
+                    INVITE CODE
                   </label>
                   <input
                     type="text"
                     required
                     maxLength={32}
-                    placeholder="e.g. A1B2C3D4"
+                    placeholder="E.G. A1B2C3D4"
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
-                    className="w-full px-4 py-3 text-center text-lg font-mono font-bold tracking-widest rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase"
+                    className="w-full px-4 py-3 text-center text-lg font-mono font-black tracking-widest rounded-lg border-2 border-black bg-white text-black focus:outline-none focus:bg-[#faffea] uppercase shadow-[2px_2px_0px_0px_#000]"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3.5 text-sm font-bold rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-lg shadow-emerald-600/20 disabled:opacity-50 transition-all"
+                  className="w-full py-3.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 transition"
                 >
-                  {isSubmitting ? 'Joining group...' : 'Join Group'}
+                  {isSubmitting ? 'JOINING GROUP...' : 'JOIN GROUP'}
                 </button>
               </form>
             </>
           ) : (
             <>
-              <div className="text-center space-y-1">
-                <span className="text-3xl">🎫</span>
-                <h2 className="text-lg font-bold">Claim Offline Profile</h2>
-                <p className="text-xs text-zinc-400">
-                  Were you added before having an account? Claim your profile to link all past expense history, splits, and balances seamlessly.
+              <div className="text-center space-y-1.5">
+                <div className="w-12 h-12 rounded-lg border-2 border-black bg-[#00e5ff] flex items-center justify-center mx-auto text-xl shadow-[2px_2px_0px_0px_#000]">
+                  🎫
+                </div>
+                <h2 className="text-base font-mono font-black uppercase">CLAIM GUEST PROFILE</h2>
+                <p className="text-xs font-mono text-black/60">
+                  Were you added before having an account? Claim your profile to link past expenses and ledger records.
                 </p>
               </div>
 
               <form onSubmit={handleClaimPlaceholder} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-400 uppercase mb-1">
-                    Claim Token
+                  <label className="block text-xs font-mono font-black uppercase mb-1">
+                    CLAIM TOKEN
                   </label>
                   <input
                     type="text"
                     required
                     maxLength={64}
-                    placeholder="Enter claim token"
+                    placeholder="PASTE CLAIM TOKEN"
                     value={claimToken}
                     onChange={(e) => setClaimToken(e.target.value)}
-                    className="w-full px-4 py-3 text-center text-sm font-mono font-bold tracking-wider rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-3 text-center text-xs font-mono font-black tracking-wider rounded-lg border-2 border-black bg-white text-black focus:outline-none focus:bg-[#faffea] shadow-[2px_2px_0px_0px_#000]"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3.5 text-sm font-bold rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white shadow-lg shadow-indigo-600/20 disabled:opacity-50 transition-all"
+                  className="w-full py-3.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#00e5ff] text-black hover:bg-black hover:text-[#00e5ff] shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 transition"
                 >
-                  {isSubmitting ? 'Claiming profile...' : 'Claim Member Profile'}
+                  {isSubmitting ? 'CLAIMING PROFILE...' : 'CLAIM MEMBER PROFILE'}
                 </button>
               </form>
             </>
@@ -218,7 +220,7 @@ export default function JoinPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center text-zinc-400 text-sm">
+        <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center text-black text-xs font-mono font-black uppercase">
           Loading invitation...
         </div>
       }

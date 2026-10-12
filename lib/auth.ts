@@ -28,6 +28,10 @@ export function getAuthState(): AuthState {
   return currentAuthState;
 }
 
+export function _setAuthStateForTesting(state: AuthState): void {
+  currentAuthState = state;
+}
+
 function notifyListeners() {
   for (const listener of listeners) {
     listener(currentAuthState);
@@ -307,3 +311,50 @@ export async function updateProfile(
     return { error: err as Error };
   }
 }
+
+/**
+ * GDPR & Apple Store compliant permanent account deletion (T-2.10.2).
+ * Anonymizes group ledger records into placeholder members, deletes auth & profile, and clears local data.
+ */
+export async function deleteAccount(): Promise<{ error: Error | null }> {
+  const userId = currentAuthState.user?.id;
+  if (!userId) {
+    return { error: new Error('User not authenticated') };
+  }
+
+  try {
+    // 1. Unregister native push token & cancel reminders
+    await unregisterPushToken(userId).catch(() => {});
+    await cancelWeeklySettleReminder().catch(() => {});
+
+    // 2. Call delete_account_v1 RPC
+    const { error } = await supabase.rpc('delete_account_v1');
+    if (error) {
+      return { error: new Error(error.message) };
+    }
+
+    // 3. Clear local storage namespace
+    const userStorage = new LocalStorageAdapter(userId);
+    userStorage.clear();
+
+    // 4. Sign out
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Ignored
+    }
+
+    currentAuthState = {
+      user: null,
+      profile: null,
+      session: null,
+      isLoading: false,
+    };
+    notifyListeners();
+
+    return { error: null };
+  } catch (err) {
+    return { error: err as Error };
+  }
+}
+

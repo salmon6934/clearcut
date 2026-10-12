@@ -1,7 +1,7 @@
 'use client';
 
 // components/ExpenseRow.tsx
-// Rich Interactive Expense Row with Perspective Shares, Dates, Sync State & Soft-Delete Actions
+// Neo-Brutalist Expense Row Component
 
 import React from 'react';
 import type { Expense, Member } from '../lib/data/types';
@@ -79,58 +79,52 @@ export function ExpenseRow({
   return (
     <div
       onClick={onClick}
-      className={`group flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer ${
+      className={`group flex items-center justify-between p-3.5 rounded-2xl border-2 border-black transition-all cursor-pointer ${
         isDeleted
-          ? 'border-rose-500/30 bg-rose-500/5 dark:bg-rose-500/10 opacity-75'
-          : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99]'
+          ? 'bg-[#ffebee] shadow-[2px_2px_0px_0px_#000] opacity-80'
+          : 'bg-white shadow-[3px_3px_0px_0px_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5'
       }`}
     >
       <div className="flex items-center gap-3 min-w-0">
         {/* Date Badge */}
-        <div className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex flex-col items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700/60">
-          <span className="text-[9px] uppercase font-bold text-zinc-400 leading-none">
+        <div className="w-11 h-11 rounded-xl bg-[#f0f0ea] border-2 border-black flex flex-col items-center justify-center shrink-0 shadow-[1.5px_1.5px_0px_0px_#000]">
+          <span className="text-[9px] uppercase font-mono font-black text-black/60 leading-none">
             {month}
           </span>
-          <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 leading-none mt-0.5 font-mono">
+          <span className="text-sm font-black text-black leading-none mt-1 font-mono">
             {day}
           </span>
         </div>
 
         {/* Category & Title */}
-        <div className="min-w-0 space-y-0.5">
+        <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm shrink-0">{icon}</span>
-            <h4 className={`text-sm font-semibold truncate ${isDeleted ? 'line-through text-zinc-500' : 'text-zinc-900 dark:text-zinc-100'}`}>
+            <span className="text-base shrink-0">{icon}</span>
+            <h4 className={`text-sm font-black truncate text-black ${isDeleted ? 'line-through text-black/40' : ''}`}>
               {expense.title}
             </h4>
 
+            {expense.receiptPath && (
+              <span title="Receipt attached" className="text-black shrink-0 inline-flex items-center">
+                📄
+              </span>
+            )}
+
             {isDeleted && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-500/20 text-rose-600 dark:text-rose-400">
-                Deleted
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-black bg-[#ff8a80] text-black border border-black">
+                DELETED
               </span>
             )}
 
             {expense._sync === 'pending' && !isDeleted && (
-              <span title="Pending sync" className="text-blue-500 shrink-0">
-                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-              </span>
-            )}
-            {expense._sync === 'conflict' && !isDeleted && (
-              <span title="Sync conflict" className="text-amber-500 shrink-0">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </span>
+              <span title="Pending sync" className="w-2 h-2 rounded-full bg-[#00e5ff] border border-black animate-ping" />
             )}
           </div>
 
-          <div className="text-xs text-zinc-400">
-            <span>{payerSummary}</span>
-            <span className="mx-1.5">•</span>
-            <span className="font-mono">{formatMinor(expense.amountMinor, expense.currency)}</span>
+          <div className="text-xs text-black/60 flex items-center gap-1.5 font-mono font-medium">
+            <span className="text-black font-bold">{payerSummary}</span>
+            <span>•</span>
+            <span className="font-mono">₹ {formatMinor(expense.amountMinor, expense.currency)}</span>
           </div>
         </div>
       </div>
@@ -141,29 +135,29 @@ export function ExpenseRow({
           <>
             <div className="text-right">
               {isLender && (
-                <div>
-                  <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 block uppercase tracking-wider">
-                    you lent
+                <div className="px-2.5 py-1 rounded-lg bg-[#ccff00] text-black border-2 border-black shadow-[1.5px_1.5px_0px_0px_#000]">
+                  <span className="text-[9px] font-mono font-black block uppercase tracking-wider">
+                    YOU LENT
                   </span>
-                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                  <span className="text-xs font-black font-mono">
                     +{formatMinor(netUser, expense.currency)}
                   </span>
                 </div>
               )}
               {isBorrower && (
-                <div>
-                  <span className="text-[10px] font-medium text-orange-600 dark:text-orange-400 block uppercase tracking-wider">
-                    you borrowed
+                <div className="px-2.5 py-1 rounded-lg bg-[#ff8a80] text-black border-2 border-black shadow-[1.5px_1.5px_0px_0px_#000]">
+                  <span className="text-[9px] font-mono font-black block uppercase tracking-wider">
+                    YOU BORROWED
                   </span>
-                  <span className="text-sm font-bold text-orange-600 dark:text-orange-400 font-mono">
+                  <span className="text-xs font-black font-mono">
                     -{formatMinor(Math.abs(netUser), expense.currency)}
                   </span>
                 </div>
               )}
               {isNeutral && (
-                <div>
-                  <span className="text-xs font-medium text-zinc-400">
-                    not involved
+                <div className="px-2 py-0.5 rounded-lg bg-[#f0f0ea] border border-black">
+                  <span className="text-xs font-mono font-bold text-black/60">
+                    not in
                   </span>
                 </div>
               )}
@@ -177,11 +171,9 @@ export function ExpenseRow({
                   onDelete();
                 }}
                 title="Delete expense"
-                className="w-8 h-8 rounded-xl opacity-0 group-hover:opacity-100 focus:opacity-100 flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
+                className="w-8 h-8 rounded-lg border-2 border-black bg-white hover:bg-[#ff8a80] text-black font-black flex items-center justify-center transition shadow-[1.5px_1.5px_0px_0px_#000]"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
+                ✕
               </button>
             )}
           </>
@@ -193,9 +185,9 @@ export function ExpenseRow({
                 e.stopPropagation();
                 onRestore();
               }}
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition active:scale-95"
+              className="px-3 py-1.5 rounded-lg bg-[#ccff00] text-black border-2 border-black font-mono font-black text-xs shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
             >
-              Restore
+              RESTORE
             </button>
           )
         )}

@@ -113,6 +113,7 @@ export function mergeRemoteExpense(
     expenseDate: remote.expense_date,
     splitType: remote.split_type || 'equal',
     splits,
+    receiptPath: remote.receipt_path || null,
     createdBy: remote.created_by,
     version: remote.version || 1,
     deletedAt: remote.deleted_at,

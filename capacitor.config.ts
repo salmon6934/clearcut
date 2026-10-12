@@ -27,6 +27,10 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     captureInput: true,
   },
+  ios: {
+    contentInset: 'always',
+    preferredContentMode: 'mobile',
+  },
 };
 
 export default config;

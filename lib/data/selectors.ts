@@ -1,7 +1,7 @@
 // lib/data/selectors.ts
 // Memoized Selectors and React useSyncExternalStore Hooks
 
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, useCallback } from 'react';
 import type { LocalStore } from './local-store';
 import type { Group, Member, Expense, Settlement, SuggestedPayment } from './types';
 import { computeBalances, computePairwise, type PairwiseDebt } from '../engine/balances';
@@ -19,7 +19,11 @@ export interface DashboardTotals {
   totalYouOweByCurrency: Record<string, number>;
 }
 
-// Memoization caches keyed by `${id}:${revision}`
+// Memoization caches keyed by `${id/args}:${revision}`
+const allGroupsCache = new Map<string, Group[]>();
+const membersCache = new Map<string, Member[]>();
+const expensesCache = new Map<string, Expense[]>();
+const settlementsCache = new Map<string, Settlement[]>();
 const ledgerCache = new Map<string, GroupLedgerResult>();
 const dashboardCache = new Map<string, DashboardTotals>();
 
@@ -28,7 +32,12 @@ export function selectGroup(store: LocalStore, groupId: string): Group | undefin
 }
 
 export function selectAllGroups(store: LocalStore, includeArchived = false): Group[] {
-  return store.getAllGroups(includeArchived);
+  const cacheKey = `${includeArchived}:${store.getRevision()}`;
+  const cached = allGroupsCache.get(cacheKey);
+  if (cached) return cached;
+  const result = store.getAllGroups(includeArchived);
+  allGroupsCache.set(cacheKey, result);
+  return result;
 }
 
 export function selectGroupMembers(
@@ -36,7 +45,12 @@ export function selectGroupMembers(
   groupId: string,
   includeLeft = false
 ): Member[] {
-  return store.getGroupMembers(groupId, includeLeft);
+  const cacheKey = `${groupId}:${includeLeft}:${store.getRevision()}`;
+  const cached = membersCache.get(cacheKey);
+  if (cached) return cached;
+  const result = store.getGroupMembers(groupId, includeLeft);
+  membersCache.set(cacheKey, result);
+  return result;
 }
 
 export function selectGroupExpenses(
@@ -44,7 +58,12 @@ export function selectGroupExpenses(
   groupId: string,
   includeDeleted = false
 ): Expense[] {
-  return store.getGroupExpenses(groupId, includeDeleted);
+  const cacheKey = `${groupId}:${includeDeleted}:${store.getRevision()}`;
+  const cached = expensesCache.get(cacheKey);
+  if (cached) return cached;
+  const result = store.getGroupExpenses(groupId, includeDeleted);
+  expensesCache.set(cacheKey, result);
+  return result;
 }
 
 export function selectGroupSettlements(
@@ -52,7 +71,12 @@ export function selectGroupSettlements(
   groupId: string,
   includeDeleted = false
 ): Settlement[] {
-  return store.getGroupSettlements(groupId, includeDeleted);
+  const cacheKey = `${groupId}:${includeDeleted}:${store.getRevision()}`;
+  const cached = settlementsCache.get(cacheKey);
+  if (cached) return cached;
+  const result = store.getGroupSettlements(groupId, includeDeleted);
+  settlementsCache.set(cacheKey, result);
+  return result;
 }
 
 /**
@@ -162,9 +186,11 @@ export function useStoreSelector<T>(
   store: LocalStore,
   selector: (store: LocalStore) => T
 ): T {
-  return useSyncExternalStore(
-    (onStoreChange) => store.subscribe(onStoreChange),
-    () => selector(store),
-    () => selector(store)
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => store.subscribe(onStoreChange),
+    [store]
   );
+  const getSnapshot = () => selector(store);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

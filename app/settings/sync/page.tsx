@@ -1,7 +1,7 @@
 'use client';
 
 // app/settings/sync/page.tsx
-// Sync Diagnostics & Conflict Resolution Screen
+// Sync Diagnostics & Conflict Resolution Screen in Neo-Brutalist Style
 
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
@@ -124,101 +124,98 @@ function SyncDiagnosticsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 p-4 max-w-xl mx-auto">
+    <div className="min-h-screen bg-[#f5f5f0] text-black p-4 max-w-xl mx-auto font-sans">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 pt-2">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+          className="w-10 h-10 rounded-lg border-2 border-black bg-white flex items-center justify-center font-black text-black hover:bg-[#ffd600] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
+          ←
         </Link>
-        <h1 className="text-lg font-semibold">Sync Diagnostics</h1>
-        <div className="w-12"></div>
+        <h1 className="text-sm font-mono font-black uppercase tracking-wider">
+          SYNC DIAGNOSTICS
+        </h1>
+        <div className="w-10"></div>
       </div>
 
       {message && (
-        <div className="mb-4 p-3 rounded-lg text-sm bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+        <div className="mb-4 p-3 rounded-lg text-xs font-mono font-black bg-[#ffd600] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]">
           {message}
         </div>
       )}
 
       {items.length === 0 ? (
-        <div className="text-center py-16 px-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-3">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+        <div className="text-center py-12 px-4 rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000]">
+          <div className="w-10 h-10 rounded-lg border-2 border-black bg-[#ccff00] text-black flex items-center justify-center mx-auto mb-3 font-mono font-black text-lg shadow-[2px_2px_0px_0px_#000]">
+            ✓
           </div>
-          <h2 className="text-base font-medium mb-1">All clear!</h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            No conflicts or failed mutations found in your local queue.
+          <h2 className="text-sm font-mono font-black uppercase mb-1">ALL SYNCED!</h2>
+          <p className="text-xs font-mono text-black/60">
+            No conflicts or dead-letter mutations in your local queue.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
-            Pending Resolution ({items.length})
+          <div className="text-xs font-mono font-black text-black uppercase tracking-wider">
+            PENDING RESOLUTION ({items.length})
           </div>
 
           {items.map((item) => (
             <div
               key={item.id}
-              className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm"
+              className="p-4 rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] space-y-3"
             >
-              <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="flex items-start justify-between gap-2">
                 <div>
                   <span
-                    className={`inline-block px-2 py-0.5 text-xs font-semibold rounded ${
+                    className={`inline-block px-2 py-0.5 text-[10px] font-mono font-black uppercase rounded border border-black ${
                       item.status === 'conflict'
-                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                        : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                        ? 'bg-[#ffd600] text-black'
+                        : 'bg-[#ff8a80] text-black'
                     }`}
                   >
                     {item.status.toUpperCase()}
                   </span>
-                  <span className="ml-2 text-xs font-mono text-zinc-400">
+                  <span className="ml-2 text-xs font-mono font-bold text-black/70">
                     {item.type}
                   </span>
                 </div>
-                <span className="text-[10px] text-zinc-400">
+                <span className="text-[10px] font-mono text-black/60">
                   {new Date(item.updatedAt).toLocaleTimeString()}
                 </span>
               </div>
 
               {item.lastError && (
-                <div className="text-xs text-zinc-600 dark:text-zinc-300 font-mono bg-zinc-100 dark:bg-zinc-800/60 p-2 rounded mb-3 break-all">
+                <div className="text-xs text-black font-mono bg-[#f0f0ea] p-2.5 rounded border border-black break-all">
                   {item.lastError}
                 </div>
               )}
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-1">
                 {item.status === 'conflict' && item.type === 'UPSERT_EXPENSE' ? (
                   <button
                     onClick={() => handleOpenConflict(item)}
-                    className="flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition-colors"
+                    className="flex-1 px-3 py-2 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ffd600] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
                   >
-                    Resolve Conflict
+                    RESOLVE CONFLICT
                   </button>
                 ) : (
                   <button
                     onClick={() => handleRetryItem(item)}
                     disabled={isRetrying}
-                    className="flex-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="flex-1 px-3 py-2 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition disabled:opacity-50"
                   >
-                    {isRetrying ? 'Retrying...' : 'Retry Push'}
+                    {isRetrying ? 'RETRYING...' : 'RETRY PUSH'}
                   </button>
                 )}
 
                 <button
                   onClick={() => handleDiscardItem(item.id)}
                   disabled={isRetrying}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-rose-600 dark:text-rose-400"
+                  className="px-3 py-2 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-white text-black hover:bg-[#ff8a80] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
                 >
-                  Discard
+                  DISCARD
                 </button>
               </div>
             </div>
@@ -247,7 +244,7 @@ function SyncDiagnosticsContent() {
 
 export default function SyncDiagnosticsPage() {
   return (
-    <Suspense fallback={<div className="p-4 text-sm text-zinc-500">Loading diagnostics...</div>}>
+    <Suspense fallback={<div className="p-4 text-xs font-mono font-black uppercase text-black">Loading diagnostics...</div>}>
       <SyncDiagnosticsContent />
     </Suspense>
   );

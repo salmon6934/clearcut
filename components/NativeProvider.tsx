@@ -45,7 +45,7 @@ export function NativeProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   return (
-    <div className="flex flex-col min-h-screen w-full max-w-md mx-auto relative select-none bg-slate-950 text-slate-100 shadow-2xl">
+    <div className="flex flex-col min-h-screen w-full max-w-xl mx-auto relative select-none bg-[#f5f5f0] text-black">
       {children}
     </div>
   );
