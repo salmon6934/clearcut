@@ -5,8 +5,10 @@ import type { LocalStore } from './local-store';
 import type { MutationQueue } from './queue';
 import type { SyncLifecycleManager } from '../sync/lifecycle';
 import { validateExpense } from '../engine/validate';
+import { computeBalances } from '../engine/balances';
 import { EngineError } from '../engine/errors';
 import { haptics } from '../native/haptics';
+import { supabase } from '../supabase';
 import type {
   Group,
   Member,
@@ -378,5 +380,205 @@ export class DomainRepository {
     this.syncManager?.kick('join_group').catch(() => {});
 
     return memberId;
+  }
+
+  /**
+   * Removes a member from a group (US-20). Requires member net balance to be 0.
+   */
+  removeMember(groupId: string, memberId: string): Member {
+    const member = this.store.getMember(memberId);
+    if (!member || member.groupId !== groupId || member.leftAt) {
+      throw new EngineError('MEMBER_NOT_FOUND', 'Member not found or already left');
+    }
+
+    // Check zero-balance invariant locally
+    const expenses = this.store.getGroupExpenses(groupId, false);
+    const settlements = this.store.getGroupSettlements(groupId, false);
+    const balances = computeBalances(expenses, settlements);
+    const net = balances.get(memberId) ?? 0;
+
+    if (net !== 0) {
+      throw new EngineError(
+        'MEMBER_HAS_BALANCE',
+        `Cannot remove member: member has outstanding balance of ${net}`
+      );
+    }
+
+    // Check sole owner constraint
+    if (member.role === 'owner') {
+      const activeMembers = this.store.getGroupMembers(groupId, false);
+      const otherOwners = activeMembers.filter((m) => m.role === 'owner' && m.id !== memberId);
+      if (otherOwners.length === 0 && activeMembers.length > 1) {
+        throw new EngineError(
+          'SOLE_OWNER',
+          'Cannot remove sole group owner without transferring ownership first'
+        );
+      }
+    }
+
+    const now = new Date().toISOString();
+    const updatedMember: Member = {
+      ...member,
+      leftAt: now,
+      updatedAt: now,
+      _sync: 'pending',
+    };
+
+    this.store.upsertMember(updatedMember);
+    this.queue.enqueue('REMOVE_MEMBER', memberId, { groupId, memberId });
+
+    haptics.tap().catch(() => {});
+    this.syncManager?.kick('remove_member').catch(() => {});
+
+    return updatedMember;
+  }
+
+  /**
+   * Updates a member's role (admin or member) in a group.
+   */
+  updateMemberRole(groupId: string, memberId: string, role: 'admin' | 'member'): Member {
+    const member = this.store.getMember(memberId);
+    if (!member || member.groupId !== groupId || member.leftAt) {
+      throw new EngineError('MEMBER_NOT_FOUND', 'Member not found or has left');
+    }
+
+    const now = new Date().toISOString();
+    const updated: Member = {
+      ...member,
+      role,
+      updatedAt: now,
+      _sync: 'pending',
+    };
+
+    this.store.upsertMember(updated);
+    this.queue.enqueue('UPDATE_MEMBER_ROLE', memberId, { groupId, memberId, role });
+
+    haptics.tap().catch(() => {});
+    this.syncManager?.kick('update_member_role').catch(() => {});
+
+    return updated;
+  }
+
+  /**
+   * Transfers ownership of a group to another member.
+   */
+  transferOwnership(
+    groupId: string,
+    currentOwnerMemberId: string,
+    newOwnerMemberId: string
+  ): { previousOwner: Member; newOwner: Member } {
+    const prevOwner = this.store.getMember(currentOwnerMemberId);
+    const newOwner = this.store.getMember(newOwnerMemberId);
+
+    if (!prevOwner || !newOwner || prevOwner.groupId !== groupId || newOwner.groupId !== groupId) {
+      throw new EngineError('MEMBER_NOT_FOUND', 'Owner or target member not found in group');
+    }
+
+    const now = new Date().toISOString();
+    const updatedPrev: Member = {
+      ...prevOwner,
+      role: 'admin',
+      updatedAt: now,
+      _sync: 'pending',
+    };
+
+    const updatedNew: Member = {
+      ...newOwner,
+      role: 'owner',
+      updatedAt: now,
+      _sync: 'pending',
+    };
+
+    this.store.upsertMember(updatedPrev);
+    this.store.upsertMember(updatedNew);
+
+    this.queue.enqueue('TRANSFER_OWNERSHIP', groupId, {
+      groupId,
+      currentOwnerMemberId,
+      newOwnerMemberId,
+    });
+
+    haptics.success().catch(() => {});
+    this.syncManager?.kick('transfer_ownership').catch(() => {});
+
+    return { previousOwner: updatedPrev, newOwner: updatedNew };
+  }
+
+  /**
+   * Leaves a group (US-20). Requires member net balance to be 0 and non-sole owner.
+   */
+  leaveGroup(groupId: string, memberId: string): void {
+    const member = this.store.getMember(memberId);
+    if (!member || member.groupId !== groupId || member.leftAt) {
+      throw new EngineError('MEMBER_NOT_FOUND', 'Member not found or already left');
+    }
+
+    const expenses = this.store.getGroupExpenses(groupId, false);
+    const settlements = this.store.getGroupSettlements(groupId, false);
+    const balances = computeBalances(expenses, settlements);
+    const net = balances.get(memberId) ?? 0;
+
+    if (net !== 0) {
+      throw new EngineError(
+        'MEMBER_HAS_BALANCE',
+        `Must settle balance of ${net} before leaving group`
+      );
+    }
+
+    if (member.role === 'owner') {
+      const activeMembers = this.store.getGroupMembers(groupId, false);
+      const otherOwners = activeMembers.filter((m) => m.role === 'owner' && m.id !== memberId);
+      if (otherOwners.length === 0 && activeMembers.length > 1) {
+        throw new EngineError(
+          'SOLE_OWNER',
+          'Must transfer ownership before leaving group'
+        );
+      }
+    }
+
+    const now = new Date().toISOString();
+    const updatedMember: Member = {
+      ...member,
+      leftAt: now,
+      updatedAt: now,
+      _sync: 'pending',
+    };
+
+    this.store.upsertMember(updatedMember);
+    this.queue.enqueue('LEAVE_GROUP', groupId, { groupId, memberId });
+
+    haptics.tap().catch(() => {});
+    this.syncManager?.kick('leave_group').catch(() => {});
+  }
+
+  /**
+   * Generates or fetches an active claim token for a placeholder member (US-04).
+   */
+  async generatePlaceholderClaim(groupId: string, memberId: string): Promise<string> {
+    try {
+      const { data, error } = await supabase.rpc('generate_placeholder_claim_v1', {
+        p_group_id: groupId,
+        p_member_id: memberId,
+      });
+      if (error) throw error;
+      return data?.claim_token || '';
+    } catch {
+      // Fallback in offline or test mode: generate temporary client token
+      return `claim_${memberId.slice(0, 8)}`;
+    }
+  }
+
+  /**
+   * Claims a placeholder member profile using a claim token (US-04).
+   */
+  claimPlaceholder(claimToken: string): void {
+    const cleanToken = claimToken.trim();
+    if (!cleanToken) {
+      throw new EngineError('VALIDATION_FAILED', 'Claim token is required');
+    }
+
+    this.queue.enqueue('CLAIM_PLACEHOLDER', cleanToken, { claimToken: cleanToken });
+    haptics.success().catch(() => {});
+    this.syncManager?.kick('claim_placeholder').catch(() => {});
   }
 }

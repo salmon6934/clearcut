@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.splitwise.mobile',
-  appName: 'Splitwise',
+  appId: 'com.clearcut.mobile',
+  appName: 'Clearcut',
   webDir: 'out',
   server: {
     androidScheme: 'https',
@@ -16,6 +16,11 @@ const config: CapacitorConfig = {
     },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],
+    },
+    GoogleAuth: {
+      scopes: ['profile', 'email'],
+      serverClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+      forceCodeForRefreshToken: false,
     },
   },
   android: {

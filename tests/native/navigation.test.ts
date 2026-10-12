@@ -10,6 +10,20 @@ describe('T-0.1: Native Shell, Routing & Deep Linking', () => {
     expect(res?.params.code).toBe('ABC123XYZ');
   });
 
+  it('parses HTTPS universal link https://clearcut.app/join?claim=TOKEN_789 correctly', () => {
+    const res = parseDeepLink('https://clearcut.app/join?claim=TOKEN_789');
+    expect(res).not.toBeNull();
+    expect(res?.route).toBe('/join?claim=TOKEN_789');
+    expect(res?.params.claim).toBe('TOKEN_789');
+  });
+
+  it('parses HTTPS universal link https://clearcut.app/group?id=grp_999 correctly', () => {
+    const res = parseDeepLink('https://clearcut.app/group?id=grp_999');
+    expect(res).not.toBeNull();
+    expect(res?.route).toBe('/group?id=grp_999');
+    expect(res?.params.id).toBe('grp_999');
+  });
+
   it('parses splitapp://group?id=group_456 deep link correctly', () => {
     const res = parseDeepLink('splitapp://group?id=group_456');
     expect(res).not.toBeNull();

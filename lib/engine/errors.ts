@@ -12,9 +12,11 @@ export type EngineErrorCode =
   | 'EXPENSE_CONFLICT'
   | 'SETTLEMENT_INVALID'
   | 'MEMBER_NOT_IN_GROUP'
+  | 'MEMBER_NOT_FOUND'
   | 'MEMBER_NAME_TAKEN'
   | 'MEMBER_HAS_BALANCE'
   | 'LAST_OWNER'
+  | 'SOLE_OWNER'
   | 'RATE_LIMITED';
 
 export class EngineError extends Error {

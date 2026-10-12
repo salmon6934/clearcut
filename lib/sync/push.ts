@@ -41,12 +41,16 @@ export function classifyError(error: any): {
   const status = error.status || (error as any).statusCode;
   const detail = error.details || error.detail;
 
-  // 1. Conflict (PT409 / EXPENSE_CONFLICT)
+  // 1. Conflict (PT409 / EXPENSE_CONFLICT / MEMBER_HAS_BALANCE)
   if (
     status === 409 ||
     code === 'PT409' ||
     message.includes('EXPENSE_CONFLICT') ||
-    message.includes('MEMBER_NAME_TAKEN')
+    message.includes('MEMBER_NAME_TAKEN') ||
+    message.includes('MEMBER_HAS_BALANCE') ||
+    message.includes('SOLE_OWNER') ||
+    message.includes('ALREADY_GROUP_MEMBER') ||
+    message.includes('MEMBER_ALREADY_CLAIMED')
   ) {
     return { type: 'CONFLICT', statusCode: 409, message, detail };
   }
@@ -314,9 +318,50 @@ async function executeMutationRpc(
     }
 
     case 'LEAVE_GROUP': {
-      const { groupId } = payload;
+      const { groupId, memberId } = payload;
       const { data, error } = await supabase.rpc('leave_group_v1', {
         p_group_id: groupId,
+        p_member_id: memberId,
+      });
+      if (error) throw error;
+      return data;
+    }
+
+    case 'REMOVE_MEMBER': {
+      const { groupId, memberId } = payload;
+      const { data, error } = await supabase.rpc('remove_member_v1', {
+        p_group_id: groupId,
+        p_member_id: memberId,
+      });
+      if (error) throw error;
+      return data;
+    }
+
+    case 'UPDATE_MEMBER_ROLE': {
+      const { groupId, memberId, role } = payload;
+      const { data, error } = await supabase.rpc('update_member_role_v1', {
+        p_group_id: groupId,
+        p_member_id: memberId,
+        p_role: role,
+      });
+      if (error) throw error;
+      return data;
+    }
+
+    case 'TRANSFER_OWNERSHIP': {
+      const { groupId, newOwnerMemberId } = payload;
+      const { data, error } = await supabase.rpc('transfer_group_ownership_v1', {
+        p_group_id: groupId,
+        p_new_owner_member_id: newOwnerMemberId,
+      });
+      if (error) throw error;
+      return data;
+    }
+
+    case 'CLAIM_PLACEHOLDER': {
+      const { claimToken } = payload;
+      const { data, error } = await supabase.rpc('claim_placeholder_v1', {
+        p_claim_token: claimToken,
       });
       if (error) throw error;
       return data;
@@ -350,6 +395,43 @@ function updateLocalStoreEntityOnSync(
       const member = store.getMember(entityId);
       if (member) {
         store.upsertMember({ ...member, _sync: 'synced' });
+      }
+      break;
+    }
+
+    case 'REMOVE_MEMBER': {
+      const member = store.getMember(entityId);
+      if (member) {
+        store.upsertMember({ ...member, leftAt: new Date().toISOString(), _sync: 'synced' });
+      }
+      break;
+    }
+
+    case 'UPDATE_MEMBER_ROLE': {
+      const member = store.getMember(entityId);
+      if (member) {
+        store.upsertMember({ ...member, role: mutation.payload.role, _sync: 'synced' });
+      }
+      break;
+    }
+
+    case 'TRANSFER_OWNERSHIP': {
+      const newOwner = store.getMember(mutation.payload.newOwnerMemberId);
+      if (newOwner) {
+        store.upsertMember({ ...newOwner, role: 'owner', _sync: 'synced' });
+      }
+      break;
+    }
+
+    case 'CLAIM_PLACEHOLDER': {
+      const memberId = rpcResponse?.member_id || entityId;
+      const member = store.getMember(memberId);
+      if (member && rpcResponse?.member?.user_id) {
+        store.upsertMember({
+          ...member,
+          userId: rpcResponse.member.user_id,
+          _sync: 'synced',
+        });
       }
       break;
     }

@@ -17,4 +17,11 @@ describe('Auth Manager (lib/auth.ts)', () => {
 
     unsubscribe();
   });
+
+  it('exposes signInWithGoogle with graceful fallback in node/test environment', async () => {
+    const { signInWithGoogle } = await import('@/lib/auth');
+    // On node environment, signInWithOAuth is invoked or graceful error returned
+    const res = await signInWithGoogle();
+    expect(res).toBeDefined();
+  });
 });

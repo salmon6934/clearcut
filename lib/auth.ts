@@ -2,6 +2,8 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { isNativePlatform } from './native/platform';
 import { LocalStorageAdapter } from './data/storage-adapter';
+import { registerPushToken, unregisterPushToken } from './native/push';
+import { scheduleWeeklySettleReminder, cancelWeeklySettleReminder } from './native/notifications';
 import type { Profile } from './data/types';
 
 export interface AuthState {
@@ -84,6 +86,8 @@ export function initAuth(): () => void {
     let profile: Profile | null = null;
     if (user) {
       profile = await fetchProfile(user.id);
+      registerPushToken(user.id).catch(() => {});
+      scheduleWeeklySettleReminder().catch(() => {});
     }
     currentAuthState = {
       user,
@@ -103,6 +107,10 @@ export function initAuth(): () => void {
 
     if (user) {
       profile = await fetchProfile(user.id);
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        registerPushToken(user.id).catch(() => {});
+        scheduleWeeklySettleReminder().catch(() => {});
+      }
     }
 
     currentAuthState = {
@@ -135,6 +143,60 @@ export function initAuth(): () => void {
     subscription.unsubscribe();
     appStateCleanup();
   };
+}
+
+/**
+ * Sign in using Native Google Sign-In on mobile devices, or OAuth on web (T-2.8.1).
+ */
+export async function signInWithGoogle(): Promise<{ session: Session | null; error: Error | null }> {
+  try {
+    if (isNativePlatform()) {
+      const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+      try {
+        await GoogleAuth.initialize({
+          clientId: clientId || undefined,
+          scopes: ['profile', 'email'],
+          grantOfflineAccess: false,
+        });
+      } catch {
+        // already initialized
+      }
+
+      const googleUser = await GoogleAuth.signIn();
+      const idToken = googleUser?.authentication?.idToken;
+      if (!idToken) {
+        return { session: null, error: new Error('No ID token received from Google Play Services') };
+      }
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      });
+
+      if (error) {
+        return { session: null, error: new Error(error.message) };
+      }
+
+      return { session: data.session, error: null };
+    } else {
+      // Web / desktop browser fallback
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth` : undefined,
+        },
+      });
+
+      if (error) {
+        return { session: null, error: new Error(error.message) };
+      }
+
+      return { session: null, error: null };
+    }
+  } catch (err: any) {
+    return { session: null, error: err as Error };
+  }
 }
 
 /**
@@ -184,6 +246,10 @@ export async function verifyOtp(
 export async function signOut(): Promise<void> {
   const userId = currentAuthState.user?.id;
   try {
+    if (userId) {
+      await unregisterPushToken(userId);
+    }
+    await cancelWeeklySettleReminder();
     await supabase.auth.signOut();
   } catch {
     // Graceful fallback

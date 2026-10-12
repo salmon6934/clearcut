@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.clearcut.mobile",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7A:B4:4E:26:FA:F8:78:E8:4A:12:47:62:3C:A9:60:5F:8B:BC:7D:9C:20:98:8C:31:6E:9E:C9:46:16"
+      ]
+    }
+  }
+]

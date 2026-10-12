@@ -10,8 +10,15 @@ export function parseDeepLink(urlStr: string): { route: string; params: Record<s
 
     if (hostOrPath === 'join' || url.pathname.includes('/join')) {
       const code = searchParams.code || '';
+      const claim = searchParams.claim || '';
+      let qs = '';
+      if (claim) {
+        qs = `claim=${encodeURIComponent(claim)}`;
+      } else if (code) {
+        qs = `code=${encodeURIComponent(code)}`;
+      }
       return {
-        route: `/join?code=${encodeURIComponent(code)}`,
+        route: qs ? `/join?${qs}` : '/join',
         params: searchParams,
       };
     }

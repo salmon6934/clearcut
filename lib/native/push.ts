@@ -16,6 +16,8 @@ export interface PushHandlers {
   onNotificationTapped?: (route: string) => void;
 }
 
+let cachedFcmToken: string | null = null;
+
 async function getFirebaseMessagingPlugin() {
   if (!isNativePlatform()) return null;
   try {
@@ -78,6 +80,8 @@ export async function registerPushToken(userId: string): Promise<string | null> 
     const token = result.token;
     if (!token) return null;
 
+    cachedFcmToken = token;
+
     // 4. Upsert device token in Supabase
     const platform = getPlatform();
     await supabase.from('device_tokens').upsert(
@@ -94,6 +98,37 @@ export async function registerPushToken(userId: string): Promise<string | null> 
   } catch (err) {
     console.error('[Push] Failed to register FCM token:', err);
     return null;
+  }
+}
+
+/**
+ * Removes the FCM token registration from Supabase on logout.
+ */
+export async function unregisterPushToken(userId: string): Promise<void> {
+  const messaging = await getFirebaseMessagingPlugin();
+
+  try {
+    const token = cachedFcmToken;
+    if (token) {
+      await supabase
+        .from('device_tokens')
+        .delete()
+        .eq('user_id', userId)
+        .eq('token', token);
+    } else {
+      // Delete any registered tokens for this user on this platform
+      await supabase
+        .from('device_tokens')
+        .delete()
+        .eq('user_id', userId);
+    }
+
+    if (messaging && typeof messaging.deleteToken === 'function') {
+      await messaging.deleteToken();
+    }
+    cachedFcmToken = null;
+  } catch (err) {
+    console.warn('[Push] Failed to unregister device token on logout:', err);
   }
 }
 
@@ -129,11 +164,14 @@ export async function initPushListeners(handlers: PushHandlers): Promise<() => v
       'notificationActionPerformed',
       (event: NotificationActionPerformedEvent) => {
         const data = event.notification?.data as Record<string, unknown> | undefined;
-        if (typeof data?.route === 'string') {
-          handlers.onNotificationTapped?.(data.route);
-        } else if (typeof data?.groupId === 'string') {
-          handlers.onNotificationTapped?.(`/group?id=${encodeURIComponent(data.groupId)}`);
+        let targetRoute = '/';
+        if (typeof data?.route === 'string' && data.route.length > 0) {
+          targetRoute = data.route;
+        } else if (typeof data?.groupId === 'string' && data.groupId.length > 0) {
+          targetRoute = `/group?id=${encodeURIComponent(data.groupId)}`;
         }
+
+        handlers.onNotificationTapped?.(targetRoute);
       }
     );
     unsubs.push(() => actionHandle.remove());

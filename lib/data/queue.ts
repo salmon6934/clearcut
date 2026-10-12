@@ -11,7 +11,11 @@ export type MutationType =
   | 'DELETE_EXPENSE'
   | 'UPSERT_SETTLEMENT'
   | 'DELETE_SETTLEMENT'
-  | 'LEAVE_GROUP';
+  | 'LEAVE_GROUP'
+  | 'REMOVE_MEMBER'
+  | 'UPDATE_MEMBER_ROLE'
+  | 'TRANSFER_OWNERSHIP'
+  | 'CLAIM_PLACEHOLDER';
 
 export type MutationStatus = 'pending' | 'inflight' | 'synced' | 'conflict' | 'dead';
 

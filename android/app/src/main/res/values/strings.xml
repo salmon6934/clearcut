@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Splitwise</string>
-    <string name="title_activity_main">Splitwise</string>
-    <string name="package_name">com.splitwise.mobile</string>
-    <string name="custom_url_scheme">com.splitwise.mobile</string>
-</resources>

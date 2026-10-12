@@ -20,6 +20,11 @@
 # production
 /build
 
+# mobile native builds & IDEs
+/android/
+/ios/
+.idea/
+
 # misc
 .DS_Store
 *.pem

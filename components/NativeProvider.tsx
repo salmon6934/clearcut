@@ -4,6 +4,8 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useHardwareBackButton } from '@/lib/native/back-button';
 import { initDeepLinkListener } from '@/lib/native/deeplink';
+import { initPushListeners } from '@/lib/native/push';
+import { initLocalNotificationListeners } from '@/lib/native/notifications';
 
 export function NativeProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -12,10 +14,34 @@ export function NativeProvider({ children }: { children: React.ReactNode }) {
   useHardwareBackButton();
 
   useEffect(() => {
-    const unsubscribe = initDeepLinkListener((route) => {
+    // 1. Deep link listener (splitapp:// scheme)
+    const unsubDeep = initDeepLinkListener((route) => {
       router.push(route);
     });
-    return unsubscribe;
+
+    // 2. FCM Push notification listeners (tap navigation)
+    let unsubPush = () => {};
+    initPushListeners({
+      onNotificationTapped: (route) => {
+        if (route) router.push(route);
+      },
+    }).then((cleanup) => {
+      unsubPush = cleanup;
+    });
+
+    // 3. Local notification listener (weekly settle-up reminder tap)
+    let unsubLocal = () => {};
+    initLocalNotificationListeners((route) => {
+      if (route) router.push(route);
+    }).then((cleanup) => {
+      unsubLocal = cleanup;
+    });
+
+    return () => {
+      unsubDeep();
+      unsubPush();
+      unsubLocal();
+    };
   }, [router]);
 
   return (
