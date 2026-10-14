@@ -14,7 +14,7 @@ const config: CapacitorConfig = {
       iconColor: '#10B981',
       sound: 'beep.wav',
     },
-    PushNotifications: {
+    FirebaseMessaging: {
       presentationOptions: ['badge', 'sound', 'alert'],
     },
     GoogleAuth: {

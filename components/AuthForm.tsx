@@ -100,8 +100,8 @@ export function AuthForm() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanOtp = otpCode.trim();
-    if (!cleanOtp || cleanOtp.length < 6 || cleanOtp.length > 8) {
-      setErrorMessage('Please enter the OTP code (6-8 digits)');
+    if (!cleanOtp || cleanOtp.length !== 6) {
+      setErrorMessage('Please enter the 6-digit OTP code');
       haptics.warning();
       return;
     }
@@ -239,19 +239,19 @@ export function AuthForm() {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={8}
+              maxLength={6}
               autoComplete="one-time-code"
               autoFocus
               value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="Enter code"
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="123456"
               className="w-full px-4 py-3 rounded-xl bg-white border-2 border-black text-black tracking-[0.25em] text-center text-xl font-mono font-black focus:outline-none focus:bg-[#faffea] shadow-[2px_2px_0px_0px_#000]"
             />
           </div>
 
           <button
             type="submit"
-            disabled={isLoading || otpCode.length < 6 || otpCode.length > 8}
+            disabled={isLoading || otpCode.length !== 6}
             className="w-full py-3.5 px-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none text-black font-black font-mono text-xs uppercase transition-all border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center cursor-pointer"
           >
             {isLoading ? 'VERIFYING...' : 'VERIFY CODE →'}

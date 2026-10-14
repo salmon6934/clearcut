@@ -110,7 +110,7 @@ export function initAuth(): () => void {
       let profile: Profile | null = null;
       if (user) {
         profile = await fetchProfile(user.id, user);
-        registerPushToken(user.id).catch(() => {});
+        registerPushToken(user.id).catch((e) => console.warn('[Auth] Push registration warning:', e));
         scheduleWeeklySettleReminder().catch(() => {});
       }
       currentAuthState = {
@@ -139,7 +139,7 @@ export function initAuth(): () => void {
     if (user) {
       profile = await fetchProfile(user.id, user);
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        registerPushToken(user.id).catch(() => {});
+        registerPushToken(user.id).catch((e) => console.warn('[Auth] Push registration warning:', e));
         scheduleWeeklySettleReminder().catch(() => {});
       }
     }
@@ -212,7 +212,7 @@ export async function signInWithGoogle(): Promise<{ session: Session | null; err
       if (data.session) {
         const user = data.session.user;
         const profile = await fetchProfile(user.id, user);
-        registerPushToken(user.id).catch(() => {});
+      registerPushToken(user.id).catch((e) => console.warn('[Auth] Push registration warning:', e));
         scheduleWeeklySettleReminder().catch(() => {});
         currentAuthState = {
           user,
@@ -298,7 +298,7 @@ export async function verifyOtp(
     if (res.data.session) {
       const user = res.data.session.user;
       const profile = await fetchProfile(user.id, user);
-      registerPushToken(user.id).catch(() => {});
+      registerPushToken(user.id).catch((e) => console.warn('[Auth] Push registration warning:', e));
       scheduleWeeklySettleReminder().catch(() => {});
       currentAuthState = {
         user,

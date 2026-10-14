@@ -16,17 +16,106 @@ export interface PushHandlers {
   onNotificationTapped?: (route: string) => void;
 }
 
-let cachedFcmToken: string | null = null;
+interface MessagingApi {
+  checkPermissions: () => Promise<any>;
+  requestPermissions: () => Promise<any>;
+  getToken: () => Promise<{ token: string }>;
+  deleteToken?: () => Promise<void>;
+  addListener: (eventName: any, listenerFunc: any) => Promise<any>;
+  createChannel?: (options: any) => Promise<void>;
+}
 
-async function getFirebaseMessagingPlugin() {
+let cachedFcmToken: string | null = null;
+let messagingApiInstance: MessagingApi | null = null;
+
+async function getFirebaseMessagingPlugin(): Promise<MessagingApi | null> {
   if (!isNativePlatform()) return null;
+  if (messagingApiInstance) return messagingApiInstance;
   try {
     const mod = await import('@capacitor-firebase/messaging');
-    return mod.FirebaseMessaging;
+    const raw = mod.FirebaseMessaging;
+    // CRITICAL FIX: In Capacitor, plugins are JavaScript Proxies that forward any property
+    // access to native code unless explicitly ignored.
+    // When returning a Proxy from an `async` function, JavaScript's Promise implementation
+    // accesses `.then` on the returned object to determine if it's a Thenable.
+    // Capacitor's Proxy get trap catches `.then` and dispatches it as native method "then()",
+    // causing Android to throw: "FirebaseMessaging.then() is not implemented on android".
+    // Wrapping in a plain object ensures `.then` is undefined and never routes through Proxy.
+    messagingApiInstance = {
+      checkPermissions: () => raw.checkPermissions(),
+      requestPermissions: () => raw.requestPermissions(),
+      getToken: () => raw.getToken(),
+      deleteToken: () => raw.deleteToken(),
+      addListener: (name: any, cb: any) => raw.addListener(name, cb),
+      createChannel: (opt: any) => (raw as any).createChannel?.(opt),
+    };
+    return messagingApiInstance;
   } catch (err) {
     console.warn('[Push] Firebase Messaging plugin not available:', err);
     return null;
   }
+}
+
+/**
+ * Saves or updates a device token in Supabase.
+ * Tries the dedicated RPC first (bypassing RLS update conflicts on recycled tokens),
+ * and falls back to direct upsert.
+ */
+export async function saveDeviceTokenToSupabase(userId: string, token: string): Promise<boolean> {
+  const platform = getPlatform();
+  if (platform !== 'android' && platform !== 'ios') {
+    console.warn('[Push] Skipping device token registration on platform:', platform);
+    return false;
+  }
+
+  // 1. Try secure RPC first
+  try {
+    const { error: rpcErr } = await supabase.rpc('register_device_token', {
+      p_token: token,
+      p_platform: platform,
+    });
+    if (!rpcErr) {
+      console.log('[Push] Device token successfully registered via RPC');
+      return true;
+    }
+  } catch {
+    // RPC not present in DB yet, proceed to direct upsert
+  }
+
+  // 2. Direct upsert fallback
+  const { error: upsertErr } = await supabase.from('device_tokens').upsert(
+    {
+      user_id: userId,
+      token,
+      platform,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'token' }
+  );
+
+  if (upsertErr) {
+    console.error('[Push] Supabase device_tokens upsert failed:', upsertErr.message);
+    // If conflict on token owned by another user caused RLS rejection, attempt delete and insert
+    if (upsertErr.code === '42501' || upsertErr.message.includes('policy')) {
+      const { error: delErr } = await supabase.from('device_tokens').delete().eq('token', token);
+      if (!delErr) {
+        const { error: insErr } = await supabase.from('device_tokens').insert({
+          user_id: userId,
+          token,
+          platform,
+          updated_at: new Date().toISOString(),
+        });
+        if (!insErr) {
+          console.log('[Push] Device token registered after clearing previous token binding');
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  console.log('[Push] Device token registered successfully in Supabase');
+  return true;
 }
 
 /**
@@ -65,21 +154,40 @@ export async function registerPushToken(userId: string): Promise<string | null> 
   if (!messaging) return null;
 
   try {
-    // 1. Request notification permissions (Android 13+ POST_NOTIFICATIONS & iOS alerts)
-    const permResult = await messaging.requestPermissions();
-    if (permResult.receive !== 'granted') {
-      console.warn('[Push] Notification permission not granted:', permResult.receive);
+    // 1. Check or request notification permissions (Android 13+ POST_NOTIFICATIONS & iOS alerts)
+    const checkResult = await messaging.checkPermissions();
+    let isGranted = checkResult?.receive === 'granted';
+
+    if (!isGranted) {
+      const permResult = await messaging.requestPermissions();
+      isGranted = permResult?.receive === 'granted';
+    }
+
+    if (!isGranted) {
+      console.warn('[Push] Notification permission not granted');
       return null;
     }
 
     // 2. Setup channel on Android
     await setupNativeNotificationChannel();
 
-    // 3. Obtain FCM token with 5-second timeout
+    // 3. Listen for tokenReceived events in case getToken takes time or refreshes
+    try {
+      await messaging.addListener('tokenReceived', async (event: { token: string }) => {
+        if (event?.token) {
+          cachedFcmToken = event.token;
+          await saveDeviceTokenToSupabase(userId, event.token);
+        }
+      });
+    } catch (e) {
+      console.warn('[Push] Could not add tokenReceived listener:', e);
+    }
+
+    // 4. Obtain FCM token with 10-second timeout (giving FCM time to initialize)
     const result = await Promise.race([
       messaging.getToken(),
       new Promise<{ token: string | null }>((resolve) =>
-        setTimeout(() => resolve({ token: null }), 5000)
+        setTimeout(() => resolve({ token: null }), 10000)
       ),
     ]);
     const token = result?.token;
@@ -90,17 +198,8 @@ export async function registerPushToken(userId: string): Promise<string | null> 
 
     cachedFcmToken = token;
 
-    // 4. Upsert device token in Supabase
-    const platform = getPlatform();
-    await supabase.from('device_tokens').upsert(
-      {
-        user_id: userId,
-        token,
-        platform,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'token' }
-    );
+    // 5. Upsert device token in Supabase
+    await saveDeviceTokenToSupabase(userId, token);
 
     return token;
   } catch (err) {
