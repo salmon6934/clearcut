@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRepository, useFriendsBalances } from '../../lib/data/hooks';
 import { formatMinor } from '../../lib/engine/money';
-import { getAuthState } from '../../lib/auth';
+import { useAuth } from '../../lib/auth';
 import { EmptyState } from '../../components/EmptyState';
 import { BottomNav } from '../../components/BottomNav';
 import { SyncBadge } from '../../components/SyncBadge';
@@ -26,9 +26,9 @@ const AVATAR_COLORS = [
 
 export default function FriendsPage() {
   const router = useRouter();
-  const repo = useRepository();
-  const authState = getAuthState();
+  const authState = useAuth();
   const currentUserId = authState.user?.id || 'local_user';
+  const repo = useRepository(currentUserId);
 
   const friends = useFriendsBalances(repo, currentUserId);
 

@@ -14,7 +14,7 @@ import {
   useGroupSettlements,
   useGroupLedger,
 } from '../../lib/data/hooks';
-import { getAuthState } from '../../lib/auth';
+import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
 import { formatMinor } from '../../lib/engine/money';
 import { BalanceSummary } from '../../components/BalanceSummary';
@@ -38,15 +38,15 @@ function GroupDetailContent() {
   const searchParams = useSearchParams();
   const groupId = searchParams.get('id') || '';
 
-  const repo = useRepository();
+  const authState = useAuth();
+  const currentUserId = authState.user?.id || 'local_user';
+  const repo = useRepository(currentUserId);
   const group = useGroup(repo, groupId);
   const members = useGroupMembers(repo, groupId);
   const allExpenses = useGroupExpenses(repo, groupId, true);
   const settlements = useGroupSettlements(repo, groupId, false);
   const ledger = useGroupLedger(repo, groupId);
 
-  const authState = getAuthState();
-  const currentUserId = authState.user?.id || 'local_user';
   const currentMember = members.find((m) => m.userId === currentUserId);
   const currentMemberId = currentMember?.id;
 

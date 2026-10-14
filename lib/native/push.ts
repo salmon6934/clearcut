@@ -75,10 +75,18 @@ export async function registerPushToken(userId: string): Promise<string | null> 
     // 2. Setup channel on Android
     await setupNativeNotificationChannel();
 
-    // 3. Obtain FCM token
-    const result = await messaging.getToken();
-    const token = result.token;
-    if (!token) return null;
+    // 3. Obtain FCM token with 5-second timeout
+    const result = await Promise.race([
+      messaging.getToken(),
+      new Promise<{ token: string | null }>((resolve) =>
+        setTimeout(() => resolve({ token: null }), 5000)
+      ),
+    ]);
+    const token = result?.token;
+    if (!token) {
+      console.warn('[Push] No FCM token returned within timeout');
+      return null;
+    }
 
     cachedFcmToken = token;
 
@@ -124,7 +132,10 @@ export async function unregisterPushToken(userId: string): Promise<void> {
     }
 
     if (messaging && typeof messaging.deleteToken === 'function') {
-      await messaging.deleteToken();
+      await Promise.race([
+        messaging.deleteToken(),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ]);
     }
     cachedFcmToken = null;
   } catch (err) {

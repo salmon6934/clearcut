@@ -7,7 +7,7 @@ import React, { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useRepository, useGroup, useGroupMembers } from '../../../lib/data/hooks';
-import { getAuthState } from '../../../lib/auth';
+import { useAuth } from '../../../lib/auth';
 import { ExpenseForm } from '../../../components/ExpenseForm';
 import { ConflictResolutionSheet } from '../../../components/ConflictResolutionSheet';
 import { SyncBadge } from '../../../components/SyncBadge';
@@ -20,11 +20,11 @@ function ExpenseEntryContent() {
   const groupId = searchParams.get('id') || '';
   const expenseId = searchParams.get('expenseId') || searchParams.get('edit') || undefined;
 
-  const repo = useRepository();
+  const authState = useAuth();
+  const currentUserId = authState.user?.id || 'local_user';
+  const repo = useRepository(currentUserId);
   const group = useGroup(repo, groupId);
   const members = useGroupMembers(repo, groupId);
-  const authState = getAuthState();
-  const currentUserId = authState.user?.id || 'local_user';
 
   const [showConflictSheet, setShowConflictSheet] = useState(false);
 

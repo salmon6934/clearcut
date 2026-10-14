@@ -16,7 +16,7 @@ import { formatMinor } from '../lib/engine/money';
 import { SyncBadge } from '../components/SyncBadge';
 import { EmptyState } from '../components/EmptyState';
 import { BottomNav } from '../components/BottomNav';
-import { getAuthState } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import type { GroupType } from '../lib/data/types';
 import { initDeepLinkListener } from '../lib/native/deeplink';
 
@@ -58,9 +58,9 @@ const SUPPORTED_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'AED', 'SGD'];
 
 export default function DashboardPage() {
   const router = useRouter();
-  const repo = useRepository();
-  const authState = getAuthState();
+  const authState = useAuth();
   const currentUserId = authState.user?.id || 'local_user';
+  const repo = useRepository(currentUserId);
 
   const activeGroups = useAllGroups(repo, false);
   const dashboardTotals = useDashboardTotals(repo, currentUserId);

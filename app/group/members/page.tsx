@@ -13,7 +13,7 @@ import {
   useGroupMembers,
   useGroupLedger,
 } from '../../../lib/data/hooks';
-import { getAuthState } from '../../../lib/auth';
+import { useAuth } from '../../../lib/auth';
 import { formatMinor } from '../../../lib/engine/money';
 import type { Member } from '../../../lib/data/types';
 
@@ -22,13 +22,12 @@ function GroupMembersContent() {
   const searchParams = useSearchParams();
   const groupId = searchParams.get('id') || '';
 
-  const repo = useRepository();
+  const authState = useAuth();
+  const currentUserId = authState.user?.id || 'local_user';
+  const repo = useRepository(currentUserId);
   const group = useGroup(repo, groupId);
   const members = useGroupMembers(repo, groupId);
   const ledger = useGroupLedger(repo, groupId);
-
-  const authState = getAuthState();
-  const currentUserId = authState.user?.id || 'local_user';
   const currentMember = members.find((m) => m.userId === currentUserId);
   const isCurrentUserOwner = currentMember?.role === 'owner';
   const isCurrentUserAdmin = currentMember?.role === 'admin' || isCurrentUserOwner;

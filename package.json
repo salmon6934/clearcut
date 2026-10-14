@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "cap:sync": "next build && npx cap sync android"
   },
   "dependencies": {
     "@capacitor-firebase/messaging": "^8.5.2",

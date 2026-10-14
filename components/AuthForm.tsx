@@ -30,6 +30,17 @@ export function AuthForm() {
     return () => clearInterval(timer);
   }, [cooldown]);
 
+  const finishAuth = () => {
+    const pendingCode =
+      typeof window !== 'undefined' ? localStorage.getItem('pending_join_code') : null;
+    if (pendingCode) {
+      localStorage.removeItem('pending_join_code');
+      router.replace(`/join?code=${encodeURIComponent(pendingCode)}`);
+    } else {
+      router.replace(redirectUrl);
+    }
+  };
+
   // Check if user is already authenticated
   useEffect(() => {
     return subscribeAuth((state) => {
@@ -38,7 +49,7 @@ export function AuthForm() {
           setDisplayName(state.profile?.displayName || state.user.email?.split('@')[0] || '');
           setStep('profile');
         } else {
-          router.replace(redirectUrl);
+          finishAuth();
         }
       }
     });
@@ -57,7 +68,7 @@ export function AuthForm() {
       haptics.error();
     } else if (session) {
       haptics.success();
-      router.replace(redirectUrl);
+      finishAuth();
     }
   };
 
@@ -88,8 +99,9 @@ export function AuthForm() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otpCode || otpCode.length !== 6) {
-      setErrorMessage('Please enter the 6-digit code');
+    const cleanOtp = otpCode.trim();
+    if (!cleanOtp || cleanOtp.length < 6 || cleanOtp.length > 8) {
+      setErrorMessage('Please enter the OTP code (6-8 digits)');
       haptics.warning();
       return;
     }
@@ -112,7 +124,7 @@ export function AuthForm() {
         setDisplayName(user.email?.split('@')[0] || '');
         setStep('profile');
       } else {
-        router.replace(redirectUrl);
+        finishAuth();
       }
     }
   };
@@ -137,7 +149,7 @@ export function AuthForm() {
       haptics.error();
     } else {
       haptics.success();
-      router.replace(redirectUrl);
+      finishAuth();
     }
   };
 
@@ -202,7 +214,7 @@ export function AuthForm() {
               disabled={isLoading || !email}
               className="w-full py-3.5 px-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none text-black font-black font-mono text-xs uppercase transition-all border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center cursor-pointer"
             >
-              {isLoading ? 'SENDING CODE...' : 'SEND 6-DIGIT CODE →'}
+              {isLoading ? 'SENDING CODE...' : 'SEND OTP CODE →'}
             </button>
           </form>
         </div>
@@ -220,26 +232,26 @@ export function AuthForm() {
 
           <div>
             <label htmlFor="otp" className="block text-xs font-mono font-black uppercase tracking-wider text-black mb-1.5 text-center">
-              ENTER 6-DIGIT CODE
+              ENTER OTP CODE
             </label>
             <input
               id="otp"
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={6}
+              maxLength={8}
               autoComplete="one-time-code"
               autoFocus
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="123456"
-              className="w-full px-4 py-3 rounded-xl bg-white border-2 border-black text-black tracking-[0.4em] text-center text-2xl font-mono font-black focus:outline-none focus:bg-[#faffea] shadow-[2px_2px_0px_0px_#000]"
+              placeholder="Enter code"
+              className="w-full px-4 py-3 rounded-xl bg-white border-2 border-black text-black tracking-[0.25em] text-center text-xl font-mono font-black focus:outline-none focus:bg-[#faffea] shadow-[2px_2px_0px_0px_#000]"
             />
           </div>
 
           <button
             type="submit"
-            disabled={isLoading || otpCode.length !== 6}
+            disabled={isLoading || otpCode.length < 6 || otpCode.length > 8}
             className="w-full py-3.5 px-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none text-black font-black font-mono text-xs uppercase transition-all border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center cursor-pointer"
           >
             {isLoading ? 'VERIFYING...' : 'VERIFY CODE →'}

@@ -67,7 +67,7 @@ begin
 
   -- 3. Delete user device tokens, notification preferences, and placeholder claims
   delete from device_tokens where user_id = v_user_id;
-  delete from notification_preferences where user_id = v_user_id;
+  delete from notification_prefs where user_id = v_user_id;
   delete from placeholder_claims where created_by = v_user_id;
 
   -- 4. Delete profile row

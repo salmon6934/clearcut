@@ -6,6 +6,8 @@ import { useHardwareBackButton } from '@/lib/native/back-button';
 import { initDeepLinkListener } from '@/lib/native/deeplink';
 import { initPushListeners } from '@/lib/native/push';
 import { initLocalNotificationListeners } from '@/lib/native/notifications';
+import { initAuth } from '@/lib/auth';
+import { AuthGuard } from './AuthGuard';
 
 export function NativeProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -14,6 +16,9 @@ export function NativeProvider({ children }: { children: React.ReactNode }) {
   useHardwareBackButton();
 
   useEffect(() => {
+    // 0. Initialize global Supabase Auth session watcher
+    const unsubAuth = initAuth();
+
     // 1. Deep link listener (splitapp:// scheme)
     const unsubDeep = initDeepLinkListener((route) => {
       router.push(route);
@@ -38,6 +43,7 @@ export function NativeProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      unsubAuth();
       unsubDeep();
       unsubPush();
       unsubLocal();
@@ -46,7 +52,7 @@ export function NativeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-screen w-full max-w-xl mx-auto relative select-none bg-[#f5f5f0] text-black">
-      {children}
+      <AuthGuard>{children}</AuthGuard>
     </div>
   );
 }

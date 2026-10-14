@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { isNativePlatform } from './native/platform';
@@ -28,6 +29,16 @@ export function getAuthState(): AuthState {
   return currentAuthState;
 }
 
+export function useAuth(): AuthState {
+  const [state, setState] = useState<AuthState>(currentAuthState);
+
+  useEffect(() => {
+    return subscribeAuth(setState);
+  }, []);
+
+  return state;
+}
+
 export function _setAuthStateForTesting(state: AuthState): void {
   currentAuthState = state;
 }
@@ -46,7 +57,13 @@ export function subscribeAuth(listener: AuthListener): () => void {
   };
 }
 
-async function fetchProfile(userId: string): Promise<Profile | null> {
+async function fetchProfile(userId: string, user?: User | null): Promise<Profile | null> {
+  const u = user || currentAuthState.user;
+  const meta = u?.user_metadata || {};
+  const metaName = meta.display_name || meta.full_name || meta.name;
+  const emailName = u?.email ? u.email.split('@')[0] : '';
+  const fallbackName = metaName || emailName || 'User';
+
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -55,18 +72,18 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
       .maybeSingle();
 
     if (error || !data) {
-      // Fallback: return default profile structure
       return {
         id: userId,
-        displayName: currentAuthState.user?.email?.split('@')[0] || 'User',
+        displayName: fallbackName,
+        avatarUrl: meta.avatar_url || meta.picture,
         defaultCurrency: 'INR',
       };
     }
 
     return {
       id: data.id,
-      displayName: data.display_name,
-      avatarUrl: data.avatar_url,
+      displayName: data.display_name || fallbackName,
+      avatarUrl: data.avatar_url || meta.avatar_url || meta.picture,
       defaultCurrency: data.default_currency || 'INR',
       createdAt: data.created_at,
       updatedAt: data.updated_at,
@@ -74,7 +91,8 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
   } catch {
     return {
       id: userId,
-      displayName: currentAuthState.user?.email?.split('@')[0] || 'User',
+      displayName: fallbackName,
+      avatarUrl: meta.avatar_url || meta.picture,
       defaultCurrency: 'INR',
     };
   }
@@ -85,22 +103,31 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
  */
 export function initAuth(): () => void {
   // 1. Initial session load
-  supabase.auth.getSession().then(async ({ data: { session } }) => {
-    const user = session?.user ?? null;
-    let profile: Profile | null = null;
-    if (user) {
-      profile = await fetchProfile(user.id);
-      registerPushToken(user.id).catch(() => {});
-      scheduleWeeklySettleReminder().catch(() => {});
-    }
-    currentAuthState = {
-      user,
-      profile,
-      session,
-      isLoading: false,
-    };
-    notifyListeners();
-  });
+  supabase.auth
+    .getSession()
+    .then(async ({ data: { session } }) => {
+      const user = session?.user ?? null;
+      let profile: Profile | null = null;
+      if (user) {
+        profile = await fetchProfile(user.id, user);
+        registerPushToken(user.id).catch(() => {});
+        scheduleWeeklySettleReminder().catch(() => {});
+      }
+      currentAuthState = {
+        user,
+        profile,
+        session,
+        isLoading: false,
+      };
+      notifyListeners();
+    })
+    .catch(() => {
+      currentAuthState = {
+        ...currentAuthState,
+        isLoading: false,
+      };
+      notifyListeners();
+    });
 
   // 2. Auth state change listener
   const {
@@ -110,7 +137,7 @@ export function initAuth(): () => void {
     let profile: Profile | null = null;
 
     if (user) {
-      profile = await fetchProfile(user.id);
+      profile = await fetchProfile(user.id, user);
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         registerPushToken(user.id).catch(() => {});
         scheduleWeeklySettleReminder().catch(() => {});
@@ -182,6 +209,20 @@ export async function signInWithGoogle(): Promise<{ session: Session | null; err
         return { session: null, error: new Error(error.message) };
       }
 
+      if (data.session) {
+        const user = data.session.user;
+        const profile = await fetchProfile(user.id, user);
+        registerPushToken(user.id).catch(() => {});
+        scheduleWeeklySettleReminder().catch(() => {});
+        currentAuthState = {
+          user,
+          profile,
+          session: data.session,
+          isLoading: false,
+        };
+        notifyListeners();
+      }
+
       return { session: data.session, error: null };
     } else {
       // Web / desktop browser fallback
@@ -221,24 +262,54 @@ export async function signInWithOtp(email: string): Promise<{ error: Error | nul
 }
 
 /**
- * Verify 6-digit OTP code.
+ * Verify 6-digit OTP code (supports both existing-user 'email' and new-user 'signup' tokens).
  */
 export async function verifyOtp(
   email: string,
   token: string
 ): Promise<{ session: Session | null; error: Error | null }> {
   try {
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token: token.trim(),
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanToken = token.trim();
+
+    // 1. Try 'email' token type first (passwordless login)
+    let res = await supabase.auth.verifyOtp({
+      email: cleanEmail,
+      token: cleanToken,
       type: 'email',
     });
 
-    if (error) {
-      return { session: null, error: new Error(error.message) };
+    // 2. Fallback to 'signup' token type (new user confirm signup token)
+    if (res.error || !res.data.session) {
+      const signupRes = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token: cleanToken,
+        type: 'signup',
+      });
+      if (!signupRes.error && signupRes.data.session) {
+        res = signupRes;
+      }
     }
 
-    return { session: data.session, error: null };
+    if (res.error) {
+      return { session: null, error: new Error(res.error.message) };
+    }
+
+    if (res.data.session) {
+      const user = res.data.session.user;
+      const profile = await fetchProfile(user.id, user);
+      registerPushToken(user.id).catch(() => {});
+      scheduleWeeklySettleReminder().catch(() => {});
+      currentAuthState = {
+        user,
+        profile,
+        session: res.data.session,
+        isLoading: false,
+      };
+      notifyListeners();
+    }
+
+    return { session: res.data.session, error: null };
   } catch (err) {
     return { session: null, error: err as Error };
   }
@@ -249,21 +320,30 @@ export async function verifyOtp(
  */
 export async function signOut(): Promise<void> {
   const userId = currentAuthState.user?.id;
+
+  // 1. Non-blocking push and local notification cleanup
+  if (userId) {
+    unregisterPushToken(userId).catch(() => {});
+  }
+  cancelWeeklySettleReminder().catch(() => {});
+
+  // 2. Sign out from Supabase with 2.5-second timeout
   try {
-    if (userId) {
-      await unregisterPushToken(userId);
-    }
-    await cancelWeeklySettleReminder();
-    await supabase.auth.signOut();
+    await Promise.race([
+      supabase.auth.signOut(),
+      new Promise((resolve) => setTimeout(resolve, 2500)),
+    ]);
   } catch {
     // Graceful fallback
   }
 
+  // 3. Clear local storage
   if (userId) {
     const userStorage = new LocalStorageAdapter(userId);
     userStorage.clear();
   }
 
+  // 4. Update reactive state and notify listeners
   currentAuthState = {
     user: null,
     profile: null,
@@ -284,29 +364,59 @@ export async function updateProfile(
   if (!user) return { error: new Error('User not authenticated') };
 
   try {
-    const { error } = await supabase
-      .from('profiles')
-      .upsert({
-        id: user.id,
-        display_name: displayName.trim(),
-        default_currency: defaultCurrency.toUpperCase(),
-        updated_at: new Date().toISOString(),
-      });
+    const trimmedName = displayName.trim();
+    const currency = defaultCurrency.toUpperCase();
+    const now = new Date().toISOString();
 
-    if (!error) {
-      currentAuthState = {
-        ...currentAuthState,
-        profile: {
-          ...currentAuthState.profile,
-          id: user.id,
-          displayName: displayName.trim(),
-          defaultCurrency: defaultCurrency.toUpperCase(),
+    // 1. Update Supabase Auth user_metadata directly (always permitted for logged-in user)
+    await supabase.auth
+      .updateUser({
+        data: {
+          display_name: trimmedName,
+          full_name: trimmedName,
         },
-      };
-      notifyListeners();
+      })
+      .catch(() => {});
+
+    // 2. Try updating existing profile row first (profiles_update_policy allows this)
+    const { data: updateData, error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        display_name: trimmedName,
+        default_currency: currency,
+        updated_at: now,
+      })
+      .eq('id', user.id)
+      .select();
+
+    // 3. If no row existed yet, attempt upsert/insert
+    if (!updateError && (!updateData || updateData.length === 0)) {
+      try {
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            display_name: trimmedName,
+            default_currency: currency,
+            updated_at: now,
+          });
+      } catch {
+        // Fallback gracefully if table RLS prevents insert before migration is applied
+      }
     }
 
-    return { error: error ? new Error(error.message) : null };
+    currentAuthState = {
+      ...currentAuthState,
+      profile: {
+        ...currentAuthState.profile,
+        id: user.id,
+        displayName: trimmedName,
+        defaultCurrency: currency,
+      },
+    };
+    notifyListeners();
+
+    return { error: null };
   } catch (err) {
     return { error: err as Error };
   }
@@ -323,12 +433,17 @@ export async function deleteAccount(): Promise<{ error: Error | null }> {
   }
 
   try {
-    // 1. Unregister native push token & cancel reminders
-    await unregisterPushToken(userId).catch(() => {});
-    await cancelWeeklySettleReminder().catch(() => {});
+    // 1. Non-blocking push cleanup and local notification cancel
+    unregisterPushToken(userId).catch(() => {});
+    cancelWeeklySettleReminder().catch(() => {});
 
-    // 2. Call delete_account_v1 RPC
-    const { error } = await supabase.rpc('delete_account_v1');
+    // 2. Call delete_account_v1 RPC with 10-second timeout
+    const rpcPromise = supabase.rpc('delete_account_v1');
+    const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((_, reject) =>
+      setTimeout(() => reject(new Error('Account deletion timed out. Check network or database connection.')), 10000)
+    );
+
+    const { error } = await Promise.race([rpcPromise, timeoutPromise]);
     if (error) {
       return { error: new Error(error.message) };
     }
@@ -339,7 +454,10 @@ export async function deleteAccount(): Promise<{ error: Error | null }> {
 
     // 4. Sign out
     try {
-      await supabase.auth.signOut();
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((resolve) => setTimeout(resolve, 2000)),
+      ]);
     } catch {
       // Ignored
     }
@@ -353,8 +471,8 @@ export async function deleteAccount(): Promise<{ error: Error | null }> {
     notifyListeners();
 
     return { error: null };
-  } catch (err) {
-    return { error: err as Error };
+  } catch (err: any) {
+    return { error: (err as Error) || new Error('Account deletion failed') };
   }
 }
 

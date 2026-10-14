@@ -31,12 +31,21 @@ let singletonAdapter: LocalStorageAdapter | null = null;
 let singletonStore: LocalStore | null = null;
 let singletonQueue: MutationQueue | null = null;
 let singletonSync: SyncLifecycleManager | null = null;
+let singletonSyncCleanup: (() => void) | null = null;
 let singletonRepo: DomainRepository | null = null;
+let currentStoreUserId: string | null = null;
 
 export function getRepositoryInstance(userId?: string): DomainRepository {
   const currentUserId = userId || getAuthState().user?.id || 'local_user';
 
-  if (!singletonStore) {
+  if (!singletonStore || currentStoreUserId !== currentUserId) {
+    if (singletonSyncCleanup) {
+      try {
+        singletonSyncCleanup();
+      } catch {}
+      singletonSyncCleanup = null;
+    }
+    currentStoreUserId = currentUserId;
     singletonAdapter = new LocalStorageAdapter(currentUserId);
     singletonStore = new LocalStore(singletonAdapter);
     singletonQueue = new MutationQueue(singletonAdapter);
@@ -46,7 +55,7 @@ export function getRepositoryInstance(userId?: string): DomainRepository {
       singletonAdapter,
       supabase
     );
-    singletonSync.init();
+    singletonSyncCleanup = singletonSync.init();
     singletonRepo = new DomainRepository(singletonStore, singletonQueue, singletonSync);
   }
 

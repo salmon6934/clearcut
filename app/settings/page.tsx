@@ -7,12 +7,10 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  getAuthState,
-  subscribeAuth,
+  useAuth,
   updateProfile,
   signOut,
   deleteAccount,
-  type AuthState,
 } from '../../lib/auth';
 import { BottomNav } from '../../components/BottomNav';
 import { SyncBadge } from '../../components/SyncBadge';
@@ -22,8 +20,8 @@ const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'SGD', 'JPY'];
 
 export default function SettingsPage() {
   const router = useRouter();
-  const repo = useRepository();
-  const [authState, setAuthState] = useState<AuthState>(getAuthState());
+  const authState = useAuth();
+  const repo = useRepository(authState.user?.id);
 
   const [displayName, setDisplayName] = useState(authState.profile?.displayName || '');
   const [currency, setCurrency] = useState(authState.profile?.defaultCurrency || 'INR');
@@ -37,15 +35,11 @@ export default function SettingsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsub = subscribeAuth((state) => {
-      setAuthState(state);
-      if (state.profile) {
-        setDisplayName(state.profile.displayName);
-        setCurrency(state.profile.defaultCurrency || 'INR');
-      }
-    });
-    return unsub;
-  }, []);
+    if (authState.profile) {
+      setDisplayName(authState.profile.displayName);
+      setCurrency(authState.profile.defaultCurrency || 'INR');
+    }
+  }, [authState.profile]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
