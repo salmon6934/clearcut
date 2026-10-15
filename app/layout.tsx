@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Clearcut | Offline-First Expense Sharing",
-  description: "Next-gen offline-first balance ledger for group expenses",
+  title: "Clearcut | Expense Sharing & Balance Ledger",
+  description: "Real-time online-first balance ledger for group expenses with offline resilience",
   icons: {
     icon: [
       { url: '/icon.png', sizes: 'any' },

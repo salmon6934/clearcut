@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Clearcut
 
-## Getting Started
+> Next-generation offline-first balance ledger and group expense sharing app built with Next.js, Capacitor 8, and Supabase.
 
-First, run the development server:
+[![CI](https://img.shields.io/badge/build-passing-brightgreen)](#)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
+[![Capacitor](https://img.shields.io/badge/Capacitor-8-119EFF)](https://capacitorjs.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E)](https://supabase.com/)
+[![Tests](https://img.shields.io/badge/Tests-140%20passing-success)](https://vitest.dev/)
+
+---
+
+## ⚡ Highlights
+
+- **Zero-Sum Ledger**: Invariant-enforced mathematical precision using integer minor units (no floating-point rounding errors).
+- **Online-First with Offline Resilience**: Direct real-time Supabase writes when online; automatic offline queueing with auto-drain upon reconnection.
+- **Mobile-Native (Android & iOS)**: Hardware back button handling, safe-area insets, camera receipt uploads, push notifications, and native Google Auth.
+- **Neo-Brutalist Design**: High-contrast, tactile, fast, and accessible user interface.
+- **Soft-Delete Restoration**: Reversible expense deletions with full restoration directly from the Activity log.
+
+---
+
+## 📖 Documentation
+
+Comprehensive guides and architecture documentation are located in the [`docs/`](./docs) folder:
+
+- [Architecture & Invariants](./docs/architecture.md)
+- [Getting Started & Development](./docs/getting-started.md)
+- [Mobile & Native Shells (Android / iOS)](./docs/mobile-native.md)
+- [Sync Engine & Offline Architecture](./docs/sync-engine.md)
+- [Database & Migrations](./docs/database-migrations.md)
+- [Testing & CI/CD](./docs/testing-cicd.md)
+- [Contributing Guidelines](./docs/CONTRIBUTING.md)
+- [Specifications & Research](./docs/specs/)
+
+---
+
+## 🚀 Quick Start
 
 ```bash
+# 1. Install dependencies
+npm install
+
+# 2. Start local web development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit [http://localhost:3000](http://localhost:3000) to view the web client.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Building for Mobile
+```bash
+# Compile static export & sync to native Android/iOS
+npm run build
+npx cap sync
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Open in Android Studio or Xcode
+npx cap open android
+npx cap open ios
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🧪 Testing
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+# Run 140+ unit and fast-check property tests
+npm test
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 📜 License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Private & Proprietary. All rights reserved.
