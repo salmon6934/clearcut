@@ -3,7 +3,9 @@
 
 import type { LocalStore } from './local-store';
 import type { MutationQueue } from './queue';
-import type { SyncLifecycleManager } from '../sync/lifecycle';
+import type { SyncLifecycleManager, SyncStateSnapshot } from '../sync/lifecycle';
+import { isDeviceOnline } from '../sync/lifecycle';
+import { showToast } from '../ui/toast';
 import { validateExpense } from '../engine/validate';
 import { computeBalances } from '../engine/balances';
 import { EngineError } from '../engine/errors';
@@ -25,6 +27,15 @@ export class DomainRepository {
     public readonly queue: MutationQueue,
     public readonly syncManager?: SyncLifecycleManager
   ) {}
+
+  private checkOnlineAndNotify(): boolean {
+    const online = isDeviceOnline();
+    if (!online) {
+      showToast('No network connection. Saved locally — will sync when online.', 'warning', 4000);
+      haptics.warning().catch(() => {});
+    }
+    return online;
+  }
 
   /**
    * Synchronously creates a group and assigns the owner member locally,
@@ -78,6 +89,8 @@ export class DomainRepository {
       updatedAt: now,
       _sync: 'pending',
     };
+
+    this.checkOnlineAndNotify();
 
     // 1. Synchronous local state write
     this.store.upsertGroup(group);
@@ -143,6 +156,12 @@ export class DomainRepository {
     const now = new Date().toISOString();
     const id = draft.id || crypto.randomUUID();
 
+    // Resolve member id for createdBy if available
+    const member = this.store
+      .getGroupMembers(draft.groupId)
+      .find((m) => m.userId === currentUserId || m.id === currentUserId);
+    const createdBy = member ? member.id : currentUserId;
+
     const expense: Expense = {
       id,
       groupId: draft.groupId,
@@ -155,7 +174,7 @@ export class DomainRepository {
       splitType: draft.splitType,
       splits: draft.splits,
       receiptPath: draft.receiptPath || null,
-      createdBy: currentUserId,
+      createdBy,
       version: 1,
       createdAt: now,
       updatedAt: now,
@@ -164,6 +183,8 @@ export class DomainRepository {
 
     // Mathematical & Invariant validation (throws if invalid)
     validateExpense(expense);
+
+    this.checkOnlineAndNotify();
 
     // 1. Synchronous local store write
     this.store.upsertExpense(expense);
@@ -212,6 +233,7 @@ export class DomainRepository {
 
     validateExpense(updated);
 
+    this.checkOnlineAndNotify();
     this.store.upsertExpense(updated);
     this.queue.enqueue('UPSERT_EXPENSE', draft.id, {
       expense: updated,
@@ -231,6 +253,7 @@ export class DomainRepository {
     const existing = this.store.getExpense(expenseId);
     if (!existing) return;
 
+    this.checkOnlineAndNotify();
     this.store.softDeleteExpense(expenseId);
     this.queue.enqueue('DELETE_EXPENSE', expenseId, {
       expenseId,
@@ -259,6 +282,7 @@ export class DomainRepository {
       _sync: 'pending',
     };
 
+    this.checkOnlineAndNotify();
     this.store.upsertExpense(restored);
 
     // Cancel pending DELETE_EXPENSE in queue if it hasn't been pushed yet
@@ -309,6 +333,7 @@ export class DomainRepository {
       _sync: 'pending',
     };
 
+    this.checkOnlineAndNotify();
     this.store.upsertSettlement(settlement);
     this.queue.enqueue('UPSERT_SETTLEMENT', id, { settlement });
 
@@ -325,6 +350,7 @@ export class DomainRepository {
     const existing = this.store.getSettlement(settlementId);
     if (!existing) return;
 
+    this.checkOnlineAndNotify();
     this.store.softDeleteSettlement(settlementId);
     this.queue.enqueue('DELETE_SETTLEMENT', settlementId, {
       settlementId,
@@ -368,6 +394,7 @@ export class DomainRepository {
       _sync: 'pending',
     };
 
+    this.checkOnlineAndNotify();
     this.store.upsertMember(member);
     this.queue.enqueue('ADD_PLACEHOLDER', id, { member });
 
@@ -381,6 +408,7 @@ export class DomainRepository {
    * Joins a group by invite code.
    */
   joinGroup(inviteCode: string, currentUserId: string): string {
+    this.checkOnlineAndNotify();
     const memberId = crypto.randomUUID();
     this.queue.enqueue('JOIN_GROUP', inviteCode, { inviteCode, memberId });
 
@@ -432,6 +460,7 @@ export class DomainRepository {
       _sync: 'pending',
     };
 
+    this.checkOnlineAndNotify();
     this.store.upsertMember(updatedMember);
     this.queue.enqueue('REMOVE_MEMBER', memberId, { groupId, memberId });
 
@@ -458,6 +487,7 @@ export class DomainRepository {
       _sync: 'pending',
     };
 
+    this.checkOnlineAndNotify();
     this.store.upsertMember(updated);
     this.queue.enqueue('UPDATE_MEMBER_ROLE', memberId, { groupId, memberId, role });
 
@@ -497,6 +527,7 @@ export class DomainRepository {
       _sync: 'pending',
     };
 
+    this.checkOnlineAndNotify();
     this.store.upsertMember(updatedPrev);
     this.store.upsertMember(updatedNew);
 
@@ -552,11 +583,30 @@ export class DomainRepository {
       _sync: 'pending',
     };
 
+    this.checkOnlineAndNotify();
     this.store.upsertMember(updatedMember);
+    this.store.deleteGroup(groupId);
     this.queue.enqueue('LEAVE_GROUP', groupId, { groupId, memberId });
 
     haptics.tap().catch(() => {});
     this.syncManager?.kick('leave_group').catch(() => {});
+  }
+
+  /**
+   * Deletes a group (soft delete). Requires user to be group owner.
+   */
+  deleteGroup(groupId: string): void {
+    const group = this.store.getGroup(groupId);
+    if (!group) {
+      throw new EngineError('GROUP_NOT_FOUND', 'Group not found');
+    }
+
+    this.checkOnlineAndNotify();
+    this.store.deleteGroup(groupId);
+    this.queue.enqueue('DELETE_GROUP', groupId, { groupId });
+
+    haptics.tap().catch(() => {});
+    this.syncManager?.kick('delete_group').catch(() => {});
   }
 
   /**
@@ -585,8 +635,21 @@ export class DomainRepository {
       throw new EngineError('VALIDATION_FAILED', 'Claim token is required');
     }
 
+    this.checkOnlineAndNotify();
     this.queue.enqueue('CLAIM_PLACEHOLDER', cleanToken, { claimToken: cleanToken });
     haptics.success().catch(() => {});
     this.syncManager?.kick('claim_placeholder').catch(() => {});
+  }
+
+  /**
+   * Clears local offline cache and performs a full authoritative resync from Supabase.
+   */
+  async resetLocalCacheAndResync(): Promise<SyncStateSnapshot | null> {
+    if (this.syncManager) {
+      return this.syncManager.resetAndCleanSync();
+    }
+    this.store.clearAllData();
+    this.queue.clear();
+    return null;
   }
 }

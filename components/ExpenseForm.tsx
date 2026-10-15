@@ -100,7 +100,7 @@ export function ExpenseForm({
     setIsSaving(true);
     try {
       // Build unified Split[] containing both paidMinor and owedMinor per member
-      const unifiedSplits: Split[] = members.map((m) => {
+      const rawSplits: Split[] = members.map((m) => {
         const payerEntry = payers.find((p) => p.memberId === m.id);
         const owedEntry = owedSplits.find((s) => s.memberId === m.id);
 
@@ -111,6 +111,9 @@ export function ExpenseForm({
           splitValue: owedEntry?.splitValue,
         };
       });
+
+      // Filter to active participants only (satisfies DB constraint: paid_minor > 0 or owed_minor > 0)
+      const unifiedSplits = rawSplits.filter((s) => s.paidMinor > 0 || s.owedMinor > 0);
 
       const expenseId = initialDraft?.id || (typeof crypto !== 'undefined' ? crypto.randomUUID() : 'draft-id');
       let finalReceiptPath = receiptPath;
@@ -125,7 +128,7 @@ export function ExpenseForm({
       }
 
       const draft: ExpenseDraft = {
-        id: initialDraft?.id || expenseId,
+        id: initialDraft?.id ? initialDraft.id : (receiptBlob ? expenseId : undefined),
         groupId,
         title: title.trim(),
         amountMinor: totalAmountMinor,
@@ -134,7 +137,7 @@ export function ExpenseForm({
         expenseDate,
         notes: notes.trim() || null,
         splitType,
-        splits: unifiedSplits,
+        splits: unifiedSplits.length > 0 ? unifiedSplits : rawSplits,
         receiptPath: finalReceiptPath,
       };
 

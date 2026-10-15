@@ -188,4 +188,134 @@ describe('T-1.7.2: Pull & Idempotent Merge Engine', () => {
     expect(store.getGroupExpenses('g-1', true)).toHaveLength(1);
     expect(store.getExpense('e-del')?.deletedAt).toBe('2026-10-10T15:00:00.000Z');
   });
+
+  it('falls back to direct table queries when pull_changes_v1 fails', async () => {
+    const { store, queue, adapter } = setup();
+
+    const mockSupabase = {
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { message: 'missing FROM-clause entry for table "c"', code: '42P01' },
+      }),
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'groups') {
+          return {
+            select: vi.fn().mockReturnValue({
+              is: vi.fn().mockResolvedValue({
+                data: [
+                  {
+                    id: 'g-1',
+                    name: 'Fallback Group',
+                    currency: 'INR',
+                    version: 1,
+                    created_by: 'u-1',
+                    updated_at: '2026-10-10T12:00:00.000Z',
+                  },
+                ],
+                error: null,
+              }),
+            }),
+          };
+        }
+        if (table === 'group_members') {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                is: vi.fn().mockResolvedValue({
+                  data: [
+                    {
+                      id: 'm-owner',
+                      group_id: 'g-1',
+                      user_id: 'u-1',
+                      display_name: 'Owner',
+                      role: 'owner',
+                      updated_at: '2026-10-10T12:00:00.000Z',
+                    },
+                    {
+                      id: 'm-member',
+                      group_id: 'g-1',
+                      user_id: 'u-2',
+                      display_name: 'Friend',
+                      role: 'member',
+                      updated_at: '2026-10-10T12:01:00.000Z',
+                    },
+                  ],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'expenses' || table === 'settlements') {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                is: vi.fn().mockResolvedValue({
+                  data: [],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            is: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        };
+      }),
+    };
+
+    const res = await pullChanges(store, queue, adapter, mockSupabase as any);
+
+    expect(res.groupsCount).toBe(1);
+    expect(res.membersCount).toBe(2);
+
+    const members = store.getGroupMembers('g-1');
+    expect(members).toHaveLength(2);
+    expect(members.map((m) => m.displayName)).toContain('Owner');
+    expect(members.map((m) => m.displayName)).toContain('Friend');
+  });
+
+  it('preserves items correctly on fullRefresh without premature multi-page deletion', async () => {
+    const { store, queue, adapter } = setup();
+
+    // Member already in local store
+    store.upsertMember({
+      id: 'm-keep',
+      groupId: 'g-1',
+      userId: 'u-keep',
+      displayName: 'Existing Member',
+      role: 'member',
+      _sync: 'synced',
+    });
+
+    // Page 1 returns member
+    const mockSupabase = {
+      rpc: vi.fn().mockResolvedValueOnce({
+        data: {
+          groups: [{ id: 'g-1', name: 'G1', currency: 'INR', version: 1 }],
+          members: [
+            {
+              id: 'm-keep',
+              group_id: 'g-1',
+              user_id: 'u-keep',
+              display_name: 'Existing Member',
+              role: 'member',
+            },
+          ],
+          expenses: [],
+          settlements: [],
+          active_group_ids: ['g-1'],
+          has_more: false,
+        },
+        error: null,
+      }),
+    };
+
+    await pullChanges(store, queue, adapter, mockSupabase as any, 500, true);
+
+    expect(store.getMember('m-keep')).toBeDefined();
+    expect(store.getGroupMembers('g-1')).toHaveLength(1);
+  });
 });

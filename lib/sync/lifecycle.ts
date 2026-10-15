@@ -22,6 +22,8 @@ export interface SyncStateSnapshot {
 
 export type SyncStatusListener = (state: SyncStateSnapshot) => void;
 
+import { showToast } from '../ui/toast';
+
 export function isDeviceOnline(): boolean {
   if (typeof window === 'undefined') {
     return true;
@@ -35,6 +37,7 @@ export function isDeviceOnline(): boolean {
 export class SyncLifecycleManager {
   private status: SyncStatus = 'idle';
   private lastSyncedAt: string | null = null;
+  private lastSyncTimestamp = 0;
   private lastError: string | null = null;
   private isSyncing = false;
   private listeners = new Set<SyncStatusListener>();
@@ -56,12 +59,18 @@ export class SyncLifecycleManager {
    */
   init(): () => void {
     const handleOnline = () => {
-      this.kick('online_event');
+      showToast('Back online! Syncing ledger with Supabase...', 'info', 2500);
+      this.kick('online_event', true).then((res) => {
+        if (res.status === 'idle') {
+          showToast('Sync complete! Ledger is up to date.', 'success', 2500);
+        }
+      });
     };
 
     const handleOffline = () => {
       this.status = 'offline';
       this.notifyListeners();
+      showToast('Network connection lost. Changes will be saved locally.', 'warning', 3500);
     };
 
     if (typeof window !== 'undefined') {
@@ -70,6 +79,9 @@ export class SyncLifecycleManager {
 
       if (!isDeviceOnline()) {
         this.status = 'offline';
+      } else {
+        // Automatically sync on startup
+        this.kick('init_online', false).catch(() => {});
       }
     }
 
@@ -148,10 +160,16 @@ export class SyncLifecycleManager {
   /**
    * Kicks the push drain and pull sync cycle.
    */
-  async kick(reason?: string): Promise<SyncStateSnapshot> {
-    if (!isDeviceOnline()) {
+  async kick(reason?: string, fullRefresh = false): Promise<SyncStateSnapshot> {
+    if (!isDeviceOnline() && reason !== 'manual_refresh') {
       this.status = 'offline';
       this.notifyListeners();
+      return this.getState();
+    }
+
+    // Skip passive page-mount refreshes if we already synced within the last 30 seconds
+    const isPassiveMount = reason?.endsWith('_mount');
+    if (isPassiveMount && Date.now() - this.lastSyncTimestamp < 30_000) {
       return this.getState();
     }
 
@@ -168,10 +186,13 @@ export class SyncLifecycleManager {
       // 1. Push drain pending mutations
       const pushResult = await drainQueue(this.queue, this.store, this.supabase);
 
-      // 2. Pull remote changes
-      await pullChanges(this.store, this.queue, this.adapter, this.supabase);
+      // 2. Pull remote changes (passive mounts use incremental diffs rather than full refresh)
+      const shouldFullRefresh = isPassiveMount ? false : fullRefresh;
+      await pullChanges(this.store, this.queue, this.adapter, this.supabase, 500, shouldFullRefresh);
 
-      this.lastSyncedAt = new Date().toISOString();
+      const now = new Date();
+      this.lastSyncedAt = now.toISOString();
+      this.lastSyncTimestamp = now.getTime();
       if (pushResult.halted && pushResult.backoffMs) {
         this.status = 'error';
         this.lastError = `Sync paused: network backoff (${Math.round(pushResult.backoffMs / 1000)}s)`;
@@ -188,5 +209,19 @@ export class SyncLifecycleManager {
     }
 
     return this.getState();
+  }
+
+  /**
+   * Wipes local offline cache and performs a full authoritative resync from Supabase.
+   */
+  async resetAndCleanSync(): Promise<SyncStateSnapshot> {
+    this.store.clearAllData();
+    this.queue.clear();
+    try {
+      this.adapter.removeItem('sync:cursors');
+    } catch (err) {
+      console.warn('[SyncLifecycle] Failed to remove cursors during reset:', err);
+    }
+    return this.kick('user_clean_resync', true);
   }
 }

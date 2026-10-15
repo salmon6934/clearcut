@@ -15,7 +15,8 @@ export type MutationType =
   | 'REMOVE_MEMBER'
   | 'UPDATE_MEMBER_ROLE'
   | 'TRANSFER_OWNERSHIP'
-  | 'CLAIM_PLACEHOLDER';
+  | 'CLAIM_PLACEHOLDER'
+  | 'DELETE_GROUP';
 
 export type MutationStatus = 'pending' | 'inflight' | 'synced' | 'conflict' | 'dead';
 

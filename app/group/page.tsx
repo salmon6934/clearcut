@@ -29,6 +29,8 @@ import { SyncBadge } from '../../components/SyncBadge';
 import { Toast } from '../../components/Toast';
 import { GroupRealtimeManager, type RealtimeStatus } from '../../lib/sync/realtime';
 import { exportAndShareGroupCsv } from '../../lib/data/export-csv';
+import { showToast } from '../../lib/ui/toast';
+import { haptics } from '../../lib/native/haptics';
 import type { SuggestedPayment, SettlementDraft, Expense } from '../../lib/data/types';
 
 type GroupTab = 'expenses' | 'balances' | 'activity';
@@ -85,7 +87,8 @@ function GroupDetailContent() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    repo.syncManager?.kick('group_mount', true).catch(() => {});
+  }, [repo]);
 
   if (!mounted) {
     return (
@@ -122,7 +125,86 @@ function GroupDetailContent() {
   // Active vs Deleted expenses
   const activeExpenses = allExpenses.filter((e) => !e.deletedAt);
   const deletedExpenses = allExpenses.filter((e) => Boolean(e.deletedAt));
-  const baseExpenses = expenseFilter === 'active' ? activeExpenses : deletedExpenses;
+  const baseExpenses = activeExpenses;
+
+  // Group Activity Event Stream (includes soft-deleted expenses with restore actions)
+  interface GroupActivityEvent {
+    id: string;
+    type: 'deleted' | 'expense' | 'settlement' | 'init';
+    timestamp: string;
+    title: string;
+    subtitle: string;
+    amountMinor?: number;
+    badgeEmoji: string;
+    badgeBg: string;
+    isDeleted?: boolean;
+    expenseId?: string;
+  }
+
+  const groupActivities: GroupActivityEvent[] = [];
+
+  if (group) {
+    groupActivities.push({
+      id: `group-init-${group.id}`,
+      type: 'init',
+      timestamp: group.createdAt || new Date().toISOString(),
+      title: `Group "${group.name}" initialized`,
+      subtitle: `${members.length} member${members.length > 1 ? 's' : ''} enrolled in ${group.currency}`,
+      badgeEmoji: '📁',
+      badgeBg: 'bg-[#ffd600]',
+    });
+  }
+
+  for (const exp of allExpenses) {
+    if (exp.deletedAt) {
+      groupActivities.push({
+        id: `exp-del-${exp.id}`,
+        type: 'deleted',
+        timestamp: exp.deletedAt || exp.updatedAt || new Date().toISOString(),
+        title: `Deleted "${exp.title}"`,
+        subtitle: `Soft-deleted • Tap restore to reinstate in group`,
+        amountMinor: exp.amountMinor,
+        badgeEmoji: '🗑️',
+        badgeBg: 'bg-[#ff8a80]',
+        isDeleted: true,
+        expenseId: exp.id,
+      });
+    } else {
+      const payerSplits = (exp.splits || []).filter((s) => s.paidMinor > 0);
+      const payerNames = payerSplits
+        .map((s) => members.find((m) => m.id === s.memberId)?.displayName || 'Someone')
+        .join(', ');
+
+      groupActivities.push({
+        id: `exp-${exp.id}`,
+        type: 'expense',
+        timestamp: exp.createdAt || exp.expenseDate || new Date().toISOString(),
+        title: `Added "${exp.title}"`,
+        subtitle: payerNames ? `Paid by ${payerNames}` : `Expense recorded`,
+        amountMinor: exp.amountMinor,
+        badgeEmoji: '🧾',
+        badgeBg: 'bg-[#00e5ff]',
+      });
+    }
+  }
+
+  for (const s of settlements) {
+    const fromName = members.find((m) => m.id === s.fromMemberId)?.displayName || 'Member';
+    const toName = members.find((m) => m.id === s.toMemberId)?.displayName || 'Member';
+
+    groupActivities.push({
+      id: `settle-${s.id}`,
+      type: 'settlement',
+      timestamp: s.createdAt || s.settledOn || new Date().toISOString(),
+      title: `${fromName} paid ${toName}`,
+      subtitle: s.note || `Settlement recorded`,
+      amountMinor: s.amountMinor,
+      badgeEmoji: '⚡',
+      badgeBg: 'bg-[#ccff00]',
+    });
+  }
+
+  groupActivities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   // Search & category filtering
   const displayedExpenses = baseExpenses.filter((exp) => {
@@ -177,8 +259,10 @@ function GroupDetailContent() {
     }
   };
 
-  const handleRestoreExpense = (expenseId: string) => {
-    repo.restoreExpense(expenseId);
+  const handleRestoreExpense = async (expenseId: string) => {
+    await haptics.tap().catch(() => {});
+    const restored = repo.restoreExpense(expenseId);
+    showToast(`Restored "${restored?.title || 'Expense'}"! Balances updated.`, 'success', 2500);
   };
 
   const handleDeleteSettlement = (settlementId: string) => {
@@ -296,45 +380,30 @@ function GroupDetailContent() {
               filteredCount={displayedExpenses.length}
             />
 
-            {/* Filter Toggle: Active vs Deleted */}
+            {/* Notice for soft-deleted expenses */}
             {deletedExpenses.length > 0 && (
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#f0f0ea] border-2 border-black text-xs font-mono font-black w-fit">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[#ffebee] border-2 border-black text-xs font-mono font-bold text-black shadow-[2px_2px_0px_0px_#000]">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🗑️</span>
+                  <span>{deletedExpenses.length} expense{deletedExpenses.length > 1 ? 's' : ''} soft-deleted</span>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setExpenseFilter('active')}
-                  className={`px-3 py-1 rounded-lg uppercase transition-all ${
-                    expenseFilter === 'active'
-                      ? 'bg-black text-[#ccff00] border-2 border-black shadow-[1px_1px_0px_0px_#000]'
-                      : 'text-black/60 hover:text-black'
-                  }`}
+                  onClick={() => setActiveTab('activity')}
+                  className="px-2.5 py-1 rounded-lg bg-white border-2 border-black font-black text-[11px] uppercase hover:bg-[#ffd600] transition active:scale-95 shadow-[1px_1px_0px_0px_#000]"
                 >
-                  Active ({activeExpenses.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExpenseFilter('deleted')}
-                  className={`px-3 py-1 rounded-lg uppercase transition-all ${
-                    expenseFilter === 'deleted'
-                      ? 'bg-[#ff8a80] text-black border-2 border-black shadow-[1px_1px_0px_0px_#000]'
-                      : 'text-black/60 hover:text-black'
-                  }`}
-                >
-                  Deleted ({deletedExpenses.length})
+                  VIEW IN ACTIVITY
                 </button>
               </div>
             )}
 
             {displayedExpenses.length === 0 ? (
               <EmptyState
-                icon={<span className="text-2xl">{expenseFilter === 'active' ? '🧾' : '🗑️'}</span>}
-                title={expenseFilter === 'active' ? 'No expenses added yet' : 'No deleted expenses'}
-                description={
-                  expenseFilter === 'active'
-                    ? "Tap the '+ Add Expense' button below to record dinner, tickets, or groceries."
-                    : 'Expenses you soft-delete will appear here for review and restoration.'
-                }
-                actionText={expenseFilter === 'active' ? '+ Add Expense' : undefined}
-                onAction={expenseFilter === 'active' ? () => router.push(`/group/expense?id=${group.id}`) : undefined}
+                icon={<span className="text-2xl">🧾</span>}
+                title="No expenses added yet"
+                description="Tap the '+ Add Expense' button below to record dinner, tickets, or groceries."
+                actionText="+ Add Expense"
+                onAction={() => router.push(`/group/expense?id=${group.id}`)}
               />
             ) : (
               <div className="space-y-2">
@@ -462,28 +531,82 @@ function GroupDetailContent() {
 
         {/* Tab 3: Activity Feed */}
         {activeTab === 'activity' && (
-          <div className="space-y-2">
-            <div className="p-4 rounded-xl border-2 border-black bg-white text-xs font-mono font-bold text-black space-y-3 shadow-[3px_3px_0px_0px_#000]">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#ccff00] border border-black" />
-                <span>Group &ldquo;{group.name}&rdquo; initialized</span>
-                <span className="text-black/60 ml-auto">{new Date(group.createdAt || '').toLocaleDateString()}</span>
-              </div>
-              {activeExpenses.slice(0, 5).map((e) => (
-                <div key={e.id} className="flex items-center gap-2 border-t-2 border-black pt-2.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#00e5ff] border border-black" />
-                  <span className="truncate">Added expense &ldquo;{e.title}&rdquo; (₹ {formatMinor(e.amountMinor, e.currency)})</span>
-                  <span className="text-black/60 ml-auto shrink-0">{new Date(e.createdAt || e.expenseDate || '').toLocaleDateString()}</span>
+          <div className="space-y-3">
+            {groupActivities.length === 0 ? (
+              <EmptyState
+                icon={<span>⚡</span>}
+                title="No activity recorded yet"
+                description="When you record expenses, log settlements, or soft-delete entries, the ledger event stream will appear here."
+              />
+            ) : (
+              groupActivities.map((act) => (
+                <div
+                  key={act.id}
+                  className={`rounded-2xl border-2 border-black p-3.5 shadow-[3px_3px_0px_0px_#000] flex items-center justify-between gap-3 ${
+                    act.isDeleted ? 'bg-[#ffebee]' : 'bg-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-9 h-9 rounded-xl border-2 border-black flex items-center justify-center text-sm shrink-0 shadow-[1.5px_1.5px_0px_0px_#000] ${act.badgeBg}`}
+                    >
+                      {act.badgeEmoji}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`font-bold text-xs sm:text-sm text-black uppercase tracking-tight ${
+                            act.isDeleted ? 'line-through text-black/50' : ''
+                          }`}
+                        >
+                          {act.title}
+                        </span>
+                        {act.isDeleted && (
+                          <span className="font-mono text-[9px] font-black uppercase px-1.5 py-0.5 rounded border border-black bg-[#ff8a80] text-black">
+                            DELETED
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-mono text-[11px] text-black/60 font-bold truncate">
+                        {act.subtitle}
+                      </p>
+                      <p className="font-mono text-[10px] text-black/40 font-bold">
+                        {new Date(act.timestamp).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {typeof act.amountMinor === 'number' && (
+                      <div className="text-right">
+                        <div
+                          className={`font-mono font-black text-xs sm:text-sm text-black ${
+                            act.isDeleted ? 'line-through text-black/40' : ''
+                          }`}
+                        >
+                          ₹ {formatMinor(act.amountMinor, group.currency)}
+                        </div>
+                      </div>
+                    )}
+
+                    {act.isDeleted && act.expenseId && (
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreExpense(act.expenseId!)}
+                        className="px-2.5 py-1 rounded-lg bg-[#ccff00] hover:bg-[#bbf000] text-black border-2 border-black font-mono font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+                      >
+                        RESTORE
+                      </button>
+                    )}
+                  </div>
                 </div>
-              ))}
-              {settlements.slice(0, 5).map((s) => (
-                <div key={s.id} className="flex items-center gap-2 border-t-2 border-black pt-2.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ccff00] border border-black" />
-                  <span className="truncate">Recorded payment of ₹ {formatMinor(s.amountMinor, group.currency)}</span>
-                  <span className="text-black/60 ml-auto shrink-0">{new Date(s.createdAt || s.settledOn || '').toLocaleDateString()}</span>
-                </div>
-              ))}
-            </div>
+              ))
+            )}
           </div>
         )}
       </div>

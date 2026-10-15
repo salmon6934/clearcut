@@ -184,4 +184,46 @@ describe('T-1.8.1: Repository Command Layer', () => {
     // Duplicate name within same group throws error
     expect(() => repo.addPlaceholderMember('g-1', 'charlie')).toThrow();
   });
+
+  it('deletes a group and enqueues DELETE_GROUP', () => {
+    const { repo, store, queue, mockSyncManager } = setup();
+
+    const { group } = repo.createGroup(
+      { name: 'To Delete', type: 'trip', currency: 'INR' },
+      'user-1',
+      'Owner'
+    );
+
+    expect(store.getAllGroups()).toHaveLength(1);
+
+    repo.deleteGroup(group.id);
+
+    // Group soft-deleted locally
+    expect(store.getAllGroups()).toHaveLength(0);
+    expect(store.getGroup(group.id)?.deletedAt).toBeDefined();
+
+    // Enqueued DELETE_GROUP
+    const lastItem = queue.getAllItems().find((m) => m.type === 'DELETE_GROUP');
+    expect(lastItem).toBeDefined();
+    expect(lastItem?.entityId).toBe(group.id);
+    expect(mockSyncManager.kick).toHaveBeenCalledWith('delete_group');
+  });
+
+  it('removes group locally when leaving group', () => {
+    const { repo, store } = setup();
+
+    const { group, member } = repo.createGroup(
+      { name: 'To Leave', type: 'trip', currency: 'INR' },
+      'user-1',
+      'Alice'
+    );
+
+    expect(store.getAllGroups()).toHaveLength(1);
+
+    repo.leaveGroup(group.id, member.id);
+
+    // Group removed from active local list
+    expect(store.getAllGroups()).toHaveLength(0);
+    expect(store.getMember(member.id)?.leftAt).toBeDefined();
+  });
 });

@@ -229,4 +229,99 @@ describe('T-1.7.1: Push Drain Engine with Error Classification', () => {
     expect(res.backoffMs).toBeGreaterThan(0);
     expect(queue.getPendingCount()).toBe(1); // Still pending for retry
   });
+
+  it('synchronizes inviteCode on CREATE_GROUP and populates group and members on JOIN_GROUP', async () => {
+    const { store, queue } = setup();
+
+    // 1. Test CREATE_GROUP
+    const group: Group = {
+      id: 'grp-test-1',
+      name: 'Goa Trip',
+      type: 'trip',
+      currency: 'INR',
+      inviteCode: 'GOA123',
+      createdBy: 'u-1',
+      version: 1,
+      createdAt: '2026-10-10',
+      updatedAt: '2026-10-10',
+      _sync: 'pending',
+    };
+    store.upsertGroup(group);
+
+    queue.enqueue('CREATE_GROUP', 'grp-test-1', {
+      group,
+      ownerMemberId: 'm-owner-1',
+    });
+
+    const mockSupabase = {
+      rpc: vi.fn().mockImplementation((fn: string, params: any) => {
+        if (fn === 'create_group_v1') {
+          expect(params.p_group.invite_code).toBe('GOA123');
+          return Promise.resolve({
+            data: {
+              group: { ...params.p_group, invite_code: 'GOA123' },
+              member: { id: params.p_owner_member_id, group_id: params.p_group.id },
+            },
+            error: null,
+          });
+        }
+        if (fn === 'join_group_v1') {
+          expect(params.p_code).toBe('JOINME');
+          expect(params.p_invite_code).toBe('JOINME');
+          return Promise.resolve({
+            data: {
+              group: {
+                id: 'grp-joined-1',
+                name: 'Joined Group',
+                type: 'trip',
+                currency: 'USD',
+                invite_code: 'JOINME',
+                created_by: 'u-creator',
+                version: 1,
+                created_at: '2026-10-10',
+                updated_at: '2026-10-10',
+              },
+              members: [
+                {
+                  id: 'm-joined-1',
+                  group_id: 'grp-joined-1',
+                  user_id: 'u-friend',
+                  display_name: 'Friend',
+                  role: 'member',
+                  joined_at: '2026-10-10',
+                  created_at: '2026-10-10',
+                  updated_at: '2026-10-10',
+                },
+              ],
+            },
+            error: null,
+          });
+        }
+        return Promise.resolve({ data: null, error: null });
+      }),
+      auth: { refreshSession: vi.fn() },
+    };
+
+    let res = await drainQueue(queue, store, mockSupabase as any);
+    expect(res.synced).toBe(1);
+    expect(store.getGroup('grp-test-1')?._sync).toBe('synced');
+    expect(store.getGroup('grp-test-1')?.inviteCode).toBe('GOA123');
+
+    // 2. Test JOIN_GROUP
+    queue.enqueue('JOIN_GROUP', 'JOINME', {
+      inviteCode: 'joinme',
+      memberId: 'm-joined-1',
+    });
+
+    res = await drainQueue(queue, store, mockSupabase as any);
+    expect(res.synced).toBe(1);
+    const joinedGroup = store.getGroup('grp-joined-1');
+    expect(joinedGroup).toBeDefined();
+    expect(joinedGroup?.name).toBe('Joined Group');
+    expect(joinedGroup?._sync).toBe('synced');
+    const joinedMember = store.getMember('m-joined-1');
+    expect(joinedMember).toBeDefined();
+    expect(joinedMember?.displayName).toBe('Friend');
+    expect(joinedMember?._sync).toBe('synced');
+  });
 });

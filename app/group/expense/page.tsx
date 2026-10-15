@@ -53,7 +53,7 @@ function ExpenseEntryContent() {
   }
 
   const handleSave = (draft: ExpenseDraft) => {
-    if (draft.id) {
+    if (existingExpense) {
       repo.editExpense(draft, currentUserId);
     } else {
       repo.addExpense(draft, currentUserId);

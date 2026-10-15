@@ -8,6 +8,8 @@ import { initPushListeners } from '@/lib/native/push';
 import { initLocalNotificationListeners } from '@/lib/native/notifications';
 import { initAuth } from '@/lib/auth';
 import { AuthGuard } from './AuthGuard';
+import { GlobalToast } from './GlobalToast';
+import { OfflineIndicator } from './OfflineIndicator';
 
 export function NativeProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -52,7 +54,9 @@ export function NativeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-screen w-full max-w-xl mx-auto relative select-none bg-[#f5f5f0] text-black">
+      <OfflineIndicator />
       <AuthGuard>{children}</AuthGuard>
+      <GlobalToast />
     </div>
   );
 }

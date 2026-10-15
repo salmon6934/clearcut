@@ -15,6 +15,7 @@ import {
 import { BottomNav } from '../../components/BottomNav';
 import { SyncBadge } from '../../components/SyncBadge';
 import { useRepository } from '../../lib/data/hooks';
+import { showToast } from '../../lib/ui/toast';
 
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'SGD', 'JPY'];
 
@@ -27,6 +28,7 @@ export default function SettingsPage() {
   const [currency, setCurrency] = useState(authState.profile?.defaultCurrency || 'INR');
   const [isUpdating, setIsUpdating] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Deletion modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -77,6 +79,26 @@ export default function SettingsPage() {
       setIsDeleting(false);
     } else {
       router.push('/auth');
+    }
+  };
+
+  const handleResetLocalCache = async () => {
+    if (!window.confirm('Wipe local offline cache and reload fresh data from Supabase?')) {
+      return;
+    }
+    setIsResetting(true);
+    try {
+      const snapshot = await repo.resetLocalCacheAndResync();
+      if (snapshot && snapshot.status === 'error' && snapshot.lastError) {
+        showToast(`Cache reset: ${snapshot.lastError}`, 'warning', 3500);
+      } else {
+        showToast('Local cache wiped and freshly loaded from Supabase!', 'success', 2500);
+      }
+      router.replace('/');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to resync from Supabase', 'error', 3000);
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -188,6 +210,26 @@ export default function SettingsPage() {
             </div>
             <span className="text-sm font-black">→</span>
           </Link>
+
+          {/* Reset Local Data / Clean Sync */}
+          <div className="pt-2 border-t-2 border-black/10 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-mono font-black text-black uppercase">
+                Reset Offline Cache
+              </p>
+              <p className="text-[11px] font-mono text-black/60 font-bold">
+                Wipes local database and re-downloads fresh data
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetLocalCache}
+              disabled={isResetting}
+              className="py-1.5 px-3 text-[11px] font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ffd600] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 transition cursor-pointer"
+            >
+              {isResetting ? 'RESETTING...' : 'RESET DATA'}
+            </button>
+          </div>
         </div>
 
         {/* Account Actions: Logout & Delete Account */}

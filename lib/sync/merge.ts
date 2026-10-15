@@ -89,10 +89,7 @@ export function mergeRemoteExpense(
     return;
   }
 
-  // If local exists with higher version than remote, don't regress
-  if (local && local.version > (remote.version || 1)) {
-    return;
-  }
+  // No unpushed local mutation: Supabase is authoritative and overrides local store.
 
   const splits = Array.isArray(remote.splits)
     ? remote.splits.map((s: any) => ({

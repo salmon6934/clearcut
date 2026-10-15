@@ -46,7 +46,8 @@ export default function FriendsPage() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    repo.syncManager?.kick('friends_mount', true).catch(() => {});
+  }, [repo]);
 
   if (!mounted) {
     return (

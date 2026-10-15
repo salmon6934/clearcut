@@ -8,6 +8,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useRepository } from '../../lib/data/hooks';
 import { getAuthState } from '../../lib/auth';
+import { supabase } from '../../lib/supabase';
 
 function JoinContent() {
   const searchParams = useSearchParams();
@@ -29,7 +30,7 @@ function JoinContent() {
     e.preventDefault();
     setError(null);
 
-    const cleanCode = code.trim().toLowerCase();
+    const cleanCode = code.trim().toUpperCase();
     if (!cleanCode) {
       setError('Please enter an invite code');
       return;
@@ -46,10 +47,82 @@ function JoinContent() {
 
     setIsSubmitting(true);
     try {
-      repo.joinGroup(cleanCode, currentUserId);
-      // Kick sync immediately to fetch the group data from Supabase
-      await repo.syncManager?.kick('join_group');
-      router.push('/');
+      const memberId = crypto.randomUUID();
+      const { data, error: rpcError } = await supabase.rpc('join_group_v1', {
+        p_code: cleanCode,
+        p_invite_code: cleanCode,
+        p_member_id: memberId,
+      });
+
+      if (rpcError) {
+        // If group not found
+        if (rpcError.code === 'PT404' || rpcError.message?.includes('INVITE_INVALID') || rpcError.message?.includes('not found')) {
+          throw new Error(`Group not found with code "${cleanCode}". Please verify the code and try again.`);
+        }
+        // If offline / network error, fallback to offline queue
+        if (rpcError.message?.includes('Failed to fetch') || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+          repo.joinGroup(cleanCode, currentUserId);
+          router.push('/');
+          return;
+        }
+        throw new Error(rpcError.message || 'Failed to join group');
+      }
+
+      // Write newly joined group and its members directly into the local store
+      if (data?.group) {
+        const g = data.group;
+        repo.store.upsertGroup({
+          id: g.id,
+          name: g.name,
+          type: g.type || 'trip',
+          currency: g.currency,
+          inviteCode: g.invite_code,
+          createdBy: g.created_by,
+          version: g.version || 1,
+          createdAt: g.created_at,
+          updatedAt: g.updated_at,
+          _sync: 'synced',
+        });
+
+        if (Array.isArray(data.members)) {
+          for (const m of data.members) {
+            repo.store.upsertMember({
+              id: m.id,
+              groupId: m.group_id,
+              userId: m.user_id,
+              displayName: m.display_name,
+              role: m.role,
+              joinedAt: m.joined_at,
+              leftAt: m.left_at,
+              createdAt: m.created_at,
+              updatedAt: m.updated_at,
+              _sync: 'synced',
+            });
+          }
+        } else if (data.member) {
+          const m = data.member;
+          repo.store.upsertMember({
+            id: m.id,
+            groupId: m.group_id,
+            userId: m.user_id,
+            displayName: m.display_name,
+            role: m.role,
+            joinedAt: m.joined_at,
+            leftAt: m.left_at,
+            createdAt: m.created_at,
+            updatedAt: m.updated_at,
+            _sync: 'synced',
+          });
+        }
+
+        // Kick background sync to pull recent expenses
+        repo.syncManager?.kick('join_group').catch(() => {});
+
+        // Direct navigation to the joined group
+        router.push(`/group?id=${g.id}`);
+      } else {
+        router.push('/');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to join group');
       setIsSubmitting(false);
@@ -77,9 +150,41 @@ function JoinContent() {
 
     setIsSubmitting(true);
     try {
-      repo.claimPlaceholder(cleanClaim);
-      await repo.syncManager?.kick('claim_placeholder');
-      router.push('/');
+      const { data, error: rpcError } = await supabase.rpc('claim_placeholder_v1', {
+        p_claim_token: cleanClaim,
+      });
+
+      if (rpcError) {
+        if (rpcError.code === 'PT404' || rpcError.message?.includes('CLAIM_INVALID')) {
+          throw new Error('Invalid or expired claim token. Please ask the group admin for a new link.');
+        }
+        if (rpcError.message?.includes('Failed to fetch') || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+          repo.claimPlaceholder(cleanClaim);
+          router.push('/');
+          return;
+        }
+        throw new Error(rpcError.message || 'Failed to claim member profile');
+      }
+
+      if (data?.member) {
+        const m = data.member;
+        repo.store.upsertMember({
+          id: m.id,
+          groupId: m.group_id,
+          userId: m.user_id,
+          displayName: m.display_name,
+          role: m.role,
+          joinedAt: m.joined_at,
+          leftAt: m.left_at,
+          createdAt: m.created_at,
+          updatedAt: m.updated_at,
+          _sync: 'synced',
+        });
+        repo.syncManager?.kick('claim_placeholder').catch(() => {});
+        router.push(`/group?id=${m.group_id}`);
+      } else {
+        router.push('/');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to claim member profile');
       setIsSubmitting(false);
@@ -143,7 +248,7 @@ function JoinContent() {
                 </div>
                 <h2 className="text-base font-mono font-black uppercase">YOU&apos;RE INVITED!</h2>
                 <p className="text-xs font-mono text-black/60">
-                  Enter the 8-character code shared by your group peer.
+                  Enter the invite code shared by your group peer.
                 </p>
               </div>
 
@@ -156,9 +261,9 @@ function JoinContent() {
                     type="text"
                     required
                     maxLength={32}
-                    placeholder="E.G. A1B2C3D4"
+                    placeholder="E.G. ABC123"
                     value={code}
-                    onChange={(e) => setCode(e.target.value)}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
                     className="w-full px-4 py-3 text-center text-lg font-mono font-black tracking-widest rounded-lg border-2 border-black bg-white text-black focus:outline-none focus:bg-[#faffea] uppercase shadow-[2px_2px_0px_0px_#000]"
                   />
                 </div>

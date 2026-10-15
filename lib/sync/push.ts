@@ -130,7 +130,7 @@ export async function drainQueue(
       result.processed++;
 
       try {
-        const rpcResult = await executeMutationRpc(pendingItem, supabase);
+        const rpcResult = await executeMutationRpc(pendingItem, supabase, store);
 
         // Success!
         consecutiveTransientFailures = 0;
@@ -197,7 +197,8 @@ export async function drainQueue(
  */
 async function executeMutationRpc(
   mutation: MutationRecord,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  store?: LocalStore
 ): Promise<any> {
   const { type, payload, id: clientMutationId } = mutation;
 
@@ -211,6 +212,7 @@ async function executeMutationRpc(
           name: group.name,
           type: group.type,
           currency: group.currency,
+          invite_code: group.inviteCode,
         },
         p_owner_member_id: ownerMemberId,
         p_mutation_id: clientMutationId,
@@ -235,8 +237,10 @@ async function executeMutationRpc(
 
     case 'JOIN_GROUP': {
       const { inviteCode, memberId } = payload;
+      const cleanCode = (inviteCode || '').trim().toUpperCase();
       const { data, error } = await supabase.rpc('join_group_v1', {
-        p_invite_code: inviteCode,
+        p_code: cleanCode,
+        p_invite_code: cleanCode,
         p_member_id: memberId,
         p_mutation_id: clientMutationId,
       });
@@ -248,11 +252,26 @@ async function executeMutationRpc(
       const expense = payload.expense as Expense;
       const baseVersion = payload.baseVersion ?? expense.version ?? 1;
 
-      const splitsPayload = (expense.splits || []).map((s) => ({
-        member_id: s.memberId,
-        paid_minor: s.paidMinor,
-        owed_minor: s.owedMinor,
-      }));
+      // Filter to active participants only (satisfies DB constraint: paid_minor > 0 or owed_minor > 0)
+      const splitsPayload = (expense.splits || [])
+        .filter((s) => (s.paidMinor ?? 0) > 0 || (s.owedMinor ?? 0) > 0)
+        .map((s) => ({
+          member_id: s.memberId,
+          paid_minor: s.paidMinor,
+          owed_minor: s.owedMinor,
+        }));
+
+      // Resolve created_by to member_id if passed as user_id
+      let createdBy = expense.createdBy;
+      if (store) {
+        const groupMembers = store.getGroupMembers(expense.groupId);
+        const matchingMember = groupMembers.find(
+          (m) => m.userId === expense.createdBy || m.id === expense.createdBy
+        );
+        if (matchingMember) {
+          createdBy = matchingMember.id;
+        }
+      }
 
       const { data, error } = await supabase.rpc('upsert_expense_v1', {
         p_expense: {
@@ -266,7 +285,7 @@ async function executeMutationRpc(
           expense_date: expense.expenseDate ? expense.expenseDate.split('T')[0] : null,
           split_type: expense.splitType,
           receipt_path: expense.receiptPath || null,
-          created_by: expense.createdBy,
+          created_by: createdBy,
           splits: splitsPayload,
         },
         p_base_version: baseVersion,
@@ -368,6 +387,16 @@ async function executeMutationRpc(
       return data;
     }
 
+    case 'DELETE_GROUP': {
+      const { groupId } = payload;
+      const { data, error } = await supabase.rpc('delete_group_v1', {
+        p_group_id: groupId,
+        p_mutation_id: clientMutationId,
+      });
+      if (error) throw error;
+      return data;
+    }
+
     default:
       throw new Error(`Unsupported mutation type: ${type}`);
   }
@@ -387,8 +416,73 @@ function updateLocalStoreEntityOnSync(
     case 'CREATE_GROUP': {
       const group = store.getGroup(entityId);
       if (group) {
-        store.upsertGroup({ ...group, _sync: 'synced' });
+        store.upsertGroup({
+          ...group,
+          inviteCode: rpcResponse?.group?.invite_code || group.inviteCode,
+          _sync: 'synced',
+        });
       }
+      const ownerMemberId = mutation.payload?.ownerMemberId || rpcResponse?.member?.id;
+      if (ownerMemberId) {
+        const ownerMember = store.getMember(ownerMemberId);
+        if (ownerMember) {
+          store.upsertMember({ ...ownerMember, _sync: 'synced' });
+        }
+      }
+      break;
+    }
+
+    case 'JOIN_GROUP': {
+      if (rpcResponse?.group) {
+        const g = rpcResponse.group;
+        store.upsertGroup({
+          id: g.id,
+          name: g.name,
+          type: g.type || 'trip',
+          currency: g.currency,
+          inviteCode: g.invite_code,
+          createdBy: g.created_by,
+          version: g.version || 1,
+          createdAt: g.created_at,
+          updatedAt: g.updated_at,
+          _sync: 'synced',
+        });
+      }
+      if (Array.isArray(rpcResponse?.members)) {
+        for (const m of rpcResponse.members) {
+          store.upsertMember({
+            id: m.id,
+            groupId: m.group_id,
+            userId: m.user_id,
+            displayName: m.display_name,
+            role: m.role,
+            joinedAt: m.joined_at,
+            leftAt: m.left_at,
+            createdAt: m.created_at,
+            updatedAt: m.updated_at,
+            _sync: 'synced',
+          });
+        }
+      } else if (rpcResponse?.member) {
+        const m = rpcResponse.member;
+        store.upsertMember({
+          id: m.id,
+          groupId: m.group_id,
+          userId: m.user_id,
+          displayName: m.display_name,
+          role: m.role,
+          joinedAt: m.joined_at,
+          leftAt: m.left_at,
+          createdAt: m.created_at,
+          updatedAt: m.updated_at,
+          _sync: 'synced',
+        });
+      }
+      break;
+    }
+
+    case 'DELETE_GROUP': {
+      store.deleteGroup(entityId);
       break;
     }
 

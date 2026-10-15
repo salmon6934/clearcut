@@ -50,10 +50,10 @@ begin
     select *, (row_number() over () > v_limit) as is_extra from user_groups
   )
   select
-    coalesce(jsonb_agg(row_to_json(c)) filter (where not is_extra), '[]'::jsonb),
+    coalesce(jsonb_agg((to_jsonb(c) - 'is_extra')) filter (where not is_extra), '[]'::jsonb),
     coalesce(bool_or(is_extra), false)
   into v_res_groups, v_has_more_groups
-  from counted;
+  from counted c;
 
   -- Members: members of user's active groups
   with member_rows as (
@@ -67,10 +67,10 @@ begin
     select *, (row_number() over () > v_limit) as is_extra from member_rows
   )
   select
-    coalesce(jsonb_agg(row_to_json(c)) filter (where not is_extra), '[]'::jsonb),
+    coalesce(jsonb_agg((to_jsonb(c) - 'is_extra')) filter (where not is_extra), '[]'::jsonb),
     coalesce(bool_or(is_extra), false)
   into v_res_members, v_has_more_members
-  from counted;
+  from counted c;
 
   -- Expenses: expenses of user's active groups with nested splits
   with expense_rows as (
@@ -90,10 +90,10 @@ begin
     select *, (row_number() over () > v_limit) as is_extra from expense_rows
   )
   select
-    coalesce(jsonb_agg(row_to_json(c)) filter (where not is_extra), '[]'::jsonb),
+    coalesce(jsonb_agg((to_jsonb(c) - 'is_extra')) filter (where not is_extra), '[]'::jsonb),
     coalesce(bool_or(is_extra), false)
   into v_res_expenses, v_has_more_expenses
-  from counted;
+  from counted c;
 
   -- Settlements: settlements of user's active groups
   with settlement_rows as (
@@ -107,10 +107,10 @@ begin
     select *, (row_number() over () > v_limit) as is_extra from settlement_rows
   )
   select
-    coalesce(jsonb_agg(row_to_json(c)) filter (where not is_extra), '[]'::jsonb),
+    coalesce(jsonb_agg((to_jsonb(c) - 'is_extra')) filter (where not is_extra), '[]'::jsonb),
     coalesce(bool_or(is_extra), false)
   into v_res_settlements, v_has_more_settlements
-  from counted;
+  from counted c;
 
   return jsonb_build_object(
     'groups', v_res_groups,
@@ -175,9 +175,9 @@ begin
     select *, (row_number() over () > v_limit) as is_extra from feed
   )
   select
-    coalesce(jsonb_agg(row_to_json(c)) filter (where not is_extra), '[]'::jsonb)
+    coalesce(jsonb_agg((to_jsonb(c) - 'is_extra')) filter (where not is_extra), '[]'::jsonb)
   into v_items
-  from counted;
+  from counted c;
 
   -- Keyset cursor for next page
   if jsonb_array_length(v_items) = v_limit then

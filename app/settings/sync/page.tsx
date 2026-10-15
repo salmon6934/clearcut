@@ -123,6 +123,17 @@ function SyncDiagnosticsContent() {
     loadItems();
   };
 
+  const handleDiscardAll = async () => {
+    await haptics.tap();
+    const adapter = new LocalStorageAdapter();
+    const queue = new MutationQueue(adapter);
+    for (const item of items) {
+      queue.clearDeadLetter(item.id);
+    }
+    setMessage('All failed items discarded from queue.');
+    loadItems();
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-black p-4 max-w-xl mx-auto font-sans">
       {/* Header */}
@@ -157,8 +168,14 @@ function SyncDiagnosticsContent() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="text-xs font-mono font-black text-black uppercase tracking-wider">
-            PENDING RESOLUTION ({items.length})
+          <div className="text-xs font-mono font-black text-black uppercase tracking-wider flex items-center justify-between">
+            <span>PENDING RESOLUTION ({items.length})</span>
+            <button
+              onClick={handleDiscardAll}
+              className="text-[11px] font-mono font-black text-black px-2 py-1 rounded bg-[#ff8a80] border border-black shadow-[1px_1px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
+            >
+              DISCARD ALL
+            </button>
           </div>
 
           {items.map((item) => (

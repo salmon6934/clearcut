@@ -14,6 +14,9 @@ import {
   useGroupLedger,
 } from '../../../lib/data/hooks';
 import { useAuth } from '../../../lib/auth';
+import { supabase } from '../../../lib/supabase';
+import { SyncBadge } from '../../../components/SyncBadge';
+import { GroupRealtimeManager, type RealtimeStatus } from '../../../lib/sync/realtime';
 import { formatMinor } from '../../../lib/engine/money';
 import type { Member } from '../../../lib/data/types';
 
@@ -56,9 +59,31 @@ function GroupMembersContent() {
   // Leave group states
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isSoleOwnerLeaveBlockedOpen, setIsSoleOwnerLeaveBlockedOpen] = useState(false);
+  const [isDeleteGroupModalOpen, setIsDeleteGroupModalOpen] = useState(false);
 
   // Claim link generation state
   const [claimLinkStatus, setClaimLinkStatus] = useState<string | null>(null);
+
+  // Realtime subscription for instant member join/update notifications
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>('disconnected');
+
+  useEffect(() => {
+    if (!groupId) return;
+    const rt = new GroupRealtimeManager(groupId, supabase, async () => {
+      await repo.syncManager?.kick('realtime_members_hint');
+    });
+
+    const unsub = rt.subscribeStatus((st) => {
+      setRealtimeStatus(st);
+    });
+
+    rt.start();
+
+    return () => {
+      unsub();
+      rt.destroy();
+    };
+  }, [groupId, repo]);
 
   if (!groupId || !group) {
     return (
@@ -99,6 +124,11 @@ function GroupMembersContent() {
       repo.store.upsertGroup({ ...group, inviteCode });
     }
   }, [group, inviteCode, repo]);
+
+  // Sync latest members on mount (full refresh)
+  useEffect(() => {
+    repo.syncManager?.kick('members_page_mount', true).catch(() => {});
+  }, [repo]);
 
   const handleCopyInviteCode = () => {
     if (!inviteCode) return;
@@ -190,7 +220,7 @@ function GroupMembersContent() {
       return;
     }
 
-    // 2. Sole owner check
+    // 2. Sole owner check: only block if there are other active members to transfer to
     if (isCurrentUserOwner) {
       const activeMembers = members.filter((m) => !m.leftAt);
       const otherOwners = activeMembers.filter((m) => m.role === 'owner' && m.id !== currentMember.id);
@@ -205,6 +235,15 @@ function GroupMembersContent() {
       router.push('/');
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to leave group');
+    }
+  };
+
+  const handleDeleteGroup = () => {
+    try {
+      repo.deleteGroup(groupId);
+      router.push('/');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to delete group');
     }
   };
 
@@ -224,7 +263,7 @@ function GroupMembersContent() {
             MEMBERS & PERMISSIONS
           </h1>
 
-          <div className="w-10" />
+          <SyncBadge manager={repo.syncManager} realtimeStatus={realtimeStatus} />
         </header>
 
         {errorMessage && (
@@ -377,8 +416,17 @@ function GroupMembersContent() {
           </div>
         </div>
 
-        {/* Leave Group Action */}
-        <div className="pt-2">
+        {/* Group Actions: Delete Group & Leave Group */}
+        <div className="pt-2 space-y-2">
+          {isCurrentUserOwner && (
+            <button
+              onClick={() => setIsDeleteGroupModalOpen(true)}
+              className="w-full py-3 text-xs font-mono font-black uppercase rounded-xl border-2 border-black bg-[#ff8a80] text-black hover:bg-black hover:text-[#ff8a80] shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
+            >
+              DELETE GROUP
+            </button>
+          )}
+
           <button
             onClick={handleLeaveGroup}
             className="w-full py-3 text-xs font-mono font-black uppercase rounded-xl border-2 border-black bg-white text-rose-600 hover:bg-[#ff8a80] hover:text-black shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
@@ -584,6 +632,35 @@ function GroupMembersContent() {
             >
               UNDERSTOOD
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Group Modal */}
+      {isDeleteGroupModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-sm bg-white border-2 border-black rounded-xl p-6 shadow-[6px_6px_0px_0px_#000] space-y-4">
+            <div className="text-center space-y-1">
+              <span className="text-3xl">🗑️</span>
+              <h2 className="text-sm font-mono font-black uppercase">DELETE GROUP?</h2>
+              <p className="text-xs font-mono text-black/60">
+                Are you sure you want to delete &quot;{group.name}&quot;? This will archive the group for all members.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setIsDeleteGroupModalOpen(false)}
+                className="flex-1 py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#f0f0ea] text-black shadow-[2px_2px_0px_0px_#000]"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={handleDeleteGroup}
+                className="flex-1 py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ff8a80] text-black hover:bg-black hover:text-[#ff8a80] shadow-[2px_2px_0px_0px_#000]"
+              >
+                CONFIRM DELETE
+              </button>
+            </div>
           </div>
         </div>
       )}

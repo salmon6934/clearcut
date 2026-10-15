@@ -117,7 +117,13 @@ export function ExpenseRow({
             )}
 
             {expense._sync === 'pending' && !isDeleted && (
-              <span title="Pending sync" className="w-2 h-2 rounded-full bg-[#00e5ff] border border-black animate-ping" />
+              <span
+                title="Saved locally, not synced to cloud yet"
+                className="px-1.5 py-0.5 rounded text-[9px] font-mono font-black bg-[#ffd600] text-black border border-black inline-flex items-center gap-1 shadow-[1px_1px_0px_0px_#000]"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
+                NOT SYNCED
+              </span>
             )}
           </div>
 

@@ -132,6 +132,81 @@ export class LocalStore {
     this.emitChange();
   }
 
+  deleteGroup(id: string): void {
+    const existing = this.groups.get(id);
+    if (existing) {
+      this.groups.set(id, { ...existing, deletedAt: new Date().toISOString() });
+      this.persist('groups');
+      this.emitChange();
+    }
+  }
+
+  /**
+   * Completely removes a group and all its related members, expenses, and settlements.
+   */
+  hardDeleteGroup(id: string): void {
+    this.groups.delete(id);
+    for (const [mId, m] of this.members.entries()) {
+      if (m.groupId === id) this.members.delete(mId);
+    }
+    for (const [eId, e] of this.expenses.entries()) {
+      if (e.groupId === id) this.expenses.delete(eId);
+    }
+    for (const [sId, s] of this.settlements.entries()) {
+      if (s.groupId === id) this.settlements.delete(sId);
+    }
+    this.persist('groups');
+    this.persist('members');
+    this.persist('expenses');
+    this.persist('settlements');
+    this.emitChange();
+  }
+
+  hardDeleteMember(id: string): void {
+    if (this.members.delete(id)) {
+      this.persist('members');
+      this.emitChange();
+    }
+  }
+
+  hardDeleteExpense(id: string): void {
+    if (this.expenses.delete(id)) {
+      this.persist('expenses');
+      this.emitChange();
+    }
+  }
+
+  hardDeleteSettlement(id: string): void {
+    if (this.settlements.delete(id)) {
+      this.persist('settlements');
+      this.emitChange();
+    }
+  }
+
+  getAllExpenses(): Expense[] {
+    return Array.from(this.expenses.values());
+  }
+
+  getAllSettlements(): Settlement[] {
+    return Array.from(this.settlements.values());
+  }
+
+  getAllMembers(): Member[] {
+    return Array.from(this.members.values());
+  }
+
+  clearAllData(): void {
+    this.groups.clear();
+    this.members.clear();
+    this.expenses.clear();
+    this.settlements.clear();
+    this.persist('groups');
+    this.persist('members');
+    this.persist('expenses');
+    this.persist('settlements');
+    this.emitChange();
+  }
+
   // --- Members ---
 
   getMember(id: string): Member | undefined {

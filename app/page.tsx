@@ -17,6 +17,7 @@ import { SyncBadge } from '../components/SyncBadge';
 import { EmptyState } from '../components/EmptyState';
 import { BottomNav } from '../components/BottomNav';
 import { useAuth } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 import type { GroupType } from '../lib/data/types';
 import { initDeepLinkListener } from '../lib/native/deeplink';
 
@@ -67,6 +68,7 @@ export default function DashboardPage() {
 
   const [mounted, setMounted] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isFabOpen, setIsFabOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState<GroupType>('trip');
   const [newGroupCurrency, setNewGroupCurrency] = useState('INR');
@@ -74,7 +76,33 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    repo.syncManager?.kick('dashboard_mount', false).catch(() => { });
+  }, [repo]);
+
+  // Realtime subscription on Dashboard for changes across all user groups
+  useEffect(() => {
+    if (!currentUserId || currentUserId === 'local_user') return;
+    const channel = supabase.channel(`dashboard-realtime:${currentUserId}`);
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleRemoteChange = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        repo.syncManager?.kick('dashboard_realtime_hint', true).catch(() => { });
+      }, 300);
+    };
+
+    channel
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, handleRemoteChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settlements' }, handleRemoteChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_members' }, handleRemoteChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, handleRemoteChange)
+      .subscribe();
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      supabase.removeChannel(channel).catch(() => { });
+    };
+  }, [currentUserId, repo]);
 
   // Initialize native deep link router
   useEffect(() => {
@@ -166,7 +194,6 @@ export default function DashboardPage() {
             {/* Live Status Pill */}
             <SyncBadge
               manager={repo.syncManager}
-              onClickKick={() => repo.syncManager?.kick('manual_badge_tap')}
             />
 
             {/* Profile Avatar */}
@@ -203,7 +230,7 @@ export default function DashboardPage() {
             </div>
 
             <button
-              onClick={() => repo.syncManager?.kick('manual_sync_btn')}
+              onClick={() => repo.syncManager?.kick('manual_sync_btn', true)}
               className="px-2.5 py-1 bg-white hover:bg-[#ffd600] text-black border-2 border-black rounded-lg text-xs font-mono font-bold shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 flex items-center gap-1.5 cursor-pointer transition"
             >
               <svg className="w-3.5 h-3.5 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -241,7 +268,7 @@ export default function DashboardPage() {
 
             <p className="text-xs text-black/70 flex items-center gap-2 font-mono font-bold">
               <span className="w-2 h-2 rounded-full bg-black shrink-0" />
-              <span>Calculated across {activeGroups.length || 1} active ledgers</span>
+              <span>Calculated across {activeGroups.length || 1} groups</span>
             </p>
           </div>
 
@@ -283,28 +310,6 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Primary Action Buttons: Create Group & Join Code */}
-        <div className="grid grid-cols-2 gap-3.5">
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="py-3.5 px-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] text-black font-black text-xs sm:text-sm tracking-wider uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
-          >
-            <div className="w-5 h-5 rounded-full border-2 border-black flex items-center justify-center font-black text-xs leading-none">
-              +
-            </div>
-            <span>CREATE GROUP</span>
-          </button>
-
-          <Link
-            href="/join"
-            className="py-3.5 px-4 rounded-xl bg-[#00e5ff] hover:bg-[#00cbe6] text-black font-black text-xs sm:text-sm tracking-wider uppercase border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
-          >
-            <svg className="w-4 h-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-            <span>JOIN CODE</span>
-          </Link>
-        </div>
 
         {/* Active Groups Section */}
         <section className="space-y-3">
@@ -315,9 +320,6 @@ export default function DashboardPage() {
                 {activeGroups.length}
               </span>
             </div>
-            <span className="text-[10px] text-black/60 font-mono font-bold uppercase tracking-wider">
-              TAP FOR LEDGER
-            </span>
           </div>
 
           {activeGroups.length === 0 ? (
@@ -371,6 +373,15 @@ export default function DashboardPage() {
                             >
                               {config.label}
                             </span>
+                            {g._sync === 'pending' && (
+                              <span
+                                title="Saved locally, not synced to cloud yet"
+                                className="px-1.5 py-0.5 rounded text-[9px] font-mono font-black bg-[#ffd600] text-black border border-black shrink-0 inline-flex items-center gap-1 shadow-[1px_1px_0px_0px_#000]"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
+                                NOT SYNCED
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-black/60 font-mono mt-1 flex items-center gap-1.5 truncate">
                             <span>👥 {members.length} friends</span>
@@ -415,6 +426,65 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
+      </div>
+
+      {/* Floating Action Button Backdrop */}
+      {isFabOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] transition-opacity"
+          onClick={() => setIsFabOpen(false)}
+        />
+      )}
+
+      {/* Floating Action Button & Menu */}
+      <div className="fixed bottom-20 right-4 sm:right-6 z-40 flex flex-col items-end gap-3 pointer-events-auto">
+        {/* Floating Menu Buttons */}
+        {isFabOpen && (
+          <div className="flex flex-col items-end gap-2.5 animate-fadeIn">
+            {/* 1. New Group */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsFabOpen(false);
+                setIsCreateModalOpen(true);
+              }}
+              className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] text-black font-black text-xs font-mono uppercase tracking-wider border-2 border-black shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+            >
+              <div className="w-5 h-5 rounded-full border-2 border-black flex items-center justify-center font-black text-xs leading-none">
+                +
+              </div>
+              <span>NEW GROUP</span>
+            </button>
+
+            {/* 2. Join Group */}
+            <Link
+              href="/join"
+              onClick={() => setIsFabOpen(false)}
+              className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#00e5ff] hover:bg-[#00cbe6] text-black font-black text-xs font-mono uppercase tracking-wider border-2 border-black shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+            >
+              <svg className="w-4 h-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              <span>JOIN GROUP</span>
+            </Link>
+          </div>
+        )}
+
+        {/* Main Floating Trigger Button */}
+        <button
+          type="button"
+          onClick={() => setIsFabOpen((prev) => !prev)}
+          aria-label={isFabOpen ? 'Close group actions' : 'Create or join group'}
+          className={`w-14 h-14 rounded-2xl border-2 border-black flex items-center justify-center shadow-[4px_4px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition-all duration-200 cursor-pointer ${
+            isFabOpen
+              ? 'bg-[#ff8a80] text-black rotate-45'
+              : 'bg-[#ccff00] hover:bg-[#bbf000] text-black rotate-0'
+          }`}
+        >
+          <svg className="w-7 h-7 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
       </div>
 
       {/* Persistent Bottom Navigation matching Stitch */}

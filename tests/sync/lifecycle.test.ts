@@ -97,4 +97,44 @@ describe('T-1.7.3: Sync Orchestrator & Lifecycle Triggers', () => {
     expect(snapshot.status).toBe('conflict');
     expect(snapshot.conflictCount).toBe(1);
   });
+
+  it('resetAndCleanSync clears store, queue, removes sync cursors, and triggers a full resync', async () => {
+    const rawStorage = new MemoryStorage();
+    const adapter = new LocalStorageAdapter('test_life_user', rawStorage);
+    const store = new LocalStore(adapter);
+    const queue = new MutationQueue(adapter);
+
+    const mockSupabase = {
+      rpc: vi.fn().mockImplementation((fn: string) => {
+        if (fn === 'pull_changes_v1') {
+          return Promise.resolve({
+            data: { groups: [], members: [], expenses: [], settlements: [], has_more: false },
+            error: null,
+          });
+        }
+        return Promise.resolve({ data: {}, error: null });
+      }),
+      auth: { refreshSession: vi.fn() },
+    };
+
+    const manager = new SyncLifecycleManager(store, queue, adapter, mockSupabase as any);
+
+    // Populate store, queue, and cursor
+    store.upsertGroup({ id: 'grp-1', name: 'Trip', type: 'trip', currency: 'INR', createdBy: 'u-1', createdAt: '2026-01-01', updatedAt: '2026-01-01', version: 1, _sync: 'synced' });
+    queue.enqueue('UPSERT_EXPENSE', 'exp-1', {});
+    adapter.setItem('sync:cursors', JSON.stringify({ groups: '2026-01-01T00:00:00Z' }));
+
+    expect(store.getAllGroups(true).length).toBe(1);
+    expect(queue.getPendingCount()).toBe(1);
+    expect(adapter.getItem('sync:cursors')).toBeTruthy();
+
+    // Call resetAndCleanSync
+    await manager.resetAndCleanSync();
+
+    expect(store.getAllGroups(true).length).toBe(0);
+    expect(queue.getPendingCount()).toBe(0);
+    expect(JSON.parse(adapter.getItem('sync:cursors') || '{}')).toEqual({});
+    // Verify pull was called
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('pull_changes_v1', expect.anything());
+  });
 });

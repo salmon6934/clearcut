@@ -22,6 +22,17 @@ const config: CapacitorConfig = {
       serverClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
       forceCodeForRefreshToken: false,
     },
+    SplashScreen: {
+      launchShowDuration: 1800,
+      launchAutoHide: true,
+      launchFadeOutDuration: 300,
+      backgroundColor: '#f5f5f0',
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
   },
   android: {
     allowMixedContent: false,
