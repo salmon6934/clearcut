@@ -5,6 +5,28 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+
+  /* Warm Brew & Browse / Cafe Color Palette */
+  --cafe-bg: #F5EBE1;
+  --cafe-surface: #FFFFFF;
+  --cafe-surface-subtle: #FAF6F0;
+  --cafe-espresso: #543A2A;
+  --cafe-espresso-hover: #432E20;
+  --cafe-espresso-active: #362317;
+  --cafe-tan: #D4B89B;
+  --cafe-caramel: #C8A27A;
+  --cafe-latte: #EFE4D6;
+  --cafe-cream: #FAF6F0;
+  --cafe-border: #E5D9CC;
+  --cafe-border-light: #F0E6DA;
+  --cafe-text: #432E22;
+  --cafe-text-muted: #8D7868;
+  --cafe-text-subtle: #B2A292;
+  --cafe-text-inverse: #FAF6F0;
+  --cafe-sage: #4E6B48;
+  --cafe-sage-bg: #EAEFE8;
+  --cafe-terracotta: #A84A3B;
+  --cafe-terracotta-bg: #F8EDEA;
 }
 
 html, body {
@@ -16,49 +38,56 @@ html, body {
   padding-bottom: var(--sab);
   padding-left: var(--sal);
   padding-right: var(--sar);
-  background-color: #f5f5f0;
-  color: #000000;
+  background-color: var(--cafe-bg);
+  background-image: url('/background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: var(--cafe-text);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100%;
 }
 
-/* Neo-Brutalist Visual Design System */
-.neo-box {
-  background-color: #ffffff;
-  border: 2px solid #000000;
-  box-shadow: 3px 3px 0px 0px #000000;
+/* Allow the global background image to show on all pages */
+div.min-h-screen {
+  background-color: transparent !important;
 }
 
-.neo-box-lg {
-  background-color: #ffffff;
-  border: 2.5px solid #000000;
-  box-shadow: 4px 4px 0px 0px #000000;
+/* Warm Cafe Design System Helper Classes */
+.cafe-card {
+  background-color: var(--cafe-surface);
+  border: 1px solid var(--cafe-border);
+  box-shadow: 0 4px 20px -2px rgba(84, 58, 42, 0.06), 0 2px 6px -1px rgba(84, 58, 42, 0.04);
+  border-radius: 1.5rem;
 }
 
-.neo-box-sm {
-  border: 1.5px solid #000000;
-  box-shadow: 2px 2px 0px 0px #000000;
+.cafe-btn-primary {
+  background-color: var(--cafe-espresso);
+  color: var(--cafe-text-inverse);
+  border-radius: 9999px;
+  box-shadow: 0 4px 14px rgba(84, 58, 42, 0.18);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 700;
 }
 
-.neo-btn {
-  border: 2px solid #000000;
-  box-shadow: 3px 3px 0px 0px #000000;
-  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
-  font-weight: 800;
+.cafe-btn-primary:hover {
+  background-color: var(--cafe-espresso-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(84, 58, 42, 0.24);
 }
 
-.neo-btn:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0px 0px #000000;
+.cafe-btn-primary:active {
+  transform: scale(0.96);
+  background-color: var(--cafe-espresso-active);
 }
 
-.neo-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0px 0px #000000;
-}
-
-.neo-badge {
-  border: 1.5px solid #000000;
-  box-shadow: 1.5px 1.5px 0px 0px #000000;
+.cafe-pill {
+  border: 1px solid var(--cafe-border);
+  border-radius: 9999px;
+  background-color: var(--cafe-surface-subtle);
+  color: var(--cafe-text);
+  font-weight: 600;
 }
 
 /* Input elements */

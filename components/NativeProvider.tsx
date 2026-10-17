@@ -18,6 +18,15 @@ export function NativeProvider({ children }: { children: React.ReactNode }) {
   useHardwareBackButton();
 
   useEffect(() => {
+    // Hide native splash screen immediately on mount if running in Capacitor
+    try {
+      import('@capacitor/splash-screen').then(({ SplashScreen: CapSplash }) => {
+        CapSplash.hide().catch(() => {});
+      }).catch(() => {});
+    } catch {
+      // Non-capacitor environment
+    }
+
     // 0. Initialize global Supabase Auth session watcher
     const unsubAuth = initAuth();
 
@@ -53,7 +62,7 @@ export function NativeProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   return (
-    <div className="flex flex-col min-h-screen w-full max-w-xl mx-auto relative select-none bg-[#f5f5f0] text-black">
+    <div className="flex flex-col min-h-screen w-full max-w-xl mx-auto relative select-none bg-transparent text-[#432E22]">
       <OfflineIndicator />
       <AuthGuard>{children}</AuthGuard>
       <GlobalToast />

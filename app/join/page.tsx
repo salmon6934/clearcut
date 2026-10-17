@@ -1,7 +1,7 @@
 'use client';
 
 // app/join/page.tsx
-// Group Invitation Route for Invite Code & Placeholder Member Claim Processing (US-04, Tasks 2.7.2)
+// Group Invitation Route for Invite Code Processing
 
 import React, { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -14,15 +14,12 @@ function JoinContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const rawCode = searchParams.get('code') || '';
-  const rawClaim = searchParams.get('claim') || '';
 
   const repo = useRepository();
   const authState = getAuthState();
   const currentUserId = authState.user?.id;
 
-  const [activeTab, setActiveTab] = useState<'invite' | 'claim'>(rawClaim ? 'claim' : 'invite');
   const [code, setCode] = useState(rawCode);
-  const [claimToken, setClaimToken] = useState(rawClaim);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -129,192 +126,63 @@ function JoinContent() {
     }
   };
 
-  const handleClaimPlaceholder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    const cleanClaim = claimToken.trim();
-    if (!cleanClaim) {
-      setError('Please enter a claim token');
-      return;
-    }
-
-    if (!currentUserId) {
-      // Store claim token to resume after sign-in
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('pending_claim_token', cleanClaim);
-      }
-      router.push('/auth');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const { data, error: rpcError } = await supabase.rpc('claim_placeholder_v1', {
-        p_claim_token: cleanClaim,
-      });
-
-      if (rpcError) {
-        if (rpcError.code === 'PT404' || rpcError.message?.includes('CLAIM_INVALID')) {
-          throw new Error('Invalid or expired claim token. Please ask the group admin for a new link.');
-        }
-        if (rpcError.message?.includes('Failed to fetch') || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-          repo.claimPlaceholder(cleanClaim);
-          router.push('/');
-          return;
-        }
-        throw new Error(rpcError.message || 'Failed to claim member profile');
-      }
-
-      if (data?.member) {
-        const m = data.member;
-        repo.store.upsertMember({
-          id: m.id,
-          groupId: m.group_id,
-          userId: m.user_id,
-          displayName: m.display_name,
-          role: m.role,
-          joinedAt: m.joined_at,
-          leftAt: m.left_at,
-          createdAt: m.created_at,
-          updatedAt: m.updated_at,
-          _sync: 'synced',
-        });
-        repo.syncManager?.kick('claim_placeholder').catch(() => {});
-        router.push(`/group?id=${m.group_id}`);
-      } else {
-        router.push('/');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to claim member profile');
-      setIsSubmitting(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#f5f5f0] text-black flex flex-col justify-between p-4 sm:p-6 font-sans">
+    <div className="min-h-screen bg-transparent text-[#432E22] flex flex-col justify-between p-4 sm:p-6 font-sans">
       <div className="max-w-md mx-auto w-full space-y-6 pt-4">
         <header className="flex items-center justify-between">
           <Link
             href="/"
-            className="w-10 h-10 rounded-lg border-2 border-black bg-white flex items-center justify-center font-black text-black hover:bg-[#ffd600] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
+            className="w-10 h-10 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] flex items-center justify-center text-[#543A2A] hover:bg-[#EFE4D6] shadow-sm active:scale-95 transition cursor-pointer"
           >
             ←
           </Link>
-          <h1 className="text-sm font-mono font-black uppercase tracking-wider">
-            {activeTab === 'claim' ? 'CLAIM PROFILE' : 'JOIN GROUP'}
+          <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#432E22]">
+            Join Group
           </h1>
           <div className="w-10" />
         </header>
 
-        {/* Tab Selector */}
-        <div className="flex bg-[#f0f0ea] border-2 border-black p-1 rounded-xl">
-          <button
-            type="button"
-            onClick={() => setActiveTab('invite')}
-            className={`flex-1 py-2 text-xs font-mono font-black uppercase rounded-lg transition-all ${
-              activeTab === 'invite'
-                ? 'bg-black text-[#ccff00] border-2 border-black shadow-[2px_2px_0px_0px_#000]'
-                : 'text-black/60 hover:text-black'
-            }`}
-          >
-            JOIN BY CODE
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('claim')}
-            className={`flex-1 py-2 text-xs font-mono font-black uppercase rounded-lg transition-all ${
-              activeTab === 'claim'
-                ? 'bg-black text-[#ccff00] border-2 border-black shadow-[2px_2px_0px_0px_#000]'
-                : 'text-black/60 hover:text-black'
-            }`}
-          >
-            CLAIM PROFILE
-          </button>
-        </div>
-
-        <div className="p-6 rounded-xl border-2 border-black bg-white shadow-[4px_4px_0px_0px_#000] space-y-5">
+        <div className="p-6 sm:p-8 rounded-3xl border border-[#E5D9CC] bg-white shadow-xl space-y-5">
           {error && (
-            <div className="p-3 rounded-lg text-xs font-mono font-bold bg-[#ff8a80] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+            <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#FCE8E6] text-[#A83232] border border-[#F5C2C0] shadow-xs">
               ⚠️ {error}
             </div>
           )}
 
-          {activeTab === 'invite' ? (
-            <>
-              <div className="text-center space-y-1.5">
-                <div className="w-12 h-12 rounded-lg border-2 border-black bg-[#ffd600] flex items-center justify-center mx-auto text-xl shadow-[2px_2px_0px_0px_#000]">
-                  🤝
-                </div>
-                <h2 className="text-base font-mono font-black uppercase">YOU&apos;RE INVITED!</h2>
-                <p className="text-xs font-mono text-black/60">
-                  Enter the invite code shared by your group peer.
-                </p>
-              </div>
+          <div className="text-center space-y-1.5">
+            <div className="w-14 h-14 rounded-2xl bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center mx-auto text-2xl shadow-sm">
+              🤝
+            </div>
+            <h2 className="text-base font-bold text-[#432E22]">You&apos;re Invited!</h2>
+            <p className="text-xs text-[#8D7868] font-medium">
+              Enter the invite code shared by your group peer.
+            </p>
+          </div>
 
-              <form onSubmit={handleJoin} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-mono font-black uppercase mb-1">
-                    INVITE CODE
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={32}
-                    placeholder="E.G. ABC123"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.toUpperCase())}
-                    className="w-full px-4 py-3 text-center text-lg font-mono font-black tracking-widest rounded-lg border-2 border-black bg-white text-black focus:outline-none focus:bg-[#faffea] uppercase shadow-[2px_2px_0px_0px_#000]"
-                  />
-                </div>
+          <form onSubmit={handleJoin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-[#432E22] mb-1.5">
+                Invite Code
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={32}
+                placeholder="e.g. ABC123"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                className="w-full px-4 py-3 text-center text-lg font-bold tracking-widest rounded-2xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] focus:outline-none focus:border-[#543A2A] uppercase shadow-xs transition-colors"
+              />
+            </div>
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 transition"
-                >
-                  {isSubmitting ? 'JOINING GROUP...' : 'JOIN GROUP'}
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <div className="text-center space-y-1.5">
-                <div className="w-12 h-12 rounded-lg border-2 border-black bg-[#00e5ff] flex items-center justify-center mx-auto text-xl shadow-[2px_2px_0px_0px_#000]">
-                  🎫
-                </div>
-                <h2 className="text-base font-mono font-black uppercase">CLAIM GUEST PROFILE</h2>
-                <p className="text-xs font-mono text-black/60">
-                  Were you added before having an account? Claim your profile to link past expenses and ledger records.
-                </p>
-              </div>
-
-              <form onSubmit={handleClaimPlaceholder} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-mono font-black uppercase mb-1">
-                    CLAIM TOKEN
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={64}
-                    placeholder="PASTE CLAIM TOKEN"
-                    value={claimToken}
-                    onChange={(e) => setClaimToken(e.target.value)}
-                    className="w-full px-4 py-3 text-center text-xs font-mono font-black tracking-wider rounded-lg border-2 border-black bg-white text-black focus:outline-none focus:bg-[#faffea] shadow-[2px_2px_0px_0px_#000]"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#00e5ff] text-black hover:bg-black hover:text-[#00e5ff] shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 transition"
-                >
-                  {isSubmitting ? 'CLAIMING PROFILE...' : 'CLAIM MEMBER PROFILE'}
-                </button>
-              </form>
-            </>
-          )}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3.5 text-xs font-bold uppercase tracking-wider rounded-full bg-[#543A2A] text-[#FAF6F0] hover:bg-[#432E20] shadow-md active:scale-95 disabled:opacity-50 transition cursor-pointer"
+            >
+              {isSubmitting ? 'Joining group...' : 'Join Group'}
+            </button>
+          </form>
         </div>
       </div>
     </div>
@@ -325,7 +193,7 @@ export default function JoinPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#f5f5f0] flex items-center justify-center text-black text-xs font-mono font-black uppercase">
+        <div className="min-h-screen bg-transparent flex items-center justify-center text-[#8D7868] text-xs font-bold">
           Loading invitation...
         </div>
       }

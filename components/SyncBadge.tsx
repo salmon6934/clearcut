@@ -1,12 +1,13 @@
 'use client';
 
 // components/SyncBadge.tsx
-// Interactive Neo-Brutalist Sync/Refresh Button fetching authoritative state from Supabase
+// Interactive Warm Cafe Sync/Refresh Button fetching authoritative state from Supabase
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SyncStateSnapshot, SyncLifecycleManager } from '../lib/sync/lifecycle';
 import { isDeviceOnline } from '../lib/sync/lifecycle';
+import { resetBackoff } from '../lib/sync/push';
 import { showToast } from '../lib/ui/toast';
 import { haptics } from '../lib/native/haptics';
 import type { RealtimeStatus } from '../lib/sync/realtime';
@@ -68,6 +69,7 @@ export function SyncBadge({
 
     try {
       if (manager) {
+        resetBackoff();
         // Kick full refresh (clears cursor so all tables are freshly pulled)
         const snapshot = await manager.kick('manual_refresh', true);
         if (snapshot.status === 'error' && snapshot.lastError) {
@@ -89,7 +91,7 @@ export function SyncBadge({
     }
   };
 
-  // Neo-brutalist styling & badge content
+  // Badge content
   let buttonContent = null;
 
   if (isSyncActive) {
@@ -110,7 +112,7 @@ export function SyncBadge({
   } else if (justSynced) {
     buttonContent = (
       <svg
-        className="w-4 h-4 shrink-0 stroke-[3] text-black"
+        className="w-4 h-4 shrink-0 stroke-[2.5] text-[#4E6B48]"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -133,12 +135,12 @@ export function SyncBadge({
             d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
           />
         </svg>
-        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#ff5c5c] border border-black animate-pulse" />
+        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#A84A3B] border border-white animate-pulse" />
       </div>
     );
   } else if (isOffline) {
     buttonContent = (
-      <div className="relative flex items-center justify-center text-black/40">
+      <div className="relative flex items-center justify-center text-[#8D7868]/50">
         <svg
           className="w-4 h-4 shrink-0 stroke-[2.5]"
           viewBox="0 0 24 24"
@@ -151,7 +153,7 @@ export function SyncBadge({
             d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
           />
         </svg>
-        <span className="absolute -bottom-1 -right-1 w-2 h-2 rounded-full bg-black/40 border border-black" />
+        <span className="absolute -bottom-1 -right-1 w-2 h-2 rounded-full bg-[#8D7868]/40 border border-white" />
       </div>
     );
   } else {
@@ -177,7 +179,7 @@ export function SyncBadge({
       type="button"
       onClick={handleRefresh}
       aria-label={isOffline ? 'Offline - tap to check connection' : 'Online - tap to refresh from Supabase'}
-      className="relative w-10 h-10 bg-white hover:bg-[#fafaf6] text-black border-2 border-black rounded-lg shadow-[2px_2px_0px_0px_#000] flex items-center justify-center active:translate-x-0.5 active:translate-y-0.5 transition-all select-none cursor-pointer"
+      className="relative w-10 h-10 bg-[#FAF6F0] hover:bg-[#EFE4D6] text-[#543A2A] border border-[#E5D9CC] rounded-full shadow-sm flex items-center justify-center active:scale-95 transition-all select-none cursor-pointer"
       title={
         isOffline
           ? 'Offline — changes are saved locally. Connect to internet to sync.'
@@ -191,10 +193,10 @@ export function SyncBadge({
       {buttonContent}
       {/* Online / Offline indicator dot */}
       <span
-        className={`absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-black shadow-[1px_1px_0px_0px_#000] ${
+        className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-white shadow-sm ${
           isOffline
-            ? 'bg-[#ff5c5c] animate-pulse'
-            : 'bg-[#00e676]'
+            ? 'bg-[#A84A3B] animate-pulse'
+            : 'bg-[#4E6B48]'
         }`}
         title={isOffline ? 'Offline' : 'Online'}
       />

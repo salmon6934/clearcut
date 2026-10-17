@@ -60,7 +60,7 @@ export function classifyError(error: any): {
     return { type: 'UNAUTHORIZED', statusCode: 401, message, detail };
   }
 
-  // 3. Permanent Client Error (PT400 / PT403 / PT404)
+  // 3. Permanent Client Error (PT400 / PT403 / PT404 / PostgreSQL constraint & schema errors)
   if (
     status === 400 ||
     status === 403 ||
@@ -68,9 +68,16 @@ export function classifyError(error: any): {
     code === 'PT400' ||
     code === 'PT403' ||
     code === 'PT404' ||
+    code === 'P0001' ||
+    (typeof code === 'string' && (code.startsWith('23') || code.startsWith('42') || code.startsWith('PGRST'))) ||
     message.includes('VALIDATION_FAILED') ||
     message.includes('SETTLEMENT_INVALID') ||
-    message.includes('FORBIDDEN')
+    message.includes('FORBIDDEN') ||
+    message.includes('violates foreign key') ||
+    message.includes('violates unique') ||
+    message.includes('violates check') ||
+    message.includes('Only the group owner') ||
+    message.includes('not found')
   ) {
     return { type: 'PERMANENT', statusCode: status || 400, message, detail };
   }
@@ -94,7 +101,8 @@ export function resetBackoff(): void {
 export async function drainQueue(
   queue: MutationQueue,
   store: LocalStore,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  force: boolean = false
 ): Promise<DrainResult> {
   const result: DrainResult = {
     processed: 0,
@@ -104,8 +112,12 @@ export async function drainQueue(
     halted: false,
   };
 
+  if (force) {
+    resetBackoff();
+  }
+
   const now = Date.now();
-  if (now < nextAllowedDrainTime) {
+  if (!force && now < nextAllowedDrainTime) {
     result.halted = true;
     result.backoffMs = nextAllowedDrainTime - now;
     return result;
@@ -173,7 +185,19 @@ export async function drainQueue(
             break;
           }
         } else {
-          // Transient network error or 5xx: Halt drain & apply exponential backoff
+          // Transient network error or 5xx: Check retry count
+          const currentItem = queue.getAllItems().find((m) => m.id === pendingItem.id);
+          const nextRetry = (currentItem?.retryCount ?? 0) + 1;
+
+          if (nextRetry >= 5) {
+            // Max retries reached: dead-letter it so it stops stalling the entire queue
+            queue.markFailed(pendingItem.id, classified.message, false, 5);
+            markLocalEntitySyncState(pendingItem, store, 'dead');
+            result.dead++;
+            resetBackoff();
+            continue;
+          }
+
           consecutiveTransientFailures++;
           const backoff = computeExponentialBackoffMs(consecutiveTransientFailures);
           nextAllowedDrainTime = Date.now() + backoff;
@@ -482,7 +506,7 @@ function updateLocalStoreEntityOnSync(
     }
 
     case 'DELETE_GROUP': {
-      store.deleteGroup(entityId);
+      store.hardDeleteGroup(entityId);
       break;
     }
 

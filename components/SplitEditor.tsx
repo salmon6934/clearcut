@@ -186,19 +186,18 @@ export function SplitEditor({
     isValid = totalAmountMinor > 0 && deltaMinor === 0;
 
     statusMessage = (
-      <div className="pt-2 border-t-2 border-black flex items-center justify-between text-xs font-mono font-bold">
-        <span className="text-black uppercase">Split delta:</span>
+      <div className="pt-2 border-t border-[#E5D9CC] flex items-center justify-end text-xs font-semibold">
         {deltaMinor === 0 ? (
-          <span className="font-black text-black bg-[#ccff00] px-2 py-0.5 rounded border-2 border-black shadow-[1px_1px_0px_0px_#000]">
-            Split in full ({formatMinor(totalAmountMinor, currency)})
+          <span className="font-bold text-[#2E4226] bg-[#E8F0E4] border border-[#C5D9BE] px-3 py-1 rounded-full shadow-xs">
+            Matched ({currency === 'INR' ? '₹' : ''}{formatMinor(totalAmountMinor, currency)})
           </span>
         ) : deltaMinor > 0 ? (
-          <span className="font-black text-black bg-[#ffd600] px-2 py-0.5 rounded border-2 border-black shadow-[1px_1px_0px_0px_#000]">
-            {formatMinor(deltaMinor, currency)} left to allocate
+          <span className="font-bold text-[#8C5E23] bg-[#FAF0E6] border border-[#ECD3B6] px-3 py-1 rounded-full shadow-xs">
+            {currency === 'INR' ? '₹' : ''}{formatMinor(deltaMinor, currency)} remaining
           </span>
         ) : (
-          <span className="font-black text-black bg-[#ff8a80] px-2 py-0.5 rounded border-2 border-black shadow-[1px_1px_0px_0px_#000]">
-            Over by {formatMinor(Math.abs(deltaMinor), currency)}
+          <span className="font-bold text-[#A83232] bg-[#FCE8E6] border border-[#F5C2C0] px-3 py-1 rounded-full shadow-xs">
+            Over by {currency === 'INR' ? '₹' : ''}{formatMinor(Math.abs(deltaMinor), currency)}
           </span>
         )}
       </div>
@@ -238,21 +237,19 @@ export function SplitEditor({
       isValid = false;
     }
 
-    const currentPercent = (sumBps / 100).toFixed(2);
     statusMessage = (
-      <div className="pt-2 border-t-2 border-black flex items-center justify-between text-xs font-mono font-bold">
-        <span className="text-black uppercase">Total percentage:</span>
+      <div className="pt-2 border-t border-[#E5D9CC] flex items-center justify-end text-xs font-semibold">
         {deltaBps === 0 ? (
-          <span className="font-black text-black bg-[#ccff00] px-2 py-0.5 rounded border-2 border-black shadow-[1px_1px_0px_0px_#000]">
+          <span className="font-bold text-[#2E4226] bg-[#E8F0E4] border border-[#C5D9BE] px-3 py-1 rounded-full shadow-xs">
             100.00% allocated
           </span>
         ) : deltaBps > 0 ? (
-          <span className="font-black text-black bg-[#ffd600] px-2 py-0.5 rounded border-2 border-black shadow-[1px_1px_0px_0px_#000]">
-            {currentPercent}% entered ({(deltaBps / 100).toFixed(2)}% remaining)
+          <span className="font-bold text-[#8C5E23] bg-[#FAF0E6] border border-[#ECD3B6] px-3 py-1 rounded-full shadow-xs">
+            {(deltaBps / 100).toFixed(2)}% remaining
           </span>
         ) : (
-          <span className="font-black text-black bg-[#ff8a80] px-2 py-0.5 rounded border-2 border-black shadow-[1px_1px_0px_0px_#000]">
-            {currentPercent}% entered ({Math.abs(deltaBps / 100).toFixed(2)}% over 100%)
+          <span className="font-bold text-[#A83232] bg-[#FCE8E6] border border-[#F5C2C0] px-3 py-1 rounded-full shadow-xs">
+            {Math.abs(deltaBps / 100).toFixed(2)}% over 100%
           </span>
         )}
       </div>
@@ -288,9 +285,8 @@ export function SplitEditor({
     }
 
     statusMessage = (
-      <div className="pt-2 border-t-2 border-black flex items-center justify-between text-xs font-mono font-bold">
-        <span className="text-black uppercase">Total shares:</span>
-        <span className={`px-2 py-0.5 rounded border-2 border-black font-black text-black ${allPositive && totalShares > 0 ? 'bg-[#ccff00]' : 'bg-[#ff8a80]'}`}>
+      <div className="pt-2 border-t border-[#E5D9CC] flex items-center justify-end text-xs font-semibold">
+        <span className={`px-3 py-1 rounded-full border font-bold shadow-xs ${allPositive && totalShares > 0 ? 'bg-[#E8F0E4] text-[#2E4226] border-[#C5D9BE]' : 'bg-[#FCE8E6] text-[#A83232] border-[#F5C2C0]'}`}>
           {totalShares > 0 ? `${totalShares} share${totalShares === 1 ? '' : 's'}` : 'Enter positive shares'}
         </span>
       </div>
@@ -313,7 +309,7 @@ export function SplitEditor({
       } catch (err: any) {
         isValid = false;
         statusMessage = (
-          <div className="pt-2 border-t-2 border-black text-xs font-mono font-black text-black bg-[#ff8a80] px-2 py-1 rounded border-2 border-black">
+          <div className="pt-2 text-xs font-semibold text-[#A83232] bg-[#FCE8E6] px-3 py-1.5 rounded-2xl border border-[#F5C2C0]">
             {err.message || 'Adjustments result in negative shares'}
           </div>
         );
@@ -321,7 +317,7 @@ export function SplitEditor({
     } else {
       isValid = false;
       statusMessage = (
-        <div className="pt-2 border-t-2 border-black text-xs font-mono font-black text-black bg-[#ff8a80] px-2 py-1 rounded border-2 border-black">
+        <div className="pt-2 text-xs font-semibold text-[#A83232] bg-[#FCE8E6] px-3 py-1.5 rounded-2xl border border-[#F5C2C0]">
           Adjustments exceed total expense amount
         </div>
       );
@@ -329,9 +325,9 @@ export function SplitEditor({
 
     if (!statusMessage) {
       statusMessage = (
-        <div className="pt-2 border-t-2 border-black flex items-center justify-between text-xs font-mono font-bold">
-          <span className="text-black uppercase">Adjustments sum:</span>
-          <span className="px-2 py-0.5 rounded border-2 border-black bg-[#ccff00] text-black font-black">
+        <div className="pt-2 border-t border-[#E5D9CC] flex items-center justify-between text-xs font-bold">
+          <span className="text-[#6E5849] uppercase">Adjustments sum:</span>
+          <span className="px-2.5 py-0.5 rounded-full border border-[#E5D9CC] bg-[#E8F0E4] text-[#2E4226] font-bold">
             {sumAdjustments >= 0 ? `+${formatMinor(sumAdjustments, currency)}` : formatMinor(sumAdjustments, currency)} (Pool: {formatMinor(pool, currency)})
           </span>
         </div>
@@ -358,72 +354,69 @@ export function SplitEditor({
     equalCount > 0 ? Math.floor(totalAmountMinor / equalCount) : 0;
 
   return (
-    <div className="space-y-3.5 p-4 rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000]">
-      <div className="flex items-center justify-between">
-        <label className="text-xs font-mono font-black text-black uppercase tracking-wider">
+    <div className="space-y-3.5 p-4 rounded-3xl border border-[#E5D9CC] bg-[#FAF6F0] shadow-xs">
+      <div>
+        <label className="text-xs font-bold text-[#6E5849] uppercase tracking-wider">
           SPLIT DISTRIBUTION
         </label>
-        <span className="px-2 py-0.5 rounded border-2 border-black bg-[#ccff00] text-black text-[10px] font-mono font-black shadow-[1.5px_1.5px_0px_0px_#000]">
-          ✓ 0.00 REM
-        </span>
       </div>
 
-      {/* 4-Mode Tabs Bar matching Stitch Image 2 */}
-      <div className="grid grid-cols-4 gap-1.5 p-1 bg-[#f0f0ea] border-2 border-black rounded-xl">
+      {/* 4-Mode Tabs Bar */}
+      <div className="grid grid-cols-4 gap-1 p-1 bg-white border border-[#E5D9CC] rounded-full text-xs font-bold">
         <button
           type="button"
           onClick={() => setMode('equal')}
-          className={`py-1.5 text-xs font-mono font-black uppercase rounded-lg transition-all ${
+          className={`py-1.5 rounded-full transition-all cursor-pointer ${
             mode === 'equal'
-              ? 'bg-black text-[#ccff00] border-2 border-black shadow-[2px_2px_0px_0px_#000]'
-              : 'text-black/60 hover:text-black'
+              ? 'bg-[#543A2A] text-[#FAF6F0] shadow-xs'
+              : 'text-[#8D7868] hover:text-[#543A2A]'
           }`}
         >
-          EQUALLY
+          Equally
         </button>
         <button
           type="button"
           onClick={() => setMode('exact')}
-          className={`py-1.5 text-xs font-mono font-black uppercase rounded-lg transition-all ${
+          className={`py-1.5 rounded-full transition-all cursor-pointer ${
             mode === 'exact'
-              ? 'bg-black text-[#ccff00] border-2 border-black shadow-[2px_2px_0px_0px_#000]'
-              : 'text-black/60 hover:text-black'
+              ? 'bg-[#543A2A] text-[#FAF6F0] shadow-xs'
+              : 'text-[#8D7868] hover:text-[#543A2A]'
           }`}
         >
-          UNEQUALLY
+          Unequally
         </button>
         <button
           type="button"
           onClick={() => setMode('percentage')}
-          className={`py-1.5 text-xs font-mono font-black uppercase rounded-lg transition-all ${
+          className={`py-1.5 rounded-full transition-all cursor-pointer ${
             mode === 'percentage'
-              ? 'bg-black text-[#ccff00] border-2 border-black shadow-[2px_2px_0px_0px_#000]'
-              : 'text-black/60 hover:text-black'
+              ? 'bg-[#543A2A] text-[#FAF6F0] shadow-xs'
+              : 'text-[#8D7868] hover:text-[#543A2A]'
           }`}
         >
-          % PERCENT
+          % Percent
         </button>
         <button
           type="button"
           onClick={() => setMode('shares')}
-          className={`py-1.5 text-xs font-mono font-black uppercase rounded-lg transition-all ${
+          className={`py-1.5 rounded-full transition-all cursor-pointer ${
             mode === 'shares'
-              ? 'bg-black text-[#ccff00] border-2 border-black shadow-[2px_2px_0px_0px_#000]'
-              : 'text-black/60 hover:text-black'
+              ? 'bg-[#543A2A] text-[#FAF6F0] shadow-xs'
+              : 'text-[#8D7868] hover:text-[#543A2A]'
           }`}
         >
-          SHARES
+          Shares
         </button>
       </div>
 
-      {/* Per-Person Share Box (Image 2) */}
+      {/* Per-Person Share Box */}
       {mode === 'equal' && (
-        <div className="p-3 rounded-xl border-2 border-black bg-[#e8e8e2] flex items-center justify-between shadow-[2px_2px_0px_0px_#000]">
-          <span className="text-xs font-mono font-black text-black uppercase tracking-wider">
-            PER-PERSON SHARE
+        <div className="p-3.5 rounded-2xl border border-[#E5D9CC] bg-white flex items-center justify-between shadow-xs">
+          <span className="text-xs font-bold text-[#6E5849] uppercase tracking-wider">
+            Per-Person Share
           </span>
-          <span className="px-3 py-1 rounded-lg border-2 border-black bg-[#ccff00] text-black font-mono font-black text-sm shadow-[1.5px_1.5px_0px_0px_#000]">
-            ₹ {formatMinor(equalPerPersonMinor, currency)}
+          <span className="px-3 py-1 rounded-full bg-[#EFE4D6] text-[#543A2A] font-bold text-sm">
+            ₹{formatMinor(equalPerPersonMinor, currency)}
           </span>
         </div>
       )}
@@ -431,12 +424,12 @@ export function SplitEditor({
       {/* Mode 1: Equal Split */}
       {mode === 'equal' && (
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs font-mono font-bold text-black px-1">
+          <div className="flex items-center justify-between text-xs font-bold text-[#8D7868] px-1">
             <span>{equalParticipantIds.size} members participating</span>
             <button
               type="button"
               onClick={selectAllEqual}
-              className="font-black text-black underline uppercase"
+              className="font-bold text-[#543A2A] hover:underline"
             >
               Select all ({members.length})
             </button>
@@ -455,41 +448,41 @@ export function SplitEditor({
                 <div
                   key={m.id}
                   onClick={() => toggleEqualParticipant(m.id)}
-                  className={`flex items-center justify-between p-3 rounded-xl border-2 border-black cursor-pointer select-none transition-all shadow-[2px_2px_0px_0px_#000] ${
+                  className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer select-none transition-all shadow-xs ${
                     isChecked
-                      ? 'bg-white'
-                      : 'bg-[#f0f0ea] opacity-60'
+                      ? 'bg-white border-[#E5D9CC] hover:border-[#D4B89B]'
+                      : 'bg-[#FAF6F0]/60 border-[#E5D9CC]/60 opacity-60'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className={`w-5 h-5 rounded border-2 border-black flex items-center justify-center font-black text-xs shrink-0 ${
-                        isChecked ? 'bg-[#ccff00] text-black' : 'bg-white'
+                      className={`w-5 h-5 rounded-full border flex items-center justify-center font-bold text-xs shrink-0 transition ${
+                        isChecked ? 'bg-[#543A2A] text-[#FAF6F0] border-[#543A2A]' : 'bg-white border-[#E5D9CC]'
                       }`}
                     >
                       {isChecked ? '✓' : ''}
                     </div>
 
-                    <div className="w-8 h-8 rounded-lg border-2 border-black bg-[#f0f0ea] flex items-center justify-center font-black text-xs shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center font-bold text-xs shrink-0">
                       {m.displayName.charAt(0).toUpperCase()}
                     </div>
 
                     <div className="min-w-0">
-                      <span className="text-xs font-black text-black block truncate">
+                      <span className="text-xs font-bold text-[#432E22] block truncate">
                         {m.displayName}
                       </span>
-                      <span className="text-[10px] font-mono text-black/60 block truncate">
+                      <span className="text-[10px] text-[#8D7868] block truncate">
                         {isChecked ? '1 share included' : 'Excluded'}
                       </span>
                     </div>
                   </div>
 
                   <div className="text-right shrink-0 space-y-0.5">
-                    <div className="text-xs sm:text-sm font-black font-mono text-black">
-                      ₹ {formatMinor(owedAmount, currency)}
+                    <div className="text-xs sm:text-sm font-bold text-[#432E22]">
+                      ₹{formatMinor(owedAmount, currency)}
                     </div>
                     {isChecked && (
-                      <span className="px-1.5 py-0.2 rounded border border-black bg-[#f0f0ea] text-[9px] font-mono font-bold text-black">
+                      <span className="px-2 py-0.5 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[9px] font-semibold text-[#8D7868]">
                         {percent}%
                       </span>
                     )}
@@ -506,16 +499,17 @@ export function SplitEditor({
         <div className="space-y-2.5">
           <div className="space-y-2">
             {members.map((m) => (
-              <div key={m.id} className="flex items-center justify-between gap-3 p-2 rounded-lg border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000]">
+              <div key={m.id} className="flex items-center justify-between gap-3 p-2.5 rounded-2xl border border-[#E5D9CC] bg-white shadow-xs">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded border-2 border-black bg-[#00e5ff] flex items-center justify-center text-xs font-black">
+                  <div className="w-8 h-8 rounded-full bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center text-xs font-bold shrink-0">
                     {m.displayName.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xs font-black text-black truncate">
+                  <span className="text-xs font-bold text-[#432E22] truncate">
                     {m.displayName}
                   </span>
                 </div>
-                <div className="w-32 shrink-0">
+                <div className="w-32 shrink-0 flex items-center gap-1">
+                  <span className="text-xs font-bold text-[#8D7868]">₹</span>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -524,7 +518,7 @@ export function SplitEditor({
                     onChange={(e) =>
                       setExactInputs((prev) => ({ ...prev, [m.id]: e.target.value }))
                     }
-                    className="w-full px-3 py-1.5 text-xs sm:text-sm font-mono font-black text-right rounded-lg border-2 border-black bg-white text-black focus:outline-none focus:bg-[#faffea]"
+                    className="w-full px-2.5 py-1 text-xs sm:text-sm font-bold text-right rounded-xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] focus:outline-none focus:border-[#543A2A]"
                   />
                 </div>
               </div>
@@ -537,12 +531,12 @@ export function SplitEditor({
       {/* Mode 3: Percentage Split */}
       {mode === 'percentage' && (
         <div className="space-y-2.5">
-          <div className="flex items-center justify-between text-xs font-mono font-bold text-black px-1">
+          <div className="flex items-center justify-between text-xs font-bold text-[#8D7868] px-1">
             <span>ENTER PERCENTAGE PER PERSON</span>
             <button
               type="button"
               onClick={distributePercentagesEvenly}
-              className="text-black font-black underline uppercase"
+              className="text-[#543A2A] font-bold hover:underline"
             >
               Split evenly
             </button>
@@ -554,13 +548,13 @@ export function SplitEditor({
               const owed = split ? split.owedMinor : 0;
 
               return (
-                <div key={m.id} className="flex items-center justify-between gap-3 p-2 rounded-lg border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000]">
+                <div key={m.id} className="flex items-center justify-between gap-3 p-2.5 rounded-2xl border border-[#E5D9CC] bg-white shadow-xs">
                   <div className="min-w-0">
-                    <span className="text-xs font-black text-black block truncate">
+                    <span className="text-xs font-bold text-[#432E22] block truncate">
                       {m.displayName}
                     </span>
-                    <span className="text-[10px] font-mono font-bold text-black/60">
-                      ≈ ₹ {formatMinor(owed, currency)}
+                    <span className="text-[10px] font-semibold text-[#8D7868]">
+                      ≈ ₹{formatMinor(owed, currency)}
                     </span>
                   </div>
                   <div className="relative w-28 shrink-0">
@@ -572,9 +566,9 @@ export function SplitEditor({
                       onChange={(e) =>
                         setPercentInputs((prev) => ({ ...prev, [m.id]: e.target.value }))
                       }
-                      className="w-full pl-3 pr-7 py-1.5 text-xs sm:text-sm font-mono font-black text-right rounded-lg border-2 border-black bg-white text-black focus:outline-none focus:bg-[#faffea]"
+                      className="w-full pl-2.5 pr-6 py-1 text-xs sm:text-sm font-bold text-right rounded-xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] focus:outline-none focus:border-[#543A2A]"
                     />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-mono font-black text-black pointer-events-none">
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-[#8D7868] pointer-events-none">
                       %
                     </span>
                   </div>
@@ -589,8 +583,8 @@ export function SplitEditor({
       {/* Mode 4: Shares Split */}
       {mode === 'shares' && (
         <div className="space-y-2.5">
-          <div className="text-xs font-mono font-bold text-black px-1 uppercase">
-            ASSIGN SHARES (E.G. 2 FOR COUPLES, 1 FOR SINGLES)
+          <div className="text-xs font-bold text-[#8D7868] px-1 uppercase">
+            Assign Shares (e.g. 2 for couples, 1 for singles)
           </div>
 
           <div className="space-y-2">
@@ -605,13 +599,13 @@ export function SplitEditor({
               };
 
               return (
-                <div key={m.id} className="flex items-center justify-between gap-3 p-2 rounded-lg border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000]">
+                <div key={m.id} className="flex items-center justify-between gap-3 p-2.5 rounded-2xl border border-[#E5D9CC] bg-white shadow-xs">
                   <div className="min-w-0">
-                    <span className="text-xs font-black text-black block truncate">
+                    <span className="text-xs font-bold text-[#432E22] block truncate">
                       {m.displayName}
                     </span>
-                    <span className="text-[10px] font-mono font-bold text-black/60">
-                      ₹ {formatMinor(owed, currency)}
+                    <span className="text-[10px] text-[#8D7868] font-semibold">
+                      ₹{formatMinor(owed, currency)}
                     </span>
                   </div>
 
@@ -619,7 +613,7 @@ export function SplitEditor({
                     <button
                       type="button"
                       onClick={() => step(-1)}
-                      className="w-7 h-7 flex items-center justify-center rounded border-2 border-black bg-white text-black font-black hover:bg-[#ccff00] shadow-[1px_1px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5"
+                      className="w-7 h-7 flex items-center justify-center rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[#543A2A] font-bold hover:bg-[#EFE4D6] transition cursor-pointer"
                     >
                       -
                     </button>
@@ -630,12 +624,12 @@ export function SplitEditor({
                       onChange={(e) =>
                         setSharesInputs((prev) => ({ ...prev, [m.id]: e.target.value }))
                       }
-                      className="w-14 px-1 py-1 text-xs sm:text-sm font-mono font-black text-center rounded border-2 border-black bg-white text-black focus:outline-none"
+                      className="w-12 px-1 py-1 text-xs sm:text-sm font-bold text-center rounded-xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => step(1)}
-                      className="w-7 h-7 flex items-center justify-center rounded border-2 border-black bg-white text-black font-black hover:bg-[#ccff00] shadow-[1px_1px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5"
+                      className="w-7 h-7 flex items-center justify-center rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[#543A2A] font-bold hover:bg-[#EFE4D6] transition cursor-pointer"
                     >
                       +
                     </button>
@@ -651,8 +645,8 @@ export function SplitEditor({
       {/* Mode 5: Adjustment Split */}
       {mode === 'adjustment' && (
         <div className="space-y-2.5">
-          <div className="text-xs font-mono font-bold text-black px-1 uppercase">
-            EQUAL BASELINE WITH PER-PERSON +/- ADJUSTMENT
+          <div className="text-xs font-bold text-[#8D7868] px-1 uppercase">
+            Equal baseline with per-person +/- adjustment
           </div>
 
           <div className="space-y-2">
@@ -661,13 +655,13 @@ export function SplitEditor({
               const owed = split ? split.owedMinor : 0;
 
               return (
-                <div key={m.id} className="flex items-center justify-between gap-3 p-2 rounded-lg border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000]">
+                <div key={m.id} className="flex items-center justify-between gap-3 p-2.5 rounded-2xl border border-[#E5D9CC] bg-white shadow-xs">
                   <div className="min-w-0">
-                    <span className="text-xs font-black text-black block truncate">
+                    <span className="text-xs font-bold text-[#432E22] block truncate">
                       {m.displayName}
                     </span>
-                    <span className="text-[10px] font-mono font-black text-black bg-[#ccff00] px-1 rounded border border-black">
-                      Total: ₹ {formatMinor(owed, currency)}
+                    <span className="text-[10px] font-bold text-[#543A2A] bg-[#EFE4D6] px-2 py-0.5 rounded-full">
+                      Total: ₹{formatMinor(owed, currency)}
                     </span>
                   </div>
 
@@ -679,7 +673,7 @@ export function SplitEditor({
                       onChange={(e) =>
                         setAdjustmentInputs((prev) => ({ ...prev, [m.id]: e.target.value }))
                       }
-                      className="w-full px-3 py-1.5 text-xs sm:text-sm font-mono font-black text-right rounded-lg border-2 border-black bg-white text-black focus:outline-none focus:bg-[#faffea]"
+                      className="w-full px-2.5 py-1 text-xs sm:text-sm font-bold text-right rounded-xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] focus:outline-none focus:border-[#543A2A]"
                     />
                   </div>
                 </div>

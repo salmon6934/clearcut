@@ -1,7 +1,7 @@
 'use client';
 
 // app/activity/page.tsx
-// Stitch Neo-Brutalist Global Activity Feed with Soft-Delete Audit & Immediate Restore Action
+// Brew & Browse Warm Cafe Global Activity Feed with Soft-Delete Audit & Immediate Restore Action
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -16,7 +16,7 @@ import { haptics } from '../../lib/native/haptics';
 
 interface ActivityItem {
   id: string;
-  type: 'expense' | 'settlement' | 'group' | 'deleted';
+  type: 'expense' | 'settlement' | 'group';
   timestamp: string;
   groupId: string;
   groupName: string;
@@ -25,9 +25,6 @@ interface ActivityItem {
   subtitle: string;
   amountMinor?: number;
   badgeEmoji: string;
-  badgeBg: string;
-  isDeleted?: boolean;
-  deletedExpenseId?: string;
 }
 
 export default function ActivityPage() {
@@ -36,41 +33,36 @@ export default function ActivityPage() {
   const groups = useAllGroups(repo, false);
 
   const [mounted, setMounted] = useState(false);
-  const [filterType, setFilterType] = useState<'all' | 'expense' | 'settlement' | 'deleted'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'expense' | 'settlement'>('all');
 
   useEffect(() => {
     setMounted(true);
     repo.syncManager?.kick('activity_mount', true).catch(() => {});
   }, [repo]);
 
-  const handleRestoreExpense = async (expenseId: string, title: string) => {
-    await haptics.tap().catch(() => {});
-    repo.restoreExpense(expenseId);
-    showToast(`Restored "${title}"! Balances recalculated.`, 'success', 2500);
-  };
-
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#f5f5f0] text-black pb-28">
-        <header className="sticky top-0 z-30 bg-[#f5f5f0] border-b-2 border-black px-4 py-3 animate-pulse">
-          <div className="max-w-xl mx-auto flex items-center justify-between">
-            <div className="h-6 w-32 bg-[#e0e0d8] rounded border border-black" />
-            <div className="h-8 w-20 bg-[#e0e0d8] rounded-lg border border-black" />
-          </div>
-        </header>
-        <div className="max-w-xl mx-auto p-4 space-y-4 animate-pulse">
-          <div className="h-20 w-full bg-white rounded-2xl border-2 border-black" />
-          <div className="h-20 w-full bg-white rounded-2xl border-2 border-black" />
+      <div className="min-h-screen bg-transparent text-[#432E22] pb-28">
+        <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-5 animate-pulse">
+          <header className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#EFE4D6]" />
+              <div className="h-7 w-28 bg-[#EFE4D6] rounded-xl" />
+            </div>
+            <div className="h-9 w-24 bg-[#EFE4D6] rounded-full" />
+          </header>
+          <div className="h-20 w-full bg-white rounded-3xl border border-[#E5D9CC]" />
+          <div className="h-20 w-full bg-white rounded-3xl border border-[#E5D9CC]" />
         </div>
       </div>
     );
   }
 
-  // Aggregate all activities across all groups (including soft-deleted expenses)
+  // Aggregate all activities across all groups
   const activities: ActivityItem[] = [];
 
   for (const group of groups) {
-    const expenses = repo.store.getGroupExpenses(group.id, true);
+    const expenses = repo.store.getGroupExpenses(group.id, false);
     const settlements = repo.store.getGroupSettlements(group.id, false);
     const members = repo.store.getGroupMembers(group.id, false);
 
@@ -85,47 +77,27 @@ export default function ActivityPage() {
       title: `Group "${group.name}" Created`,
       subtitle: `${members.length} member${members.length > 1 ? 's' : ''} enrolled in ${group.currency}`,
       badgeEmoji: '📁',
-      badgeBg: 'bg-[#ffd600]',
     });
 
-    // 2. Expenses (Active and Soft-Deleted)
+    // 2. Expenses (Active only)
     for (const exp of expenses) {
-      if (exp.deletedAt) {
-        activities.push({
-          id: `exp-del-${exp.id}`,
-          type: 'deleted',
-          timestamp: exp.deletedAt || exp.updatedAt || new Date().toISOString(),
-          groupId: group.id,
-          groupName: group.name,
-          currency: exp.currency,
-          title: `Deleted "${exp.title}"`,
-          subtitle: `Soft-deleted • Tap restore to reinstate in group`,
-          amountMinor: exp.amountMinor,
-          badgeEmoji: '🗑️',
-          badgeBg: 'bg-[#ff8a80]',
-          isDeleted: true,
-          deletedExpenseId: exp.id,
-        });
-      } else {
-        const payerSplits = exp.splits.filter((s) => s.paidMinor > 0);
-        const payerNames = payerSplits
-          .map((s) => members.find((m) => m.id === s.memberId)?.displayName || 'Someone')
-          .join(', ');
+      const payerSplits = exp.splits.filter((s) => s.paidMinor > 0);
+      const payerNames = payerSplits
+        .map((s) => members.find((m) => m.id === s.memberId)?.displayName || 'Someone')
+        .join(', ');
 
-        activities.push({
-          id: `exp-${exp.id}`,
-          type: 'expense',
-          timestamp: exp.createdAt || exp.expenseDate || new Date().toISOString(),
-          groupId: group.id,
-          groupName: group.name,
-          currency: exp.currency,
-          title: exp.title,
-          subtitle: payerNames ? `Paid by ${payerNames}` : `Expense recorded`,
-          amountMinor: exp.amountMinor,
-          badgeEmoji: '🧾',
-          badgeBg: 'bg-[#00e5ff]',
-        });
-      }
+      activities.push({
+        id: `exp-${exp.id}`,
+        type: 'expense',
+        timestamp: exp.createdAt || exp.expenseDate || new Date().toISOString(),
+        groupId: group.id,
+        groupName: group.name,
+        currency: exp.currency,
+        title: exp.title,
+        subtitle: payerNames ? `Paid by ${payerNames}` : `Expense recorded`,
+        amountMinor: exp.amountMinor,
+        badgeEmoji: '🧾',
+      });
     }
 
     // 3. Settlements
@@ -144,7 +116,6 @@ export default function ActivityPage() {
         subtitle: s.note || `Settlement recorded`,
         amountMinor: s.amountMinor,
         badgeEmoji: '⚡',
-        badgeBg: 'bg-[#ccff00]',
       });
     }
   }
@@ -152,53 +123,49 @@ export default function ActivityPage() {
   // Sort descending by timestamp
   activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-  const deletedCount = activities.filter((a) => a.type === 'deleted').length;
-
   // Filter
   const filteredActivities = activities.filter((act) => {
     if (filterType === 'expense' && act.type !== 'expense') return false;
     if (filterType === 'settlement' && act.type !== 'settlement') return false;
-    if (filterType === 'deleted' && act.type !== 'deleted') return false;
     return true;
   });
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0] text-black pb-28">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-[#f5f5f0] border-b-2 border-black px-4 py-3">
-        <div className="max-w-xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#00e5ff] border-2 border-black flex items-center justify-center font-mono font-black text-sm shadow-[2px_2px_0px_0px_#000]">
-              ⚡
+    <div className="min-h-screen bg-transparent text-[#432E22] pb-28">
+      <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-5">
+        {/* Seamless Top Header Bar labeled "Activity" */}
+        <header className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#543A2A] text-[#FAF6F0] flex items-center justify-center shadow-sm">
+              <svg className="w-5 h-5 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
             </div>
-            <div>
-              <h1 className="text-base font-black tracking-tight uppercase leading-none">
-                ACTIVITY FEED
-              </h1>
-            </div>
+            <h1 className="text-2xl font-extrabold text-[#432E22] tracking-tight">
+              Activity
+            </h1>
           </div>
 
-          <SyncBadge manager={repo.syncManager} />
-        </div>
-      </header>
+          <div className="flex items-center gap-2">
+            <SyncBadge manager={repo.syncManager} />
+          </div>
+        </header>
 
-      <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-4">
         {/* Filter Tabs */}
-        <div className="flex items-center gap-2 text-xs font-mono font-black flex-wrap">
+        <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
           {[
             { id: 'all', label: `ALL (${activities.length})` },
             { id: 'expense', label: 'EXPENSES' },
             { id: 'settlement', label: 'SETTLEMENTS' },
-            { id: 'deleted', label: `DELETED (${deletedCount})` },
           ].map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setFilterType(tab.id as any)}
-              className={`px-3 py-1.5 rounded-lg border-2 border-black uppercase transition cursor-pointer active:translate-x-0.5 active:translate-y-0.5 ${
+              className={`px-3.5 py-1.5 rounded-full uppercase transition cursor-pointer active:scale-95 ${
                 filterType === tab.id
-                  ? 'bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000]'
-                  : 'bg-white text-black/70 hover:text-black shadow-[1px_1px_0px_0px_#000]'
+                  ? 'bg-[#543A2A] text-[#FAF6F0] shadow-sm'
+                  : 'bg-white text-[#8D7868] hover:text-[#543A2A] border border-[#E5D9CC]'
               }`}
             >
               {tab.label}
@@ -209,58 +176,51 @@ export default function ActivityPage() {
         {/* Activity Items */}
         {filteredActivities.length === 0 ? (
           <EmptyState
-            icon={<span>⚡</span>}
-            title={filterType === 'deleted' ? 'No deleted expenses' : 'No activity recorded yet'}
-            description={
-              filterType === 'deleted'
-                ? 'Soft-deleted expenses will appear here. Any member can restore them at any time.'
-                : 'When you create groups, record expenses, or log settlements, the ledger event stream will appear here.'
+            icon={
+              <div className="w-12 h-12 rounded-2xl bg-[#543A2A]/10 text-[#543A2A] flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-hat-glasses preview-icon">
+                  <path d="M14 18a2 2 0 0 0-4 0"/>
+                  <path d="m19 11-2.11-6.657a2 2 0 0 0-2.752-1.148l-1.276.61A2 2 0 0 1 12 4H8.5a2 2 0 0 0-1.925 1.456L5 11"/>
+                  <path d="M2 11h20"/>
+                  <circle cx="17" cy="18" r="3"/>
+                  <circle cx="7" cy="18" r="3"/>
+                </svg>
+              </div>
             }
-            actionText={filterType === 'deleted' ? undefined : 'Go to Dashboard'}
-            onAction={filterType === 'deleted' ? undefined : () => router.push('/')}
+            title="No activity recorded yet"
+            description="When you create groups, record expenses, or log settlements, your activity will appear here."
+            actionText="Go to Dashboard"
+            onAction={() => router.push('/')}
           />
         ) : (
           <div className="space-y-3">
             {filteredActivities.map((act) => (
               <div
                 key={act.id}
-                className={`block rounded-2xl border-2 border-black p-4 shadow-[3px_3px_0px_0px_#000] transition ${
-                  act.isDeleted ? 'bg-[#ffebee]' : 'bg-white hover:bg-[#fafaf6]'
-                }`}
+                className="block rounded-3xl border border-[#E5D9CC] p-4 shadow-xs transition bg-white hover:bg-[#FAF6F0]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <Link
                     href={`/group?id=${act.groupId}`}
-                    className="flex items-start gap-3 min-w-0 flex-1 hover:opacity-80 transition"
+                    className="flex items-start gap-3 min-w-0 flex-1 hover:opacity-85 transition"
                   >
-                    <div
-                      className={`w-10 h-10 rounded-xl border-2 border-black flex items-center justify-center text-base shrink-0 shadow-[2px_2px_0px_0px_#000] ${act.badgeBg}`}
-                    >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-base shrink-0 shadow-xs bg-[#EFE4D6] text-[#543A2A]">
                       {act.badgeEmoji}
                     </div>
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`font-bold text-sm text-black uppercase tracking-tight ${
-                            act.isDeleted ? 'line-through text-black/50' : ''
-                          }`}
-                        >
+                        <span className="font-bold text-sm text-[#432E22] tracking-tight">
                           {act.title}
                         </span>
-                        <span className="font-mono text-[9px] font-black uppercase px-1.5 py-0.5 rounded border border-black bg-[#f0f0ea]">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[#6E5849]">
                           {act.groupName}
                         </span>
-                        {act.isDeleted && (
-                          <span className="font-mono text-[9px] font-black uppercase px-1.5 py-0.5 rounded border border-black bg-[#ff8a80] text-black">
-                            DELETED
-                          </span>
-                        )}
                       </div>
-                      <p className="font-mono text-[11px] text-black/60 font-bold truncate">
+                      <p className="text-[11px] text-[#8D7868] font-medium truncate mt-0.5">
                         {act.subtitle}
                       </p>
-                      <p className="font-mono text-[10px] text-black/40 font-bold mt-1">
+                      <p className="text-[10px] text-[#A89689] font-medium mt-1">
                         {new Date(act.timestamp).toLocaleDateString(undefined, {
                           month: 'short',
                           day: 'numeric',
@@ -274,31 +234,10 @@ export default function ActivityPage() {
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     {typeof act.amountMinor === 'number' && (
                       <div className="text-right">
-                        <div
-                          className={`font-mono font-black text-sm sm:text-base text-black ${
-                            act.isDeleted ? 'line-through text-black/40' : ''
-                          }`}
-                        >
-                          {formatMinor(act.amountMinor, act.currency)}
+                        <div className="font-bold text-sm sm:text-base text-[#432E22]">
+                          ₹{formatMinor(act.amountMinor, act.currency)}
                         </div>
-                        <span className="font-mono text-[9px] uppercase font-bold text-black/50">
-                          {act.currency}
-                        </span>
                       </div>
-                    )}
-
-                    {act.isDeleted && act.deletedExpenseId && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleRestoreExpense(act.deletedExpenseId!, act.title);
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-[#ccff00] hover:bg-[#bbf000] text-black border-2 border-black font-mono font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
-                      >
-                        RESTORE
-                      </button>
                     )}
                   </div>
                 </div>

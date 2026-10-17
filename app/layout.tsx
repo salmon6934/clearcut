@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { NativeProvider } from "@/components/NativeProvider";
-import { SplashScreen } from "@/components/SplashScreen";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,17 +14,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Clearcut | Expense Sharing & Balance Ledger",
-  description: "Real-time online-first balance ledger for group expenses with offline resilience",
+  title: "Clearcut | Expense Sharing",
+  description: "Real-time online-first group expense sharing with offline resilience",
   icons: {
     icon: [
-      { url: '/icon.png', sizes: 'any' },
-      { url: '/icon.png', type: 'image/png' },
+      { url: '/icon.png?v=2', sizes: 'any' },
+      { url: '/icon.png?v=2', type: 'image/png' },
     ],
     apple: [
-      { url: '/icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/icon.png?v=2', sizes: '180x180', type: 'image/png' },
     ],
-    shortcut: '/icon.png',
+    shortcut: '/icon.png?v=2',
   },
 };
 
@@ -39,9 +38,19 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#f5f5f0] text-black selection:bg-[#ccff00] selection:text-black">
+      <head>
+        <link rel="icon" href="/icon.png?v=2" type="image/png" sizes="any" />
+        <link rel="apple-touch-icon" href="/icon.png?v=2" />
+      </head>
+      <body className="min-h-full flex flex-col bg-transparent text-[#432E22] selection:bg-[#D4B89B] selection:text-[#432E22] relative overflow-x-hidden">
+        {/* Fixed background layer using public/background.png */}
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat pointer-events-none"
+          style={{ backgroundImage: "url('/background.png')" }}
+        />
         <NativeProvider>
-          <SplashScreen>{children}</SplashScreen>
+          {children}
         </NativeProvider>
       </body>
     </html>

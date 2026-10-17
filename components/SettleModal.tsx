@@ -1,7 +1,7 @@
 'use client';
 
 // components/SettleModal.tsx
-// Stitch-Engineered Clearinghouse Netting Settlement Modal (Algorithmic Netting Hub)
+// Warm Cafe Settlement Modal
 
 import React, { useState, useEffect } from 'react';
 import type { Member, SettlementDraft, SettlementMethod } from '../lib/data/types';
@@ -22,9 +22,9 @@ interface SettleModalProps {
 
 const SETTLEMENT_METHODS: { id: SettlementMethod; label: string; icon: string }[] = [
   { id: 'upi', label: 'UPI / QR', icon: '⚡' },
-  { id: 'cash', label: 'CASH', icon: '💵' },
-  { id: 'venmo', label: 'VENMO', icon: '💳' },
-  { id: 'bank', label: 'IMPS / BANK', icon: '🏦' },
+  { id: 'cash', label: 'Cash', icon: '💵' },
+  { id: 'venmo', label: 'Venmo', icon: '💳' },
+  { id: 'bank', label: 'Bank Transfer', icon: '🏦' },
 ];
 
 export function SettleModal({
@@ -99,100 +99,77 @@ export function SettleModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn overflow-y-auto">
       <div
-        className="relative w-full max-w-lg bg-white border-2 border-black rounded-2xl p-5 sm:p-6 shadow-[5px_5px_0px_0px_#000] space-y-4 my-8"
+        className="relative w-full max-w-lg bg-white border border-[#E5D9CC] rounded-3xl p-5 sm:p-6 shadow-xl space-y-4 my-8"
         role="dialog"
         aria-modal="true"
         aria-labelledby="settle-title"
       >
-        {/* Header Badges matching Stitch Image 3 */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded bg-black text-[#ccff00] text-[10px] font-mono font-black uppercase flex items-center gap-1">
-              <span>■</span>
-              <span>ALGORITHMIC NETTING HUB</span>
-            </span>
-            <span className="px-2 py-0.5 rounded border border-black bg-white text-[10px] font-mono font-bold uppercase">
-              🛡️ ZERO-LEAK LEDGER
-            </span>
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-[#E5D9CC]">
+          <div>
+            <h2 id="settle-title" className="text-xl font-bold text-[#432E22] tracking-tight">
+              Settle Balance
+            </h2>
+            <p className="text-xs text-[#8D7868]">Record a direct settlement payment</p>
           </div>
 
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="w-8 h-8 rounded-lg border-2 border-black bg-white hover:bg-[#ffd600] font-mono font-black text-xs flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full border border-[#E5D9CC] bg-white hover:bg-[#FAF6F0] text-[#543A2A] font-bold text-xs flex items-center justify-center transition cursor-pointer"
           >
             ✕
           </button>
         </div>
 
-        {/* Clearinghouse Title & Batch ID */}
-        <div className="flex items-baseline justify-between border-b-2 border-black pb-3">
-          <h2 id="settle-title" className="text-2xl font-black text-black tracking-tight uppercase font-mono">
-            CLEARINGHOUSE
-          </h2>
-          <span className="text-[11px] font-mono font-bold text-black/60 uppercase">
-            BATCH ID: #{groupId.slice(0, 4)}-NET
-          </span>
-        </div>
-
         {error && (
-          <div className="p-3 rounded-xl text-xs font-mono font-black uppercase bg-[#ff8a80] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+          <div className="p-3.5 rounded-2xl text-xs font-bold bg-[#FCE8E6] text-[#A83232] border border-[#F5C2C0]">
             {error}
           </div>
         )}
 
         {/* Visual Netting Route Card */}
-        <div className="border-2 border-black rounded-xl overflow-hidden shadow-[3px_3px_0px_0px_#000]">
-          <div className="bg-black text-white px-3 py-2 flex items-center justify-between text-xs font-mono font-bold">
-            <span className="uppercase">OPTIMAL ROUTE DETECTED</span>
-            <span className="px-1.5 py-0.5 rounded bg-[#ccff00] text-black text-[10px] font-black">
-              SAVED TRANSFERS (-57%)
-            </span>
-          </div>
-
-          <div className="bg-[#f0f0ea] p-4 flex items-center justify-between gap-2">
+        <div className="border border-[#E5D9CC] rounded-2xl overflow-hidden bg-[#FAF6F0] p-4">
+          <div className="flex items-center justify-between gap-3">
             {/* Debtor */}
             <div className="text-center space-y-1">
-              <div className="w-12 h-12 mx-auto rounded-xl border-2 border-black bg-white flex items-center justify-center font-black text-lg shadow-[2px_2px_0px_0px_#000]">
+              <div className="w-12 h-12 mx-auto rounded-full bg-[#E5BFB0] text-[#432E22] flex items-center justify-center font-bold text-lg shadow-xs">
                 {payerMember?.displayName?.charAt(0).toUpperCase() || 'D'}
               </div>
-              <span className="text-xs font-black text-black block truncate max-w-[90px]">
-                {payerMember?.displayName || 'DEBTOR'}
+              <span className="text-xs font-bold text-[#432E22] block truncate max-w-[90px]">
+                {payerMember?.displayName || 'Debtor'}
               </span>
-              <span className="inline-block px-1.5 py-0.2 rounded bg-[#ff8a80] text-black border border-black text-[9px] font-mono font-black uppercase">
-                DEBTOR
+              <span className="inline-block px-2 py-0.5 rounded-full bg-[#FCE8E6] text-[#A83232] text-[10px] font-bold uppercase">
+                Payer
               </span>
             </div>
 
             {/* Arrow & Amount Center */}
-            <div className="flex-1 text-center space-y-1 px-2">
-              <div className="inline-block px-2.5 py-1 bg-black text-[#ccff00] font-mono font-black text-xs sm:text-sm rounded border border-black shadow-[1px_1px_0px_0px_#000]">
-                ₹ {amountStr || '0.00'}
+            <div className="flex-1 text-center space-y-1.5 px-2">
+              <div className="inline-block px-3 py-1 bg-[#543A2A] text-[#FAF6F0] font-bold text-sm rounded-full shadow-xs">
+                ₹{amountStr || '0.00'}
               </div>
               <div className="flex items-center justify-center gap-1">
-                <div className="h-0.5 bg-black flex-1" />
-                <div className="w-6 h-6 bg-[#ccff00] border-2 border-black flex items-center justify-center font-black text-xs shadow-[1px_1px_0px_0px_#000]">
+                <div className="h-0.5 bg-[#E5D9CC] flex-1" />
+                <div className="w-6 h-6 rounded-full bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center font-bold text-xs">
                   ➔
                 </div>
-                <div className="h-0.5 bg-black flex-1" />
+                <div className="h-0.5 bg-[#E5D9CC] flex-1" />
               </div>
-              <span className="text-[10px] font-mono text-black/60 font-bold uppercase block">
-                DIRECT NET CLEAR
-              </span>
             </div>
 
             {/* Collector */}
             <div className="text-center space-y-1">
-              <div className="w-12 h-12 mx-auto rounded-xl border-2 border-black bg-white flex items-center justify-center font-black text-lg shadow-[2px_2px_0px_0px_#000]">
+              <div className="w-12 h-12 mx-auto rounded-full bg-[#D4B89B] text-[#432E22] flex items-center justify-center font-bold text-lg shadow-xs">
                 {payeeMember?.displayName?.charAt(0).toUpperCase() || 'C'}
               </div>
-              <span className="text-xs font-black text-black block truncate max-w-[90px]">
-                {payeeMember?.displayName || 'COLLECTOR'}
+              <span className="text-xs font-bold text-[#432E22] block truncate max-w-[90px]">
+                {payeeMember?.displayName || 'Collector'}
               </span>
-              <span className="inline-block px-1.5 py-0.2 rounded bg-[#ccff00] text-black border border-black text-[9px] font-mono font-black uppercase">
-                COLLECTOR
+              <span className="inline-block px-2 py-0.5 rounded-full bg-[#E8F0E4] text-[#2E4226] text-[10px] font-bold uppercase">
+                Recipient
               </span>
             </div>
           </div>
@@ -202,13 +179,13 @@ export function SettleModal({
           {/* Dropdown Pickers */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-mono font-black text-black uppercase tracking-wider mb-1">
-                WHO IS PAYING?
+              <label className="block text-xs font-bold text-[#6E5849] uppercase tracking-wider mb-1">
+                Who is paying?
               </label>
               <select
                 value={fromId}
                 onChange={(e) => setFromId(e.target.value)}
-                className="w-full px-3 py-2.5 text-xs font-mono font-bold rounded-xl border-2 border-black bg-white text-black shadow-[2px_2px_0px_0px_#000] focus:outline-none focus:bg-[#faffea]"
+                className="w-full px-3 py-2 text-xs font-semibold rounded-2xl border border-[#E5D9CC] bg-white text-[#432E22] focus:outline-none focus:border-[#543A2A]"
               >
                 {members.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -219,13 +196,13 @@ export function SettleModal({
             </div>
 
             <div>
-              <label className="block text-xs font-mono font-black text-black uppercase tracking-wider mb-1">
-                PAYING TO WHOM?
+              <label className="block text-xs font-bold text-[#6E5849] uppercase tracking-wider mb-1">
+                Paying to whom?
               </label>
               <select
                 value={toId}
                 onChange={(e) => setToId(e.target.value)}
-                className="w-full px-3 py-2.5 text-xs font-mono font-bold rounded-xl border-2 border-black bg-white text-black shadow-[2px_2px_0px_0px_#000] focus:outline-none focus:bg-[#faffea]"
+                className="w-full px-3 py-2 text-xs font-semibold rounded-2xl border border-[#E5D9CC] bg-white text-[#432E22] focus:outline-none focus:border-[#543A2A]"
               >
                 {members.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -237,18 +214,18 @@ export function SettleModal({
           </div>
 
           {/* Settlement Sum */}
-          <div className="p-4 rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] space-y-2.5">
+          <div className="p-4 rounded-2xl border border-[#E5D9CC] bg-[#FAF6F0] space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-black text-black uppercase tracking-wider">
-                SETTLEMENT SUM
+              <span className="text-xs font-bold text-[#6E5849] uppercase tracking-wider">
+                Settlement Amount
               </span>
-              <span className="text-[10px] font-mono text-black/60 font-bold uppercase">
-                CURRENCY: {currency} [₹]
+              <span className="text-[10px] text-[#8D7868] font-bold uppercase">
+                {currency}
               </span>
             </div>
 
-            <div className="p-3 bg-[#e8e8e2] border-2 border-black rounded-xl flex items-center gap-2">
-              <span className="text-2xl font-mono font-black text-black">
+            <div className="p-3 bg-white border border-[#E5D9CC] rounded-xl flex items-center gap-2">
+              <span className="text-2xl font-bold text-[#543A2A]">
                 {currency === 'INR' ? '₹' : currency}
               </span>
               <input
@@ -258,7 +235,7 @@ export function SettleModal({
                 value={amountStr}
                 onChange={(e) => setAmountStr(e.target.value)}
                 placeholder="0.00"
-                className="w-full text-2xl sm:text-3xl font-black font-mono tracking-tight bg-transparent text-black focus:outline-none"
+                className="w-full text-2xl sm:text-3xl font-bold tracking-tight bg-transparent text-[#432E22] focus:outline-none"
               />
             </div>
 
@@ -267,37 +244,32 @@ export function SettleModal({
               <button
                 type="button"
                 onClick={() => handleQuickAmount(1.0)}
-                className="flex-1 py-1.5 rounded-lg border-2 border-black bg-[#ccff00] text-black font-mono font-black text-xs shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                className="flex-1 py-1.5 rounded-full border border-[#E5D9CC] bg-white text-[#543A2A] font-bold text-xs hover:bg-[#EFE4D6] transition cursor-pointer"
               >
-                ■ FULL
+                Full Amount
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickAmount(0.5)}
-                className="flex-1 py-1.5 rounded-lg border-2 border-black bg-[#ffd600] text-black font-mono font-black text-xs shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                className="flex-1 py-1.5 rounded-full border border-[#E5D9CC] bg-white text-[#543A2A] font-bold text-xs hover:bg-[#EFE4D6] transition cursor-pointer"
               >
-                ■ HALF
+                Half
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickAmount(0.25)}
-                className="flex-1 py-1.5 rounded-lg border-2 border-black bg-[#f0f0ea] text-black font-mono font-bold text-xs shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                className="flex-1 py-1.5 rounded-full border border-[#E5D9CC] bg-white text-[#543A2A] font-bold text-xs hover:bg-[#EFE4D6] transition cursor-pointer"
               >
                 25%
               </button>
             </div>
           </div>
 
-          {/* Settlement Instrument */}
+          {/* Payment Method */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-mono font-black text-black uppercase tracking-wider">
-                SETTLEMENT INSTRUMENT
-              </label>
-              <span className="px-1.5 py-0.2 rounded border border-black bg-[#ffd600] text-black text-[9px] font-mono font-black uppercase">
-                DEEP-LINK READY
-              </span>
-            </div>
+            <label className="text-xs font-bold text-[#6E5849] uppercase tracking-wider block">
+              Payment Method
+            </label>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {SETTLEMENT_METHODS.map((m) => {
@@ -307,10 +279,10 @@ export function SettleModal({
                     key={m.id}
                     type="button"
                     onClick={() => setMethod(m.id)}
-                    className={`py-2 px-2.5 rounded-xl border-2 border-black text-xs font-mono font-black transition flex items-center justify-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_0px_#000] ${
+                    className={`py-2 px-2.5 rounded-full text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
                       isSelected
-                        ? 'bg-[#ccff00] text-black'
-                        : 'bg-white text-black/70 hover:bg-[#fafaf6]'
+                        ? 'bg-[#543A2A] text-[#FAF6F0] border-[#543A2A] shadow-xs'
+                        : 'bg-white text-[#543A2A] border-[#E5D9CC] hover:bg-[#FAF6F0]'
                     }`}
                   >
                     <span>{m.icon}</span>
@@ -321,39 +293,32 @@ export function SettleModal({
             </div>
           </div>
 
-          {/* Memo & Tag */}
-          <div className="p-3.5 rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-mono font-black text-black uppercase tracking-wider">
-                MEMO & CRYPTOGRAPHIC REF
-              </label>
-              <span className="px-1.5 py-0.2 rounded border border-black bg-[#ffd600] text-black text-[9px] font-mono font-black uppercase">
-                #TRIP
-              </span>
-            </div>
+          {/* Note */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#6E5849] uppercase tracking-wider block">
+              Note (Optional)
+            </label>
             <input
               type="text"
-              placeholder="e.g. Goa dinner split settlement, GPay ref #8493"
+              placeholder="e.g. Dinner settlement, GPay #9482"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-mono font-semibold rounded-lg border-2 border-black bg-white text-black focus:outline-none focus:bg-[#faffea]"
+              className="w-full px-3.5 py-2 text-xs font-medium rounded-2xl border border-[#E5D9CC] bg-white text-[#432E22] focus:outline-none focus:border-[#543A2A]"
             />
           </div>
 
-          {/* Sticky CTA Button */}
-          <div className="pt-2 space-y-2">
+          {/* Save Button */}
+          <div className="pt-2">
             <button
               type="submit"
-              className="w-full py-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] text-black font-black text-base uppercase border-2 border-black shadow-[4px_4px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] font-bold text-sm tracking-wide shadow-sm active:scale-95 transition cursor-pointer flex items-center justify-center gap-2"
             >
-              <span>✓ RECORD SETTLEMENT →</span>
+              <span>✓ Record Settlement</span>
             </button>
-            <p className="text-[10px] font-mono font-bold text-black/60 text-center uppercase tracking-wider">
-              💾 WRITES IMMEDIATELY TO LOCAL SQLITE LEDGER
-            </p>
           </div>
         </form>
       </div>
     </div>
   );
 }
+

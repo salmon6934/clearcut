@@ -60,6 +60,7 @@ function GroupMembersContent() {
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isSoleOwnerLeaveBlockedOpen, setIsSoleOwnerLeaveBlockedOpen] = useState(false);
   const [isDeleteGroupModalOpen, setIsDeleteGroupModalOpen] = useState(false);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
 
   // Claim link generation state
   const [claimLinkStatus, setClaimLinkStatus] = useState<string | null>(null);
@@ -87,13 +88,13 @@ function GroupMembersContent() {
 
   if (!groupId || !group) {
     return (
-      <div className="min-h-screen bg-[#f5f5f0] p-6 flex flex-col items-center justify-center text-center">
-        <h2 className="text-base font-mono font-black mb-2 uppercase">Group not found</h2>
+      <div className="min-h-screen bg-transparent p-6 flex flex-col items-center justify-center text-center">
+        <h2 className="text-base font-bold text-[#432E22] mb-2">Group not found</h2>
         <button
           onClick={() => router.push('/')}
-          className="px-4 py-2 text-xs font-mono font-black rounded-lg border-2 border-black bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000]"
+          className="px-5 py-2.5 text-xs font-bold rounded-full bg-[#543A2A] text-[#FAF6F0] hover:bg-[#432E20] shadow-sm transition active:scale-95 cursor-pointer"
         >
-          Back to Dashboard
+          Back to Groups
         </button>
       </div>
     );
@@ -139,9 +140,9 @@ function GroupMembersContent() {
 
   const handleGenerateClaimLink = async (member: Member) => {
     try {
-      const claimUrl = `${window.location.origin}/join?code=${inviteCode}&claimMemberId=${member.id}`;
-      await navigator.clipboard.writeText(claimUrl);
-      setClaimLinkStatus(`Claim link copied for ${member.displayName}!`);
+      const inviteUrl = `${window.location.origin}/join?code=${inviteCode}`;
+      await navigator.clipboard.writeText(inviteUrl);
+      setClaimLinkStatus(`Invite link copied for ${member.displayName}!`);
       setTimeout(() => setClaimLinkStatus(null), 3500);
     } catch {
       setClaimLinkStatus(`Invite code: ${inviteCode}`);
@@ -230,6 +231,10 @@ function GroupMembersContent() {
       }
     }
 
+    if (!window.confirm('Are you sure you want to leave this group?')) {
+      return;
+    }
+
     try {
       repo.leaveGroup(groupId, currentMember.id);
       router.push('/');
@@ -238,75 +243,79 @@ function GroupMembersContent() {
     }
   };
 
-  const handleDeleteGroup = () => {
+  const handleDeleteGroup = async () => {
+    setIsDeletingGroup(true);
+    setErrorMessage(null);
     try {
-      repo.deleteGroup(groupId);
+      await repo.deleteGroup(groupId);
+      setIsDeleteGroupModalOpen(false);
       router.push('/');
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to delete group');
+      setIsDeletingGroup(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0] text-black p-4 sm:p-6 pb-24 font-sans">
+    <div className="min-h-screen bg-transparent text-[#432E22] p-4 sm:p-6 pb-24 font-sans">
       <div className="max-w-lg mx-auto space-y-6">
         {/* Header */}
         <header className="flex items-center justify-between pt-1">
           <Link
             href={`/group?id=${groupId}`}
-            className="w-10 h-10 rounded-lg border-2 border-black bg-white flex items-center justify-center text-black font-black hover:bg-[#ffd600] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition-transform"
+            className="w-10 h-10 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] flex items-center justify-center text-[#543A2A] hover:bg-[#EFE4D6] shadow-sm active:scale-95 transition cursor-pointer"
           >
             ←
           </Link>
 
-          <h1 className="text-sm font-mono font-black uppercase tracking-wider">
-            MEMBERS & PERMISSIONS
+          <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#432E22]">
+            Members & Permissions
           </h1>
 
           <SyncBadge manager={repo.syncManager} realtimeStatus={realtimeStatus} />
         </header>
 
         {errorMessage && (
-          <div className="p-3 rounded-lg text-xs font-mono font-bold bg-[#ff8a80] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+          <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#FCE8E6] text-[#A83232] border border-[#F5C2C0] shadow-xs">
             ⚠️ {errorMessage}
           </div>
         )}
 
         {successMessage && (
-          <div className="p-3 rounded-lg text-xs font-mono font-bold bg-[#ccff00] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+          <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#E8F0E4] text-[#2E4226] border border-[#C5D9BE] shadow-xs">
             ✓ {successMessage}
           </div>
         )}
 
         {claimLinkStatus && (
-          <div className="p-3 rounded-lg text-xs font-mono font-bold bg-[#00e5ff] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+          <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#FAF0E6] text-[#8C5E23] border border-[#ECD3B6] shadow-xs">
             🔗 {claimLinkStatus}
           </div>
         )}
 
         {/* Invite Code Card */}
-        <div className="p-4 sm:p-5 rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] space-y-3">
+        <div className="p-5 rounded-3xl border border-[#E5D9CC] bg-white shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xs font-mono font-black uppercase tracking-wider">
-                GROUP INVITE LINK
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[#432E22]">
+                Group Invite Code
               </h2>
-              <p className="text-[11px] font-mono text-black/60">Share this code with friends to join</p>
+              <p className="text-xs text-[#8D7868] mt-0.5 font-medium">Share this code with friends to join</p>
             </div>
-            <span className="px-2 py-0.5 rounded border border-black bg-[#ffd600] text-xs font-mono font-black">
-              CODE
+            <span className="px-2.5 py-0.5 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-xs font-bold text-[#8D7868]">
+              Code
             </span>
           </div>
 
           <div className="flex items-center gap-2 pt-1">
-            <div className="flex-1 px-3.5 py-2.5 rounded-lg border-2 border-black bg-[#f0f0ea] font-mono text-sm font-black text-center tracking-widest text-black select-all">
+            <div className="flex-1 px-4 py-2.5 rounded-2xl border border-[#E5D9CC] bg-[#FAF6F0] text-base font-bold text-center tracking-widest text-[#432E22] select-all">
               {inviteCode}
             </div>
             <button
               onClick={handleCopyInviteCode}
-              className="px-4 py-2.5 text-xs font-mono font-black rounded-lg border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+              className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-full bg-[#543A2A] text-[#FAF6F0] hover:bg-[#432E20] shadow-sm active:scale-95 transition cursor-pointer"
             >
-              {copiedInvite ? 'COPIED!' : 'COPY'}
+              {copiedInvite ? 'Copied!' : 'Copy'}
             </button>
           </div>
         </div>
@@ -314,18 +323,18 @@ function GroupMembersContent() {
         {/* Members List */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-xs font-mono font-black uppercase tracking-wider text-black">
-              MEMBERS ROSTER ({members.length})
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#8D7868]">
+              Members Roster ({members.length})
             </h2>
             <button
               onClick={() => setIsAddPlaceholderOpen(true)}
-              className="px-2.5 py-1 text-xs font-mono font-black rounded border-2 border-black bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000] hover:bg-black hover:text-[#ccff00] active:translate-x-0.5 active:translate-y-0.5 transition"
+              className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-[#543A2A] text-[#FAF6F0] hover:bg-[#432E20] shadow-sm active:scale-95 transition cursor-pointer"
             >
-              + ADD MEMBER
+              + Add Member
             </button>
           </div>
 
-          <div className="divide-y-2 divide-black rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] overflow-hidden">
+          <div className="divide-y divide-[#E5D9CC] rounded-3xl border border-[#E5D9CC] bg-white shadow-sm overflow-hidden">
             {members.map((m) => {
               const balance = ledger.balances.get(m.id) ?? 0;
               const isYou = m.userId === currentUserId;
@@ -333,34 +342,34 @@ function GroupMembersContent() {
               const canManageThisMember = (isCurrentUserOwner || (isCurrentUserAdmin && m.role !== 'owner')) && !isYou;
 
               return (
-                <div key={m.id} className="p-3.5 flex flex-col gap-2 hover:bg-[#fafaf6] transition-colors">
+                <div key={m.id} className="p-4 flex flex-col gap-2 hover:bg-[#FAF6F0] transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-lg border-2 border-black bg-[#00e5ff] flex items-center justify-center text-sm font-mono font-black text-black shrink-0 shadow-[1px_1px_0px_0px_#000]">
+                      <div className="w-10 h-10 rounded-full border border-[#E5D9CC] bg-[#EFE4D6] flex items-center justify-center text-sm font-bold text-[#543A2A] shrink-0">
                         {m.displayName.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs sm:text-sm font-mono font-black text-black truncate">
+                          <span className="text-sm font-bold text-[#432E22] truncate">
                             {m.displayName}
                           </span>
                           {isYou && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded border border-black bg-[#ccff00] text-black font-mono font-black uppercase">
-                              YOU
+                            <span className="text-[10px] px-2 py-0.5 rounded-full border border-[#C5D9BE] bg-[#E8F0E4] text-[#2E4226] font-bold uppercase">
+                              You
                             </span>
                           )}
                           {isPlaceholder && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded border border-black bg-[#ffd600] text-black font-mono font-black uppercase">
-                              GUEST
+                            <span className="text-[10px] px-2 py-0.5 rounded-full border border-[#ECD3B6] bg-[#FAF0E6] text-[#8C5E23] font-bold uppercase">
+                              Guest
                             </span>
                           )}
                           <span
-                            className={`text-[10px] px-1.5 py-0.2 rounded border border-black font-mono font-bold uppercase ${
+                            className={`text-[10px] px-2 py-0.5 rounded-full border border-[#E5D9CC] font-semibold uppercase ${
                               m.role === 'owner'
-                                ? 'bg-purple-200 text-black'
+                                ? 'bg-[#EFE4D6] text-[#543A2A]'
                                 : m.role === 'admin'
-                                ? 'bg-blue-200 text-black'
-                                : 'bg-[#f0f0ea] text-black/70'
+                                ? 'bg-[#FAF6F0] text-[#543A2A]'
+                                : 'bg-[#FAF6F0] text-[#8D7868]'
                             }`}
                           >
                             {m.role}
@@ -372,16 +381,16 @@ function GroupMembersContent() {
                     <div className="flex items-center gap-2.5 shrink-0">
                       <div className="text-right">
                         {balance > 0 ? (
-                          <span className="px-2 py-0.5 rounded border border-black bg-[#ccff00] text-xs font-mono font-black text-black">
+                          <span className="px-2.5 py-0.5 rounded-full border border-[#C5D9BE] bg-[#E8F0E4] text-xs font-bold text-[#2E4226]">
                             +{formatMinor(balance, group.currency)}
                           </span>
                         ) : balance < 0 ? (
-                          <span className="px-2 py-0.5 rounded border border-black bg-[#ff8a80] text-xs font-mono font-black text-black">
+                          <span className="px-2.5 py-0.5 rounded-full border border-[#F5C2C0] bg-[#FCE8E6] text-xs font-bold text-[#A83232]">
                             -{formatMinor(Math.abs(balance), group.currency)}
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded border border-black bg-[#f0f0ea] text-[10px] font-mono font-bold text-black/60 uppercase">
-                            SETTLED
+                          <span className="px-2.5 py-0.5 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[10px] font-semibold text-[#8D7868] uppercase">
+                            Settled
                           </span>
                         )}
                       </div>
@@ -389,7 +398,7 @@ function GroupMembersContent() {
                       {canManageThisMember && (
                         <button
                           onClick={() => handleOpenMemberActions(m)}
-                          className="w-7 h-7 rounded border-2 border-black bg-white flex items-center justify-center text-xs font-mono font-black hover:bg-[#ffd600] shadow-[1px_1px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
+                          className="w-8 h-8 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] hover:bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center text-xs font-bold shadow-xs active:scale-95 transition cursor-pointer"
                           title="Manage member"
                         >
                           ⋯
@@ -398,15 +407,15 @@ function GroupMembersContent() {
                     </div>
                   </div>
 
-                  {/* Placeholder Claim Invitation Trigger */}
+                  {/* Placeholder Guest Account Indicator */}
                   {isPlaceholder && (
-                    <div className="mt-1 flex items-center justify-between bg-[#f0f0ea] px-3 py-1.5 rounded-lg border-2 border-black text-xs font-mono">
-                      <span className="text-black/60 text-[10px] uppercase font-bold">Unclaimed guest account</span>
+                    <div className="mt-1 flex items-center justify-between bg-[#FAF6F0] px-3.5 py-2 rounded-2xl border border-[#E5D9CC] text-xs">
+                      <span className="text-[#8D7868] text-[11px] font-medium">Guest member</span>
                       <button
                         onClick={() => handleGenerateClaimLink(m)}
-                        className="text-[10px] font-black text-black underline hover:bg-[#ffd600] px-1 rounded flex items-center gap-1 uppercase"
+                        className="text-xs font-bold text-[#543A2A] hover:underline flex items-center gap-1 cursor-pointer"
                       >
-                        🔗 Copy Claim Link
+                        🔗 Copy Invite Link
                       </button>
                     </div>
                   )}
@@ -417,21 +426,21 @@ function GroupMembersContent() {
         </div>
 
         {/* Group Actions: Delete Group & Leave Group */}
-        <div className="pt-2 space-y-2">
+        <div className="pt-2 space-y-2.5">
           {isCurrentUserOwner && (
             <button
               onClick={() => setIsDeleteGroupModalOpen(true)}
-              className="w-full py-3 text-xs font-mono font-black uppercase rounded-xl border-2 border-black bg-[#ff8a80] text-black hover:bg-black hover:text-[#ff8a80] shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
+              className="w-full py-3.5 text-xs font-bold uppercase tracking-wider rounded-full bg-[#A83232] text-white hover:bg-[#912828] shadow-md active:scale-95 transition cursor-pointer"
             >
-              DELETE GROUP
+              Delete Group
             </button>
           )}
 
           <button
             onClick={handleLeaveGroup}
-            className="w-full py-3 text-xs font-mono font-black uppercase rounded-xl border-2 border-black bg-white text-rose-600 hover:bg-[#ff8a80] hover:text-black shadow-[3px_3px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
+            className="w-full py-3.5 text-xs font-bold uppercase tracking-wider rounded-full border border-[#F5C2C0] bg-[#FCE8E6] text-[#A83232] hover:bg-[#F8D8D5] shadow-xs active:scale-95 transition cursor-pointer"
           >
-            LEAVE GROUP
+            Leave Group
           </button>
         </div>
       </div>
@@ -439,10 +448,10 @@ function GroupMembersContent() {
       {/* Member Action Menu Modal */}
       {isActionModalOpen && selectedMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm bg-white border-2 border-black rounded-xl p-6 shadow-[6px_6px_0px_0px_#000] space-y-4">
+          <div className="w-full max-w-sm bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-2xl space-y-4">
             <div>
-              <h2 className="text-sm font-mono font-black uppercase">MANAGE {selectedMember.displayName}</h2>
-              <p className="text-xs font-mono text-black/60">Current role: {selectedMember.role.toUpperCase()}</p>
+              <h2 className="text-base font-bold text-[#432E22]">Manage {selectedMember.displayName}</h2>
+              <p className="text-xs text-[#8D7868] font-medium mt-0.5">Current role: {selectedMember.role.toUpperCase()}</p>
             </div>
 
             <div className="space-y-2 pt-2">
@@ -450,9 +459,9 @@ function GroupMembersContent() {
               {isCurrentUserOwner && selectedMember.role === 'member' && (
                 <button
                   onClick={() => handlePromoteDemote(selectedMember, 'admin')}
-                  className="w-full py-2.5 px-4 text-xs font-mono font-black rounded-lg border-2 border-black bg-blue-100 text-black hover:bg-blue-200 text-left flex items-center justify-between shadow-[2px_2px_0px_0px_#000]"
+                  className="w-full py-2.5 px-4 text-xs font-bold rounded-2xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] hover:bg-[#EFE4D6] text-left flex items-center justify-between shadow-xs cursor-pointer"
                 >
-                  <span>PROMOTE TO ADMIN</span>
+                  <span>Promote to Admin</span>
                   <span>🛡️</span>
                 </button>
               )}
@@ -460,9 +469,9 @@ function GroupMembersContent() {
               {isCurrentUserOwner && selectedMember.role === 'admin' && (
                 <button
                   onClick={() => handlePromoteDemote(selectedMember, 'member')}
-                  className="w-full py-2.5 px-4 text-xs font-mono font-black rounded-lg border-2 border-black bg-[#f0f0ea] text-black hover:bg-[#e4e4dd] text-left flex items-center justify-between shadow-[2px_2px_0px_0px_#000]"
+                  className="w-full py-2.5 px-4 text-xs font-bold rounded-2xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] hover:bg-[#EFE4D6] text-left flex items-center justify-between shadow-xs cursor-pointer"
                 >
-                  <span>DEMOTE TO MEMBER</span>
+                  <span>Demote to Member</span>
                   <span>👤</span>
                 </button>
               )}
@@ -471,9 +480,9 @@ function GroupMembersContent() {
               {isCurrentUserOwner && (
                 <button
                   onClick={() => initiateTransferOwnership(selectedMember)}
-                  className="w-full py-2.5 px-4 text-xs font-mono font-black rounded-lg border-2 border-black bg-purple-100 text-black hover:bg-purple-200 text-left flex items-center justify-between shadow-[2px_2px_0px_0px_#000]"
+                  className="w-full py-2.5 px-4 text-xs font-bold rounded-2xl border border-[#ECD3B6] bg-[#FAF0E6] text-[#8C5E23] hover:bg-[#F4E4D0] text-left flex items-center justify-between shadow-xs cursor-pointer"
                 >
-                  <span>TRANSFER GROUP OWNERSHIP</span>
+                  <span>Transfer Group Ownership</span>
                   <span>👑</span>
                 </button>
               )}
@@ -481,18 +490,18 @@ function GroupMembersContent() {
               {/* Member removal */}
               <button
                 onClick={() => initiateRemoveMember(selectedMember)}
-                className="w-full py-2.5 px-4 text-xs font-mono font-black rounded-lg border-2 border-black bg-[#ff8a80] text-black hover:bg-rose-400 text-left flex items-center justify-between shadow-[2px_2px_0px_0px_#000]"
+                className="w-full py-2.5 px-4 text-xs font-bold rounded-2xl border border-[#F5C2C0] bg-[#FCE8E6] text-[#A83232] hover:bg-[#F8D8D5] text-left flex items-center justify-between shadow-xs cursor-pointer"
               >
-                <span>REMOVE FROM GROUP</span>
+                <span>Remove from Group</span>
                 <span>🚪</span>
               </button>
             </div>
 
             <button
               onClick={() => setIsActionModalOpen(false)}
-              className="w-full py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#f0f0ea] text-black hover:bg-white shadow-[2px_2px_0px_0px_#000]"
+              className="w-full py-2.5 text-xs font-bold uppercase rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[#543A2A] hover:bg-[#EFE4D6] shadow-xs cursor-pointer"
             >
-              CANCEL
+              Cancel
             </button>
           </div>
         </div>
@@ -501,14 +510,14 @@ function GroupMembersContent() {
       {/* Remove Member Blocked Modal (Non-zero balance) */}
       {isRemoveBlockedModalOpen && memberToRemove && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm bg-white border-2 border-black rounded-xl p-6 shadow-[6px_6px_0px_0px_#000] text-center space-y-3">
-            <div className="w-12 h-12 rounded-lg border-2 border-black bg-[#ff8a80] text-black flex items-center justify-center mx-auto text-xl font-mono font-black shadow-[2px_2px_0px_0px_#000]">
+          <div className="w-full max-w-sm bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-2xl text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl border border-[#F5C2C0] bg-[#FCE8E6] text-[#A83232] flex items-center justify-center mx-auto text-xl font-bold">
               !
             </div>
-            <h2 className="text-sm font-mono font-black uppercase">CANNOT REMOVE MEMBER</h2>
-            <p className="text-xs font-mono text-black leading-relaxed">
-              <span className="font-black">{memberToRemove.displayName}</span> has an outstanding balance of{' '}
-              <span className="font-black bg-[#ffd600] px-1 rounded border border-black">
+            <h2 className="text-base font-bold text-[#432E22]">Cannot Remove Member</h2>
+            <p className="text-xs text-[#8D7868] leading-relaxed">
+              <span className="font-bold text-[#432E22]">{memberToRemove.displayName}</span> has an outstanding balance of{' '}
+              <span className="font-bold text-[#A83232] bg-[#FCE8E6] px-1.5 py-0.5 rounded-full border border-[#F5C2C0]">
                 {formatMinor(Math.abs(ledger.balances.get(memberToRemove.id) ?? 0), group.currency)}
               </span>
               . All balances must be settled to zero before removing a member.
@@ -518,9 +527,9 @@ function GroupMembersContent() {
                 setIsRemoveBlockedModalOpen(false);
                 setMemberToRemove(null);
               }}
-              className="w-full py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5"
+              className="w-full py-3 text-xs font-bold uppercase tracking-wider rounded-full bg-[#543A2A] text-[#FAF6F0] shadow-md hover:bg-[#432E20] active:scale-95 cursor-pointer"
             >
-              UNDERSTOOD
+              Understood
             </button>
           </div>
         </div>
@@ -529,10 +538,10 @@ function GroupMembersContent() {
       {/* Remove Member Confirmation Modal */}
       {isRemoveConfirmOpen && memberToRemove && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm bg-white border-2 border-black rounded-xl p-6 shadow-[6px_6px_0px_0px_#000] space-y-4">
-            <h2 className="text-sm font-mono font-black uppercase">REMOVE {memberToRemove.displayName}?</h2>
-            <p className="text-xs font-mono text-black leading-relaxed">
-              Past splits and settled expenses will remain intact in the ledger, but they will no longer participate in this group.
+          <div className="w-full max-w-sm bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-2xl space-y-4">
+            <h2 className="text-base font-bold text-[#432E22]">Remove {memberToRemove.displayName}?</h2>
+            <p className="text-xs text-[#8D7868] leading-relaxed">
+              Past splits and settled expenses will remain intact, but they will no longer participate in this group.
             </p>
 
             <div className="flex items-center gap-2 pt-2">
@@ -542,16 +551,16 @@ function GroupMembersContent() {
                   setIsRemoveConfirmOpen(false);
                   setMemberToRemove(null);
                 }}
-                className="flex-1 py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#f0f0ea] text-black"
+                className="flex-1 py-2.5 text-xs font-bold uppercase rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[#543A2A] hover:bg-[#EFE4D6] cursor-pointer"
               >
-                CANCEL
+                Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmRemoveMember}
-                className="flex-1 py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ff8a80] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5"
+                className="flex-1 py-2.5 text-xs font-bold uppercase rounded-full bg-[#A83232] text-white hover:bg-[#912828] shadow-md active:scale-95 cursor-pointer"
               >
-                REMOVE
+                Remove
               </button>
             </div>
           </div>
@@ -561,10 +570,10 @@ function GroupMembersContent() {
       {/* Transfer Ownership Confirmation Modal */}
       {isTransferConfirmOpen && transferTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm bg-white border-2 border-black rounded-xl p-6 shadow-[6px_6px_0px_0px_#000] space-y-4">
-            <h2 className="text-sm font-mono font-black uppercase">TRANSFER OWNERSHIP?</h2>
-            <p className="text-xs font-mono text-black leading-relaxed">
-              Transfer group ownership to <span className="font-black">{transferTarget.displayName}</span>? You will remain in the group as an admin.
+          <div className="w-full max-w-sm bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-2xl space-y-4">
+            <h2 className="text-base font-bold text-[#432E22]">Transfer Ownership?</h2>
+            <p className="text-xs text-[#8D7868] leading-relaxed">
+              Transfer group ownership to <span className="font-bold text-[#432E22]">{transferTarget.displayName}</span>? You will remain in the group as an admin.
             </p>
 
             <div className="flex items-center gap-2 pt-2">
@@ -574,16 +583,16 @@ function GroupMembersContent() {
                   setIsTransferConfirmOpen(false);
                   setTransferTarget(null);
                 }}
-                className="flex-1 py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#f0f0ea] text-black"
+                className="flex-1 py-2.5 text-xs font-bold uppercase rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[#543A2A] hover:bg-[#EFE4D6] cursor-pointer"
               >
-                CANCEL
+                Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmTransferOwnership}
-                className="flex-1 py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#00e5ff] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5"
+                className="flex-1 py-2.5 text-xs font-bold uppercase rounded-full bg-[#543A2A] text-[#FAF6F0] hover:bg-[#432E20] shadow-md active:scale-95 cursor-pointer"
               >
-                CONFIRM TRANSFER
+                Confirm Transfer
               </button>
             </div>
           </div>
@@ -593,19 +602,19 @@ function GroupMembersContent() {
       {/* Sole Owner Cannot Leave Modal */}
       {isSoleOwnerLeaveBlockedOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm bg-white border-2 border-black rounded-xl p-6 shadow-[6px_6px_0px_0px_#000] text-center space-y-3">
-            <div className="w-12 h-12 rounded-lg border-2 border-black bg-[#ffd600] text-black flex items-center justify-center mx-auto text-xl font-mono font-black shadow-[2px_2px_0px_0px_#000]">
+          <div className="w-full max-w-sm bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-2xl text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl border border-[#ECD3B6] bg-[#FAF0E6] text-[#8C5E23] flex items-center justify-center mx-auto text-xl font-bold">
               👑
             </div>
-            <h2 className="text-sm font-mono font-black uppercase">TRANSFER OWNERSHIP FIRST</h2>
-            <p className="text-xs font-mono text-black leading-relaxed">
+            <h2 className="text-base font-bold text-[#432E22]">Transfer Ownership First</h2>
+            <p className="text-xs text-[#8D7868] leading-relaxed">
               As the sole group owner, you cannot leave while other active members exist. Please transfer ownership to another member before leaving.
             </p>
             <button
               onClick={() => setIsSoleOwnerLeaveBlockedOpen(false)}
-              className="w-full py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5"
+              className="w-full py-3 text-xs font-bold uppercase tracking-wider rounded-full bg-[#543A2A] text-[#FAF6F0] shadow-md hover:bg-[#432E20] active:scale-95 cursor-pointer"
             >
-              UNDERSTOOD
+              Understood
             </button>
           </div>
         </div>
@@ -614,23 +623,23 @@ function GroupMembersContent() {
       {/* Leave Group Blocked Modal (Non-zero balance) */}
       {isLeaveModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm bg-white border-2 border-black rounded-xl p-6 shadow-[6px_6px_0px_0px_#000] text-center space-y-3">
-            <div className="w-12 h-12 rounded-lg border-2 border-black bg-[#ff8a80] text-black flex items-center justify-center mx-auto text-xl font-mono font-black shadow-[2px_2px_0px_0px_#000]">
+          <div className="w-full max-w-sm bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-2xl text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl border border-[#F5C2C0] bg-[#FCE8E6] text-[#A83232] flex items-center justify-center mx-auto text-xl font-bold">
               !
             </div>
-            <h2 className="text-sm font-mono font-black uppercase">CANNOT LEAVE GROUP</h2>
-            <p className="text-xs font-mono text-black leading-relaxed">
+            <h2 className="text-base font-bold text-[#432E22]">Cannot Leave Group</h2>
+            <p className="text-xs text-[#8D7868] leading-relaxed">
               You have an active balance of{' '}
-              <span className="font-black bg-[#ffd600] px-1 rounded border border-black">
+              <span className="font-bold text-[#A83232] bg-[#FCE8E6] px-1.5 py-0.5 rounded-full border border-[#F5C2C0]">
                 {formatMinor(Math.abs(userNetBalance), group.currency)}
               </span>
               . You must settle all balances to zero before leaving this group.
             </p>
             <button
               onClick={() => setIsLeaveModalOpen(false)}
-              className="w-full py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5"
+              className="w-full py-3 text-xs font-bold uppercase tracking-wider rounded-full bg-[#543A2A] text-[#FAF6F0] shadow-md hover:bg-[#432E20] active:scale-95 cursor-pointer"
             >
-              UNDERSTOOD
+              Understood
             </button>
           </div>
         </div>
@@ -639,26 +648,27 @@ function GroupMembersContent() {
       {/* Delete Group Modal */}
       {isDeleteGroupModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm bg-white border-2 border-black rounded-xl p-6 shadow-[6px_6px_0px_0px_#000] space-y-4">
+          <div className="w-full max-w-sm bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-2xl space-y-4">
             <div className="text-center space-y-1">
               <span className="text-3xl">🗑️</span>
-              <h2 className="text-sm font-mono font-black uppercase">DELETE GROUP?</h2>
-              <p className="text-xs font-mono text-black/60">
+              <h2 className="text-base font-bold text-[#432E22]">Delete Group?</h2>
+              <p className="text-xs text-[#8D7868]">
                 Are you sure you want to delete &quot;{group.name}&quot;? This will archive the group for all members.
               </p>
             </div>
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => setIsDeleteGroupModalOpen(false)}
-                className="flex-1 py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#f0f0ea] text-black shadow-[2px_2px_0px_0px_#000]"
+                className="flex-1 py-2.5 text-xs font-bold uppercase rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[#543A2A] hover:bg-[#EFE4D6] cursor-pointer"
               >
-                CANCEL
+                Cancel
               </button>
               <button
+                disabled={isDeletingGroup}
                 onClick={handleDeleteGroup}
-                className="flex-1 py-2.5 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ff8a80] text-black hover:bg-black hover:text-[#ff8a80] shadow-[2px_2px_0px_0px_#000]"
+                className="flex-1 py-2.5 text-xs font-bold uppercase rounded-full bg-[#A83232] text-white hover:bg-[#912828] disabled:opacity-50 shadow-md active:scale-95 cursor-pointer"
               >
-                CONFIRM DELETE
+                {isDeletingGroup ? 'Deleting...' : 'Confirm Delete'}
               </button>
             </div>
           </div>
@@ -668,16 +678,16 @@ function GroupMembersContent() {
       {/* Add Placeholder Member Modal */}
       {isAddPlaceholderOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm bg-white border-2 border-black rounded-xl p-6 shadow-[6px_6px_0px_0px_#000] space-y-4">
-            <h2 className="text-sm font-mono font-black uppercase">ADD GROUP MEMBER</h2>
-            <p className="text-xs font-mono text-black/60">
-              Add a friend to track expenses with even before they install the app. You can share a claim link with them anytime.
+          <div className="w-full max-w-sm bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-2xl space-y-4">
+            <h2 className="text-base font-bold text-[#432E22]">Add Group Member</h2>
+            <p className="text-xs text-[#8D7868]">
+              Add a friend to track expenses with even before they install the app. You can share an invite link with them anytime.
             </p>
 
             <form onSubmit={handleAddPlaceholder} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono font-black uppercase mb-1">
-                  MEMBER NAME
+                <label className="block text-xs font-bold text-[#432E22] mb-1.5">
+                  Member Name
                 </label>
                 <input
                   type="text"
@@ -686,7 +696,7 @@ function GroupMembersContent() {
                   placeholder="e.g. Sam, Priya"
                   value={placeholderName}
                   onChange={(e) => setPlaceholderName(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs font-mono font-black rounded-lg border-2 border-black bg-white focus:outline-none focus:bg-[#faffea] shadow-[2px_2px_0px_0px_#000]"
+                  className="w-full px-4 py-2.5 text-sm font-semibold rounded-2xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] focus:outline-none focus:border-[#543A2A] transition-colors"
                 />
               </div>
 
@@ -694,15 +704,15 @@ function GroupMembersContent() {
                 <button
                   type="button"
                   onClick={() => setIsAddPlaceholderOpen(false)}
-                  className="flex-1 py-2 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#f0f0ea] text-black"
+                  className="flex-1 py-2.5 text-xs font-bold uppercase rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[#543A2A] hover:bg-[#EFE4D6] cursor-pointer"
                 >
-                  CANCEL
+                  Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5"
+                  className="flex-1 py-2.5 text-xs font-bold uppercase rounded-full bg-[#543A2A] text-[#FAF6F0] hover:bg-[#432E20] shadow-md active:scale-95 cursor-pointer"
                 >
-                  ADD MEMBER
+                  Add Member
                 </button>
               </div>
             </form>
@@ -715,7 +725,7 @@ function GroupMembersContent() {
 
 export default function GroupMembersPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs font-mono font-black uppercase">Loading roster...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-xs font-bold text-[#8D7868]">Loading roster...</div>}>
       <GroupMembersContent />
     </Suspense>
   );

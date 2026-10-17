@@ -593,9 +593,9 @@ export class DomainRepository {
   }
 
   /**
-   * Deletes a group (soft delete). Requires user to be group owner.
+   * Deletes a group (soft delete locally, enqueues deletion, kicks sync). Requires user to be group owner.
    */
-  deleteGroup(groupId: string): void {
+  async deleteGroup(groupId: string): Promise<void> {
     const group = this.store.getGroup(groupId);
     if (!group) {
       throw new EngineError('GROUP_NOT_FOUND', 'Group not found');
@@ -606,7 +606,9 @@ export class DomainRepository {
     this.queue.enqueue('DELETE_GROUP', groupId, { groupId });
 
     haptics.tap().catch(() => {});
-    this.syncManager?.kick('delete_group').catch(() => {});
+    if (this.syncManager) {
+      await this.syncManager.kick('delete_group');
+    }
   }
 
   /**

@@ -1,7 +1,7 @@
 'use client';
 
 // app/friends/page.tsx
-// Stitch Neo-Brutalist Friends Ledger Page (P2P LEDGER V2.4)
+// Friends Page with overall status+balance summary, list of friends, and expandable shared expenses with Settle & Remind buttons
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -12,16 +12,18 @@ import { useAuth } from '../../lib/auth';
 import { EmptyState } from '../../components/EmptyState';
 import { BottomNav } from '../../components/BottomNav';
 import { SyncBadge } from '../../components/SyncBadge';
+import { SettleModal } from '../../components/SettleModal';
 import { haptics } from '../../lib/native/haptics';
 import { sendFriendPushReminder } from '../../lib/native/push';
 import type { FriendSummary } from '../../lib/data/selectors';
+import type { Member, Expense, SettlementDraft } from '../../lib/data/types';
 
 const AVATAR_COLORS = [
-  'bg-[#ccff00]', // Electric Lime
-  'bg-[#00e5ff]', // Cyan
-  'bg-[#ffd600]', // Yellow
-  'bg-[#ff80bf]', // Pink
-  'bg-[#ff8a80]', // Coral
+  'bg-[#543A2A] text-[#FAF6F0]', // Espresso
+  'bg-[#D4B89B] text-[#432E22]', // Warm Caramel
+  'bg-[#C7B299] text-[#432E22]', // Warm Sand
+  'bg-[#E5BFB0] text-[#432E22]', // Blush Mocha
+  'bg-[#B5C2A3] text-[#2E4226]', // Warm Sage
 ];
 
 export default function FriendsPage() {
@@ -34,8 +36,17 @@ export default function FriendsPage() {
 
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'owed' | 'owe' | 'settled'>('all');
   const [expandedFriendId, setExpandedFriendId] = useState<string | null>(null);
+
+  // Settle modal state
+  const [settleContext, setSettleContext] = useState<{
+    groupId: string;
+    currency: string;
+    members: Member[];
+    fromMemberId?: string;
+    toMemberId?: string;
+    amountMinor?: number;
+  } | null>(null);
 
   // Reminder Notification Modal State
   const [reminderFriend, setReminderFriend] = useState<FriendSummary | null>(null);
@@ -46,27 +57,28 @@ export default function FriendsPage() {
 
   useEffect(() => {
     setMounted(true);
-    repo.syncManager?.kick('friends_mount', true).catch(() => {});
+    repo.syncManager?.kick('friends_mount', true).catch(() => { });
   }, [repo]);
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#f5f5f0] text-black pb-28">
-        <header className="sticky top-0 z-30 bg-[#f5f5f0] border-b-2 border-black px-4 py-3 animate-pulse">
-          <div className="max-w-xl mx-auto flex items-center justify-between">
-            <div className="h-6 w-32 bg-[#e0e0d8] rounded border border-black" />
-            <div className="h-8 w-20 bg-[#e0e0d8] rounded-lg border border-black" />
-          </div>
-        </header>
-        <div className="max-w-xl mx-auto p-4 space-y-4 animate-pulse">
-          <div className="h-28 w-full bg-white rounded-2xl border-2 border-black" />
-          <div className="h-14 w-full bg-white rounded-xl border-2 border-black" />
+      <div className="min-h-screen bg-transparent text-[#432E22] pb-28">
+        <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-5 animate-pulse">
+          <header className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#EFE4D6]" />
+              <div className="h-7 w-28 bg-[#EFE4D6] rounded-xl" />
+            </div>
+            <div className="h-9 w-24 bg-[#EFE4D6] rounded-full" />
+          </header>
+          <div className="h-28 w-full bg-white rounded-3xl border border-[#E5D9CC]" />
+          <div className="h-16 w-full bg-white rounded-2xl border border-[#E5D9CC]" />
         </div>
       </div>
     );
   }
 
-  // Calculate overall totals across friends (for primary currency, defaults to INR)
+  // Calculate overall totals across friends
   let totalOwedToYou = 0;
   let totalYouOwe = 0;
   const primaryCurrency = 'INR';
@@ -77,6 +89,8 @@ export default function FriendsPage() {
     else if (net < 0) totalYouOwe += Math.abs(net);
   }
 
+  const overallNet = totalOwedToYou - totalYouOwe;
+
   const handleOpenReminder = (friend: FriendSummary, e?: React.MouseEvent) => {
     e?.stopPropagation();
     const net = friend.netPerCurrency[primaryCurrency] ?? 0;
@@ -86,14 +100,52 @@ export default function FriendsPage() {
     setReminderMessage(text);
     setCopiedReminder(false);
     setPushStatus(null);
-    haptics.tap().catch(() => {});
+    haptics.tap().catch(() => { });
+  };
+
+  const handleOpenSettle = (friend: FriendSummary, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    haptics.tap().catch(() => { });
+
+    if (friend.groups.length === 0) return;
+
+    // Pick first shared group that has an outstanding balance, or the first shared group
+    const targetGroup = friend.groups.find((g) => g.netMinor !== 0) || friend.groups[0];
+    if (!targetGroup) return;
+    const groupMembers = repo.store.getGroupMembers(targetGroup.groupId);
+    const currentMember = groupMembers.find((m) => m.userId === currentUserId);
+    const friendMember = groupMembers.find((m) => m.id === friend.id || m.userId === friend.userId);
+
+    const net = targetGroup.netMinor;
+    let fromId = currentMember?.id;
+    let toId = friendMember?.id;
+
+    if (net > 0) {
+      // Friend owes current user
+      fromId = friendMember?.id;
+      toId = currentMember?.id;
+    }
+
+    setSettleContext({
+      groupId: targetGroup.groupId,
+      currency: targetGroup.currency,
+      members: groupMembers,
+      fromMemberId: fromId,
+      toMemberId: toId,
+      amountMinor: Math.abs(net),
+    });
+  };
+
+  const handleExecuteSettle = (draft: SettlementDraft) => {
+    repo.addSettlement(draft, currentUserId);
+    setSettleContext(null);
   };
 
   const handleSendPush = async () => {
     if (!reminderFriend) return;
     setIsSendingPush(true);
     setPushStatus(null);
-    haptics.tap().catch(() => {});
+    haptics.tap().catch(() => { });
 
     try {
       const net = reminderFriend.netPerCurrency[primaryCurrency] ?? 0;
@@ -107,10 +159,10 @@ export default function FriendsPage() {
       });
 
       if (res.success) {
-        haptics.success().catch(() => {});
+        haptics.success().catch(() => { });
         setPushStatus({ success: true, message: res.message });
       } else {
-        haptics.warning().catch(() => {});
+        haptics.warning().catch(() => { });
         setPushStatus({ success: false, message: res.message });
       }
     } catch (err: any) {
@@ -124,17 +176,17 @@ export default function FriendsPage() {
   };
 
   const handleSendWhatsApp = () => {
-    haptics.tap().catch(() => {});
+    haptics.tap().catch(() => { });
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(reminderMessage)}`;
     window.open(url, '_blank');
   };
 
   const handleShareReminder = async () => {
-    haptics.tap().catch(() => {});
+    haptics.tap().catch(() => { });
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: 'Settle up on Clearcut',
+          title: 'Settle up',
           text: reminderMessage,
         });
         return;
@@ -146,162 +198,150 @@ export default function FriendsPage() {
   };
 
   const handleCopyReminder = async () => {
-    haptics.tap().catch(() => {});
+    haptics.tap().catch(() => { });
     await navigator.clipboard.writeText(reminderMessage);
     setCopiedReminder(true);
     setTimeout(() => setCopiedReminder(false), 2500);
   };
 
+  // Get shared expenses for a friend
+  const getSharedExpenses = (friend: FriendSummary) => {
+    const list: { expense: Expense; groupName: string }[] = [];
+    for (const g of friend.groups) {
+      const expenses = repo.store.getGroupExpenses(g.groupId);
+      for (const exp of expenses) {
+        if (exp.deletedAt) continue;
+        const involvesFriend = exp.splits.some(
+          (s) => (s.memberId === friend.id || (friend.userId && s.memberId === friend.userId)) &&
+            (s.paidMinor > 0 || s.owedMinor > 0)
+        );
+        if (involvesFriend) {
+          list.push({ expense: exp, groupName: g.groupName });
+        }
+      }
+    }
+    return list.sort((a, b) => (b.expense.expenseDate || '').localeCompare(a.expense.expenseDate || ''));
+  };
+
   // Filter friends list
   const filteredFriends = friends.filter((f) => {
-    // 1. Search text filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const matchName = f.displayName.toLowerCase().includes(q);
       const matchGroup = f.groups.some((g) => g.groupName.toLowerCase().includes(q));
       if (!matchName && !matchGroup) return false;
     }
-
-    // 2. Status filter
-    const net = f.netPerCurrency[primaryCurrency] ?? 0;
-    if (filterType === 'owed' && net <= 0) return false;
-    if (filterType === 'owe' && net >= 0) return false;
-    if (filterType === 'settled' && net !== 0) return false;
-
     return true;
   });
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0] text-black pb-28">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-[#f5f5f0] border-b-2 border-black px-4 py-3">
-        <div className="max-w-xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-transparent text-[#432E22] pb-28">
+      <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-5">
+        {/* Seamless Top Header Bar labeled "Friends" */}
+        <header className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#543A2A] text-[#FAF6F0] flex items-center justify-center shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m11 17 2 2a1 1 0 1 0 3-3" />
+                <path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" />
+                <path d="m21 3 1 11h-2" />
+                <path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" />
+                <path d="M3 4h8" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-extrabold text-[#432E22] tracking-tight">
+              Friends
+            </h1>
+          </div>
+
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#ccff00] border-2 border-black flex items-center justify-center font-mono font-black text-sm shadow-[2px_2px_0px_0px_#000]">
-              👥
-            </div>
-            <div>
-              <h1 className="text-base font-black tracking-tight uppercase leading-none">
-                FRIENDS
-              </h1>
-            </div>
+            <SyncBadge manager={repo.syncManager} />
           </div>
-
-          <SyncBadge manager={repo.syncManager} />
+        </header>
+        {/* Top Summary Card (status + balance) */}
+        <div className="bg-[#FAF6F0] rounded-3xl border border-[#E5D9CC] p-5 shadow-sm text-center">
+          <div className="text-xs font-bold text-[#8D7868] uppercase tracking-wider mb-1">
+            Overall Balance
+          </div>
+          {overallNet > 0 ? (
+            <div className="space-y-1">
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#543A2A]">
+                You are owed ₹{formatMinor(overallNet, primaryCurrency)}
+              </div>
+              <p className="text-xs text-[#8D7868]">
+                Across {friends.filter((f) => (f.netPerCurrency[primaryCurrency] ?? 0) > 0).length} friends
+              </p>
+            </div>
+          ) : overallNet < 0 ? (
+            <div className="space-y-1">
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#A83232]">
+                You owe ₹{formatMinor(Math.abs(overallNet), primaryCurrency)}
+              </div>
+              <p className="text-xs text-[#8D7868]">
+                Across {friends.filter((f) => (f.netPerCurrency[primaryCurrency] ?? 0) < 0).length} friends
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <div className="text-xl sm:text-2xl font-bold text-[#543A2A]">
+                Relax, you are settled up
+              </div>
+              <p className="text-xs text-[#8D7868]">
+                No pending balances with any friends
+              </p>
+            </div>
+          )}
         </div>
-      </header>
 
-      <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-4">
-        {/* Hero Balance Summary Cards */}
-        <section className="grid grid-cols-2 gap-3">
-          {/* Owed To You Box */}
-          <div className="bg-[#eaff96] rounded-2xl border-2 border-black p-4 shadow-[3px_3px_0px_0px_#000] space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] font-black uppercase tracking-wider text-black">
-                OWED TO YOU
-              </span>
-              <div className="w-5 h-5 bg-black rounded-sm flex items-center justify-center text-[#ccff00]">
-                <svg className="w-3 h-3 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M17 7H7M17 7V17" />
-                </svg>
-              </div>
-            </div>
-            <div className="font-mono text-xl sm:text-2xl font-black text-black truncate">
-              +{formatMinor(totalOwedToYou, primaryCurrency)}
-            </div>
-            <p className="font-mono text-[10px] text-black/60 font-bold uppercase">
-              Across {friends.filter((f) => (f.netPerCurrency[primaryCurrency] ?? 0) > 0).length} friends
-            </p>
-          </div>
-
-          {/* You Owe Box */}
-          <div className="bg-[#ffd2c9] rounded-2xl border-2 border-black p-4 shadow-[3px_3px_0px_0px_#000] space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] font-black uppercase tracking-wider text-black">
-                YOU OWE
-              </span>
-              <div className="w-5 h-5 bg-black rounded-sm flex items-center justify-center text-[#ff8a80]">
-                <svg className="w-3 h-3 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 7L7 17M7 17H17M7 17V7" />
-                </svg>
-              </div>
-            </div>
-            <div className="font-mono text-xl sm:text-2xl font-black text-black truncate">
-              -{formatMinor(totalYouOwe, primaryCurrency)}
-            </div>
-            <p className="font-mono text-[10px] text-black/60 font-bold uppercase">
-              Across {friends.filter((f) => (f.netPerCurrency[primaryCurrency] ?? 0) < 0).length} friends
-            </p>
-          </div>
-        </section>
-
-        {/* Search & Filter Controls */}
-        <div className="space-y-2.5">
-          {/* Search Input */}
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="SEARCH BY FRIEND OR GROUP NAME..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border-2 border-black bg-white font-mono text-xs font-bold text-black placeholder:text-black/40 focus:outline-none focus:bg-[#faffea] shadow-[2px_2px_0px_0px_#000]"
-            />
-            <svg
-              className="w-4 h-4 text-black/50 absolute left-3 top-3 stroke-[2.5]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+        {/* Search Bar */}
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search friends..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-full border border-[#E5D9CC] bg-white text-xs font-medium text-[#432E22] placeholder:text-[#A89689] focus:outline-none focus:border-[#543A2A] shadow-xs"
+          />
+          <svg
+            className="w-4 h-4 text-[#A89689] absolute left-3 top-3 stroke-[2.5]"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-2.5 text-xs text-[#A89689] hover:text-[#543A2A]"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-2.5 text-xs font-mono font-bold text-black/50 hover:text-black"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-mono font-black scrollbar-none">
-            {[
-              { id: 'all', label: `ALL (${friends.length})` },
-              { id: 'owed', label: 'OWES YOU' },
-              { id: 'owe', label: 'YOU OWE' },
-              { id: 'settled', label: 'SETTLED' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setFilterType(tab.id as any)}
-                className={`px-3 py-1 rounded-lg border-2 border-black uppercase whitespace-nowrap transition cursor-pointer active:translate-x-0.5 active:translate-y-0.5 ${filterType === tab.id
-                    ? 'bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000]'
-                    : 'bg-white text-black/70 hover:text-black shadow-[1px_1px_0px_0px_#000]'
-                  }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+              ✕
+            </button>
+          )}
         </div>
 
-        {/* Friends Roster List */}
+        {/* Friends List with Balances */}
         {filteredFriends.length === 0 ? (
           <EmptyState
-            icon={<span>👥</span>}
-            title={friends.length === 0 ? 'No friends connected yet' : 'No friends match filter'}
+            icon={
+              <div className="w-12 h-12 rounded-2xl bg-[#543A2A]/10 text-[#543A2A] flex items-center justify-center">
+                <svg className="w-6 h-6 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+            }
+            title={friends.length === 0 ? 'No friends connected yet' : 'No friends match search'}
             description={
               friends.length === 0
                 ? 'Friends appear here automatically once you share a group with them. Create a group or join with a code to start tracking balances!'
-                : 'Try adjusting your search query or status filter.'
+                : 'Try adjusting your search query.'
             }
             actionText={friends.length === 0 ? '+ Create A Group' : undefined}
             onAction={friends.length === 0 ? () => router.push('/') : undefined}
-            secondaryActionText={friends.length === 0 ? 'Join with Code' : undefined}
-            onSecondaryAction={friends.length === 0 ? () => router.push('/join') : undefined}
           />
         ) : (
           <div className="space-y-3">
@@ -310,144 +350,126 @@ export default function FriendsPage() {
               const isExpanded = expandedFriendId === friend.id;
               const colorBg = AVATAR_COLORS[idx % AVATAR_COLORS.length];
               const initial = (friend.displayName.trim()[0] || '?').toUpperCase();
+              const sharedExpenses = isExpanded ? getSharedExpenses(friend) : [];
 
               return (
                 <div
                   key={friend.id}
-                  className="bg-white rounded-2xl border-2 border-black shadow-[3px_3px_0px_0px_#000] overflow-hidden transition"
+                  className="bg-white rounded-3xl border border-[#E5D9CC] shadow-xs overflow-hidden transition"
                 >
                   {/* Friend Header Card */}
                   <div
                     onClick={() => setExpandedFriendId(isExpanded ? null : friend.id)}
-                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-[#fafaf6] transition select-none"
+                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-[#FAF6F0] transition select-none"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      {/* Avatar Badge */}
+                      {/* Avatar */}
                       <div
-                        className={`w-11 h-11 rounded-xl border-2 border-black flex items-center justify-center font-mono font-black text-base text-black shadow-[2px_2px_0px_0px_#000] shrink-0 ${colorBg}`}
+                        className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm shrink-0 shadow-xs ${colorBg}`}
                       >
                         {initial}
                       </div>
 
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-sm text-black truncate uppercase tracking-tight">
-                            {friend.displayName}
-                          </h3>
-                        </div>
-                        <p className="font-mono text-[10px] text-black/60 font-bold uppercase tracking-wider">
-                          {friend.groups.length} SHARED {friend.groups.length === 1 ? 'GROUP' : 'GROUPS'}
+                        <h3 className="font-bold text-sm text-[#432E22] truncate">
+                          {friend.displayName}
+                        </h3>
+                        <p className="text-[11px] text-[#8D7868] font-medium">
+                          {friend.groups.length} shared {friend.groups.length === 1 ? 'group' : 'groups'}
                         </p>
                       </div>
                     </div>
 
-                    {/* Balance Pill, Remind Button & Toggle */}
+                    {/* Balance & Caret */}
                     <div className="text-right shrink-0 flex items-center gap-3">
                       <div>
                         {net > 0 ? (
-                          <div className="space-y-1">
-                            <div className="inline-block px-2.5 py-1 rounded-lg border-2 border-black bg-[#ccff00] text-black font-mono font-black text-xs shadow-[2px_2px_0px_0px_#000]">
-                              +{formatMinor(net, primaryCurrency)}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(e) => handleOpenReminder(friend, e)}
-                              className="px-2 py-0.5 rounded border-2 border-black bg-[#ffd600] hover:bg-[#ffe033] text-black font-mono font-black text-[9px] uppercase shadow-[1px_1px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer flex items-center gap-1 justify-center w-full"
-                            >
-                              <span>⚡ REMIND</span>
-                            </button>
+                          <div>
+                            <span className="text-xs font-bold text-[#543A2A]">
+                              Owes you ₹{formatMinor(net, primaryCurrency)}
+                            </span>
                           </div>
                         ) : net < 0 ? (
                           <div>
-                            <div className="inline-block px-2.5 py-1 rounded-lg border-2 border-black bg-[#ff8a80] text-black font-mono font-black text-xs shadow-[2px_2px_0px_0px_#000]">
-                              -{formatMinor(Math.abs(net), primaryCurrency)}
-                            </div>
-                            <span className="block font-mono text-[9px] text-black/60 uppercase font-black tracking-wider mt-0.5">
-                              YOU OWE
+                            <span className="text-xs font-bold text-[#A83232]">
+                              You owe ₹{formatMinor(Math.abs(net), primaryCurrency)}
                             </span>
                           </div>
                         ) : (
                           <div>
-                            <div className="inline-block px-2 py-0.5 rounded-lg border border-black bg-[#ffd600] text-black font-mono font-bold text-[11px]">
-                              SETTLED
-                            </div>
-                            <span className="block font-mono text-[9px] text-black/60 uppercase font-black tracking-wider mt-0.5">
-                              ALL CLEAR
+                            <span className="text-xs font-semibold text-[#8D7868]">
+                              Settled up
                             </span>
                           </div>
                         )}
                       </div>
 
                       <svg
-                        className={`w-4 h-4 text-black transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        className={`w-4 h-4 text-[#8D7868] transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
-                        strokeWidth={2.5}
+                        strokeWidth={2}
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                       </svg>
                     </div>
                   </div>
 
-                  {/* Expanded Shared Groups Breakdown */}
+                  {/* Expanded Shared Expenses & Action Buttons */}
                   {isExpanded && (
-                    <div className="border-t-2 border-black bg-[#fbfbf8] p-4 space-y-2.5 animate-fadeIn">
-                      <div className="font-mono text-[10px] font-black uppercase tracking-wider text-black/70">
-                        BREAKDOWN BY SHARED GROUP
+                    <div className="border-t border-[#E5D9CC] bg-[#FAF6F0]/60 p-4 space-y-3">
+                      <div className="text-xs font-bold text-[#6E5849] uppercase tracking-wider">
+                        Shared Expenses ({sharedExpenses.length})
                       </div>
 
-                      <div className="space-y-2">
-                        {friend.groups.map((g) => (
-                          <div
-                            key={g.groupId}
-                            className="p-3 rounded-xl bg-white border-2 border-black shadow-[2px_2px_0px_0px_#000] flex items-center justify-between text-xs"
-                          >
-                            <div>
-                              <div className="font-bold text-black uppercase">{g.groupName}</div>
-                              <span className="font-mono text-[10px] text-black/60 font-bold uppercase">
-                                Currency: {g.currency}
-                              </span>
+                      {sharedExpenses.length === 0 ? (
+                        <div className="py-4 text-center text-xs text-[#8D7868]">
+                          No shared expenses recorded yet.
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                          {sharedExpenses.map(({ expense, groupName }) => (
+                            <div
+                              key={expense.id}
+                              className="p-3 rounded-2xl bg-white border border-[#E5D9CC] shadow-xs flex items-center justify-between text-xs"
+                            >
+                              <div className="min-w-0 pr-2">
+                                <div className="font-bold text-[#432E22] truncate">
+                                  {expense.title}
+                                </div>
+                                <div className="text-[10px] text-[#8D7868] flex items-center gap-1.5 pt-0.5">
+                                  <span>{groupName}</span>
+                                  <span>•</span>
+                                  <span>{expense.expenseDate}</span>
+                                </div>
+                              </div>
+                              <div className="font-bold text-[#543A2A] shrink-0">
+                                ₹{formatMinor(expense.amountMinor, expense.currency)}
+                              </div>
                             </div>
-
-                            <div className="flex items-center gap-3">
-                              <span
-                                className={`font-mono font-black ${g.netMinor > 0
-                                    ? 'text-[#008f11]'
-                                    : g.netMinor < 0
-                                      ? 'text-[#d32f2f]'
-                                      : 'text-black/60'
-                                  }`}
-                              >
-                                {g.netMinor > 0
-                                  ? `+${formatMinor(g.netMinor, g.currency)}`
-                                  : g.netMinor < 0
-                                    ? `-${formatMinor(Math.abs(g.netMinor), g.currency)}`
-                                    : 'SETTLED'}
-                              </span>
-
-                              <Link
-                                href={`/group?id=${g.groupId}`}
-                                className="px-2.5 py-1 bg-[#ffd600] hover:bg-[#ffe033] border-2 border-black rounded-lg text-[10px] font-mono font-black text-black shadow-[1px_1px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 uppercase transition"
-                              >
-                                VIEW
-                              </Link>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {net > 0 && (
-                        <div className="pt-2">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenReminder(friend)}
-                            className="w-full py-2.5 rounded-xl border-2 border-black bg-[#ccff00] hover:bg-[#bbf000] text-black font-mono font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer flex items-center justify-center gap-2"
-                          >
-                            <span>⚡ SEND PAYMENT REMINDER</span>
-                          </button>
+                          ))}
                         </div>
                       )}
+
+                      {/* Action Buttons: Settle & Remind */}
+                      <div className="flex items-center gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenSettle(friend, e)}
+                          className="flex-1 py-2.5 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] text-xs font-bold uppercase shadow-sm active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <span>⚡ Settle</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenReminder(friend, e)}
+                          className="flex-1 py-2.5 rounded-full bg-[#D4B89B] hover:bg-[#C8A27A] text-[#432E22] text-xs font-bold uppercase shadow-sm active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <span>🔔 Remind</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -457,25 +479,40 @@ export default function FriendsPage() {
         )}
       </div>
 
-      {/* Settle Up Reminder Modal */}
+      {/* Settle Modal */}
+      {settleContext && (
+        <SettleModal
+          isOpen={Boolean(settleContext)}
+          onClose={() => setSettleContext(null)}
+          groupId={settleContext.groupId}
+          currency={settleContext.currency}
+          members={settleContext.members}
+          initialFromMemberId={settleContext.fromMemberId}
+          initialToMemberId={settleContext.toMemberId}
+          initialAmountMinor={settleContext.amountMinor}
+          onSettle={handleExecuteSettle}
+        />
+      )}
+
+      {/* Reminder Notification Modal */}
       {reminderFriend && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
           <div
-            className="w-full max-w-md bg-white border-2 border-black rounded-2xl p-5 shadow-[5px_5px_0px_0px_#000] space-y-4 max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-md bg-white border border-[#E5D9CC] rounded-3xl p-5 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto"
             role="dialog"
             aria-modal="true"
           >
-            <div className="flex items-center justify-between border-b-2 border-black pb-3">
+            <div className="flex items-center justify-between border-b border-[#E5D9CC] pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg border-2 border-black bg-[#ffd600] flex items-center justify-center text-sm font-black shadow-[1px_1px_0px_0px_#000]">
-                  ⚡
+                <div className="w-8 h-8 rounded-full bg-[#EFE4D6] flex items-center justify-center text-sm font-bold text-[#543A2A]">
+                  🔔
                 </div>
                 <div>
-                  <h3 className="text-sm font-black font-mono uppercase tracking-tight text-black">
-                    NOTIFY {reminderFriend.displayName}
+                  <h3 className="text-sm font-bold text-[#432E22]">
+                    Remind {reminderFriend.displayName}
                   </h3>
-                  <p className="text-[10px] font-mono font-bold text-black/60">
-                    Owes you +{formatMinor(reminderFriend.netPerCurrency[primaryCurrency] || 0, primaryCurrency)}
+                  <p className="text-[11px] text-[#8D7868]">
+                    Balance: ₹{formatMinor(reminderFriend.netPerCurrency[primaryCurrency] || 0, primaryCurrency)}
                   </p>
                 </div>
               </div>
@@ -483,7 +520,7 @@ export default function FriendsPage() {
               <button
                 type="button"
                 onClick={() => setReminderFriend(null)}
-                className="w-8 h-8 rounded-lg border-2 border-black bg-white hover:bg-[#ffd600] flex items-center justify-center font-mono font-black text-xs transition cursor-pointer"
+                className="w-8 h-8 rounded-full border border-[#E5D9CC] bg-white hover:bg-[#EFE4D6] flex items-center justify-center text-xs text-[#543A2A] transition cursor-pointer"
               >
                 ✕
               </button>
@@ -492,30 +529,29 @@ export default function FriendsPage() {
             {/* Recipient Account Status Indicator */}
             <div>
               {reminderFriend.userId ? (
-                <div className="px-3 py-2 rounded-xl border-2 border-black bg-[#eaff96] flex items-center gap-2 shadow-[2px_2px_0px_0px_#000]">
+                <div className="px-3 py-2 rounded-2xl bg-[#E8F0E4] border border-[#C5D9BE] flex items-center gap-2">
                   <span className="text-sm">🔔</span>
-                  <div className="text-[10px] font-mono font-bold text-black uppercase leading-tight">
-                    <span className="font-black text-black">REGISTERED USER:</span> Direct push notifications supported
+                  <div className="text-[11px] font-medium text-[#2E4226]">
+                    Direct push notifications supported
                   </div>
                 </div>
               ) : (
-                <div className="px-3 py-2 rounded-xl border-2 border-black bg-[#fff3cd] flex items-center gap-2 shadow-[2px_2px_0px_0px_#000]">
+                <div className="px-3 py-2 rounded-2xl bg-[#FAF6F0] border border-[#E5D9CC] flex items-center gap-2">
                   <span className="text-sm">👤</span>
-                  <div className="text-[10px] font-mono font-bold text-black uppercase leading-tight">
-                    <span className="font-black text-black">PLACEHOLDER CONTACT:</span> No linked app account yet
+                  <div className="text-[11px] font-medium text-[#8D7868]">
+                    Share via WhatsApp or SMS below
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Push Notification Feedback Banner */}
+            {/* Push Feedback Banner */}
             {pushStatus && (
               <div
-                className={`p-3 rounded-xl border-2 border-black text-xs font-mono font-bold flex items-center gap-2 shadow-[2px_2px_0px_0px_#000] animate-fadeIn ${
-                  pushStatus.success
-                    ? 'bg-[#ccff00] text-black'
-                    : 'bg-[#ffcdd2] text-[#b71c1c]'
-                }`}
+                className={`p-3 rounded-2xl text-xs font-medium flex items-center gap-2 ${pushStatus.success
+                    ? 'bg-[#E8F0E4] text-[#2E4226]'
+                    : 'bg-[#FCE8E6] text-[#A83232]'
+                  }`}
               >
                 <span>{pushStatus.success ? '✓' : '⚠️'}</span>
                 <span>{pushStatus.message}</span>
@@ -523,59 +559,47 @@ export default function FriendsPage() {
             )}
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-mono font-black uppercase tracking-wider text-black block">
-                Reminder Message (Push Notification Content)
+              <label className="text-xs font-bold text-[#6E5849] uppercase tracking-wider block">
+                Reminder Message
               </label>
               <textarea
                 rows={3}
                 value={reminderMessage}
                 onChange={(e) => setReminderMessage(e.target.value)}
-                className="w-full p-3 rounded-xl border-2 border-black bg-white font-mono text-xs font-bold text-black focus:outline-none focus:bg-[#faffea] shadow-[2px_2px_0px_0px_#000] resize-none"
+                className="w-full p-3 rounded-2xl border border-[#E5D9CC] bg-[#FAF6F0] text-xs font-medium text-[#432E22] focus:outline-none focus:border-[#543A2A] resize-none"
               />
             </div>
 
             {/* Notification Actions */}
             <div className="space-y-2 pt-1">
-              {reminderFriend.userId ? (
+              {reminderFriend.userId && (
                 <button
                   type="button"
                   disabled={isSendingPush}
                   onClick={handleSendPush}
-                  className="w-full py-3.5 px-4 rounded-xl border-2 border-black bg-[#ccff00] hover:bg-[#bbf000] text-black font-mono font-black text-xs uppercase shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 px-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] text-xs font-bold uppercase shadow-sm flex items-center justify-center gap-2 active:scale-95 transition cursor-pointer disabled:opacity-50"
                 >
-                  <span>{isSendingPush ? '⏳ SENDING PUSH NOTIFICATION...' : '⚡ SEND PUSH NOTIFICATION'}</span>
+                  <span>{isSendingPush ? 'Sending...' : '⚡ Send Push Notification'}</span>
                 </button>
-              ) : (
-                <div className="p-3 rounded-xl border-2 border-dashed border-black bg-[#fafaf6] text-center space-y-1">
-                  <p className="font-mono text-[11px] font-bold text-black">
-                    Push notifications require a registered Clearcut account.
-                  </p>
-                  <p className="font-mono text-[10px] text-black/60 font-medium">
-                    Send them a reminder via WhatsApp or SMS below:
-                  </p>
-                </div>
               )}
 
               {/* External Share Fallbacks */}
               <div className="pt-2">
-                <div className="text-[10px] font-mono font-black uppercase tracking-wider text-black/60 mb-1.5">
-                  {reminderFriend.userId ? 'Or share externally:' : 'External share options:'}
-                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={handleSendWhatsApp}
-                    className="py-2.5 px-3 rounded-xl border-2 border-black bg-[#25D366] hover:bg-[#20ba5a] text-black font-mono font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000] flex items-center justify-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+                    className="py-2.5 px-3 rounded-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-xs uppercase shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
                   >
-                    <span>💬 WHATSAPP</span>
+                    <span>💬 WhatsApp</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleShareReminder}
-                    className="py-2.5 px-3 rounded-xl border-2 border-black bg-[#00e5ff] hover:bg-[#00cbe6] text-black font-mono font-black text-xs uppercase shadow-[2px_2px_0px_0px_#000] flex items-center justify-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+                    className="py-2.5 px-3 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] font-bold text-xs uppercase shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
                   >
-                    <span>📲 SMS / SHARE</span>
+                    <span>📲 SMS / Share</span>
                   </button>
                 </div>
 
@@ -583,9 +607,9 @@ export default function FriendsPage() {
                   <button
                     type="button"
                     onClick={handleCopyReminder}
-                    className="w-full py-2 px-3 rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black font-mono font-black text-xs uppercase shadow-[1px_1px_0px_0px_#000] flex items-center justify-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+                    className="w-full py-2 px-3 rounded-full border border-[#E5D9CC] bg-white hover:bg-[#EFE4D6] text-[#543A2A] font-bold text-xs uppercase shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
                   >
-                    <span>{copiedReminder ? '✓ COPIED TO CLIPBOARD!' : '📋 COPY MESSAGE'}</span>
+                    <span>{copiedReminder ? '✓ Copied to clipboard!' : '📋 Copy Message'}</span>
                   </button>
                 </div>
               </div>
@@ -599,3 +623,4 @@ export default function FriendsPage() {
     </div>
   );
 }
+

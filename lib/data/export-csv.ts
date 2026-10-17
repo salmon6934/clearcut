@@ -140,8 +140,8 @@ export async function exportAndShareGroupCsv(
 
       // Share using native share sheet
       await Share.share({
-        title: `${group.name} Ledger Export`,
-        text: `Exported ledger for ${group.name}`,
+        title: `${group.name} Export`,
+        text: `Exported expenses for ${group.name}`,
         url: writeResult.uri,
         dialogTitle: `Share ${filename}`,
       });

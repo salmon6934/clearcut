@@ -1,7 +1,7 @@
 'use client';
 
 // components/ExpenseFilters.tsx
-// Stitch Neo-Brutalist Search & Category Filter Chips
+// Brew & Browse Warm Cafe Search & Category Filter Chips
 
 import React from 'react';
 
@@ -15,13 +15,13 @@ export interface ExpenseFiltersProps {
 }
 
 export const FILTER_CATEGORIES = [
-  { id: 'all', label: 'ALL', icon: '🏷️' },
-  { id: 'food', label: 'FOOD', icon: '🍽️', matches: ['food', 'drinks', 'groceries'] },
-  { id: 'transport', label: 'TRANSPORT', icon: '🚕', matches: ['transport', 'taxi', 'fuel'] },
-  { id: 'utilities', label: 'BILLS', icon: '💡', matches: ['utilities', 'bills'] },
-  { id: 'entertainment', label: 'FUN', icon: '🎟️', matches: ['entertainment', 'movies'] },
-  { id: 'lodging', label: 'STAY', icon: '🏨', matches: ['lodging', 'hotel', 'stay'] },
-  { id: 'other', label: 'OTHER', icon: '📦', matches: ['other', 'general', 'shopping'] },
+  { id: 'all', label: 'All', icon: '🏷️' },
+  { id: 'food', label: 'Food', icon: '🍽️', matches: ['food', 'drinks', 'groceries'] },
+  { id: 'transport', label: 'Transit', icon: '🚕', matches: ['transport', 'taxi', 'fuel'] },
+  { id: 'utilities', label: 'Bills', icon: '💡', matches: ['utilities', 'bills'] },
+  { id: 'entertainment', label: 'Fun', icon: '🎟️', matches: ['entertainment', 'movies'] },
+  { id: 'lodging', label: 'Stay', icon: '🏨', matches: ['lodging', 'hotel', 'stay'] },
+  { id: 'other', label: 'Other', icon: '📦', matches: ['other', 'general', 'shopping'] },
 ];
 
 export function ExpenseFilters({
@@ -43,11 +43,12 @@ export function ExpenseFilters({
     <div className="space-y-3">
       {/* Search Input Bar */}
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-black font-black">
-          <svg className="w-4 h-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8D7868]">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
+              strokeWidth={2}
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
             />
           </svg>
@@ -56,17 +57,17 @@ export function ExpenseFilters({
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="SEARCH TITLE, NOTES OR #TAGS..."
-          className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white border-2 border-black text-xs font-mono font-bold text-black placeholder:text-black/40 focus:outline-none focus:bg-[#faffea] shadow-[2px_2px_0px_0px_#000]"
+          placeholder="Search title, notes, or tags..."
+          className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-white border border-[#E5D9CC] text-xs sm:text-sm font-medium text-[#432E22] placeholder:text-[#8D7868]/60 focus:outline-none focus:border-[#543A2A] shadow-xs transition-colors"
         />
         {searchQuery && (
           <button
             type="button"
             onClick={() => onSearchChange('')}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-black"
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#8D7868] hover:text-[#432E22]"
             aria-label="Clear search query"
           >
-            <span className="w-5 h-5 rounded border border-black bg-[#ffd600] text-black flex items-center justify-center text-[10px] font-black">
+            <span className="w-5 h-5 rounded-full bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center text-[10px] font-bold">
               ✕
             </span>
           </button>
@@ -83,10 +84,10 @@ export function ExpenseFilters({
                 key={cat.id}
                 type="button"
                 onClick={() => onCategoryChange(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-black border-2 border-black transition-all shadow-[1.5px_1.5px_0px_0px_#000] cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-black text-[#ccff00]'
-                    : 'bg-white text-black hover:bg-[#fafaf6]'
+                    ? 'bg-[#543A2A] text-[#FAF6F0] shadow-xs'
+                    : 'bg-white text-[#432E22] border border-[#E5D9CC] hover:bg-[#FAF6F0]'
                 }`}
               >
                 <span>{cat.icon}</span>
@@ -99,15 +100,15 @@ export function ExpenseFilters({
         {/* Clear Filters summary button */}
         {isFiltered && (
           <div className="flex items-center gap-2 shrink-0 pl-2">
-            <span className="text-[11px] font-mono text-black/60 font-bold">
+            <span className="text-xs text-[#8D7868] font-medium">
               {filteredCount}/{totalCount}
             </span>
             <button
               type="button"
               onClick={clearFilters}
-              className="text-[11px] font-mono font-black bg-[#ff8a80] text-black border border-black px-2 py-0.5 rounded shadow-[1px_1px_0px_0px_#000]"
+              className="text-xs font-bold bg-[#FCE8E6] text-[#A83232] border border-[#F5C2C0] px-2.5 py-0.5 rounded-full hover:bg-[#F8D8D5] transition-colors"
             >
-              RESET
+              Reset
             </button>
           </div>
         )}

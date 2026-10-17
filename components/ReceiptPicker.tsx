@@ -105,7 +105,7 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
   const currentDisplayUrl = previewUrl || signedUrl;
 
   return (
-    <div className="w-full bg-white border-2 border-black rounded-xl p-4 shadow-[3px_3px_0px_0px_#000] space-y-3">
+    <div className="w-full bg-white border border-[#E5D9CC] rounded-3xl p-4 shadow-sm space-y-3">
       {/* Hidden file input for web fallback */}
       <input
         ref={fileInputRef}
@@ -119,34 +119,34 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm">🧾</span>
-          <span className="text-xs font-mono font-black text-black uppercase tracking-wider">
-            ATTACHED BILL
+          <span className="text-xs font-bold text-[#432E22] uppercase tracking-wider">
+            Attached Bill
           </span>
         </div>
         {currentDisplayUrl ? (
-          <span className="px-2 py-0.5 rounded border border-black bg-[#ccff00] text-black text-[10px] font-mono font-black uppercase">
-            1 FILE SYNCED
+          <span className="px-2.5 py-0.5 rounded-full border border-[#C5D9BE] bg-[#E8F0E4] text-[#2E4226] text-[10px] font-bold uppercase">
+            1 File Synced
           </span>
         ) : (
-          <span className="px-2 py-0.5 rounded border border-black bg-[#f0f0ea] text-black/60 text-[10px] font-mono font-bold uppercase">
-            OPTIONAL
+          <span className="px-2.5 py-0.5 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[#8D7868] text-[10px] font-semibold uppercase">
+            Optional
           </span>
         )}
       </div>
 
       {isLoading ? (
-        <div className="h-24 flex flex-col items-center justify-center bg-[#f0f0ea] border-2 border-black rounded-xl">
-          <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin mb-1.5" />
-          <span className="text-xs font-mono font-bold text-black">Compressing bill photo...</span>
+        <div className="h-24 flex flex-col items-center justify-center bg-[#FAF6F0] border border-[#E5D9CC] rounded-2xl">
+          <div className="w-5 h-5 border-2 border-[#543A2A] border-t-transparent rounded-full animate-spin mb-1.5" />
+          <span className="text-xs font-semibold text-[#8D7868]">Compressing bill photo...</span>
         </div>
       ) : currentDisplayUrl ? (
         <div className="space-y-3">
-          <div className="p-3 bg-[#e8e8e2] border-2 border-black rounded-xl flex items-center justify-between gap-3 shadow-[2px_2px_0px_0px_#000]">
+          <div className="p-3 bg-[#FAF6F0] border border-[#E5D9CC] rounded-2xl flex items-center justify-between gap-3 shadow-xs">
             <div
               onClick={() => setShowModal(true)}
               className="flex items-center gap-3 cursor-pointer min-w-0"
             >
-              <div className="w-12 h-12 rounded-lg border-2 border-black overflow-hidden bg-white shrink-0">
+              <div className="w-12 h-12 rounded-xl border border-[#E5D9CC] overflow-hidden bg-white shrink-0">
                 <img
                   src={currentDisplayUrl}
                   alt="Receipt"
@@ -154,15 +154,15 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
                 />
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-mono font-black text-black block truncate">
+                <span className="text-xs font-bold text-[#432E22] block truncate">
                   Bill_Receipt.jpg
                 </span>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="px-1.5 py-0.2 rounded border border-black bg-white text-[9px] font-mono font-bold">
+                  <span className="px-2 py-0.5 rounded-full border border-[#E5D9CC] bg-white text-[10px] font-semibold text-[#8D7868]">
                     {sizeInfo || 'Synced'}
                   </span>
-                  <span className="px-1.5 py-0.2 rounded border border-black bg-[#ccff00] text-[9px] font-mono font-black text-black">
-                    OCR READY
+                  <span className="px-2 py-0.5 rounded-full border border-[#C5D9BE] bg-[#E8F0E4] text-[10px] font-bold text-[#2E4226]">
+                    OCR Ready
                   </span>
                 </div>
               </div>
@@ -171,7 +171,7 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
             <button
               type="button"
               onClick={handleRemove}
-              className="w-8 h-8 rounded-lg border-2 border-black bg-[#ff8a80] text-black font-black flex items-center justify-center shadow-[1px_1px_0px_0px_#000] hover:bg-[#ff7060] transition"
+              className="w-8 h-8 rounded-full border border-[#F5C2C0] bg-[#FCE8E6] text-[#A83232] font-bold flex items-center justify-center hover:bg-[#F8D8D5] transition active:scale-95 cursor-pointer"
             >
               ✕
             </button>
@@ -182,19 +182,19 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
               type="button"
               disabled={disabled}
               onClick={() => handleCapture('camera')}
-              className="py-2.5 px-3 rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black text-xs font-mono font-black shadow-[2px_2px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5"
+              className="py-2.5 px-3 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] hover:bg-[#EFE4D6] text-[#432E22] text-xs font-bold shadow-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>📷</span>
-              <span>RETAKE</span>
+              <span>Retake</span>
             </button>
             <button
               type="button"
               disabled={disabled}
               onClick={() => handleCapture('photos')}
-              className="py-2.5 px-3 rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black text-xs font-mono font-black shadow-[2px_2px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5"
+              className="py-2.5 px-3 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] hover:bg-[#EFE4D6] text-[#432E22] text-xs font-bold shadow-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>➕</span>
-              <span>ADD MORE</span>
+              <span>Add More</span>
             </button>
           </div>
         </div>
@@ -204,19 +204,19 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
             type="button"
             disabled={disabled}
             onClick={() => handleCapture('camera')}
-            className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black text-xs font-mono font-black shadow-[2px_2px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5"
+            className="flex items-center justify-center gap-2 py-3 px-3 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] hover:bg-[#EFE4D6] text-[#432E22] text-xs font-bold shadow-xs transition active:scale-95 cursor-pointer"
           >
             <span>📷</span>
-            <span>CAMERA</span>
+            <span>Camera</span>
           </button>
           <button
             type="button"
             disabled={disabled}
             onClick={() => handleCapture('photos')}
-            className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black text-xs font-mono font-black shadow-[2px_2px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5"
+            className="flex items-center justify-center gap-2 py-3 px-3 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] hover:bg-[#EFE4D6] text-[#432E22] text-xs font-bold shadow-xs transition active:scale-95 cursor-pointer"
           >
             <span>📁</span>
-            <span>GALLERY / FILE</span>
+            <span>Gallery / File</span>
           </button>
         </div>
       )}
@@ -224,20 +224,20 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
       {/* Fullscreen Receipt Modal */}
       {showModal && currentDisplayUrl && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 bg-black/60 flex flex-col items-center justify-center p-4 backdrop-blur-sm"
           onClick={() => setShowModal(false)}
         >
           <div className="relative max-w-lg max-h-[85vh] w-full flex flex-col items-center">
             <button
               onClick={() => setShowModal(false)}
-              className="absolute -top-10 right-0 px-2 py-1 bg-white border-2 border-black rounded-lg text-black font-mono font-black text-xs shadow-[2px_2px_0px_0px_#000]"
+              className="absolute -top-12 right-0 px-3 py-1.5 bg-[#FAF6F0] border border-[#E5D9CC] rounded-full text-[#432E22] font-bold text-xs shadow-md cursor-pointer hover:bg-[#EFE4D6]"
             >
-              CLOSE ✕
+              Close ✕
             </button>
             <img
               src={currentDisplayUrl}
               alt="Receipt Full View"
-              className="max-h-[80vh] max-w-full rounded-xl object-contain border-2 border-black shadow-[5px_5px_0px_0px_#000]"
+              className="max-h-[80vh] max-w-full rounded-2xl object-contain border border-[#E5D9CC] shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />
           </div>

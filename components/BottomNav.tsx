@@ -9,12 +9,12 @@ export function BottomNav() {
 
   const navItems = [
     {
-      name: 'HOME',
+      name: 'GROUPS',
       href: '/',
       active: pathname === '/',
       icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
       ),
     },
@@ -23,8 +23,12 @@ export function BottomNav() {
       href: '/friends',
       active: pathname.startsWith('/friends'),
       icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="m11 17 2 2a1 1 0 1 0 3-3" />
+          <path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" />
+          <path d="m21 3 1 11h-2" />
+          <path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" />
+          <path d="M3 4h8" />
         </svg>
       ),
     },
@@ -33,38 +37,38 @@ export function BottomNav() {
       href: '/activity',
       active: pathname.startsWith('/activity'),
       icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       ),
     },
     {
-      name: 'SETTINGS',
+      name: 'PROFILE',
       href: '/settings',
       active: pathname.startsWith('/settings'),
       icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
       ),
     },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#f5f5f0] border-t-2 border-black pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] pt-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#FAF6F0]/95 backdrop-blur-md border-t border-[#E5D9CC] pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] pt-2 shadow-[0_-4px_20px_rgba(84,58,42,0.04)]">
       <div className="max-w-xl mx-auto px-4 flex items-center justify-around">
         {navItems.map((item) => (
           <Link
             key={item.name}
             href={item.href}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition-all ${
+            className={`flex flex-col items-center justify-center py-1.5 px-3.5 rounded-full transition-all duration-150 ${
               item.active
-                ? 'bg-[#ccff00] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]'
-                : 'text-black/60 hover:text-black'
+                ? 'bg-[#543A2A] text-[#FAF6F0] shadow-sm'
+                : 'text-[#8D7868] hover:text-[#543A2A] hover:bg-[#EFE4D6]/50'
             }`}
           >
             {item.icon}
-            <span className="font-mono text-[9px] font-black uppercase tracking-wider mt-0.5">
+            <span className="text-[10px] font-bold tracking-wider mt-0.5">
               {item.name}
             </span>
           </Link>

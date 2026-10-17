@@ -40,13 +40,13 @@ function ExpenseEntryContent() {
 
   if (!groupId || !group) {
     return (
-      <div className="min-h-screen bg-[#f5f5f0] text-black p-6 flex flex-col items-center justify-center text-center">
-        <h2 className="text-base font-black uppercase mb-2 font-mono">Group not found</h2>
+      <div className="min-h-screen bg-transparent text-[#432E22] p-6 flex flex-col items-center justify-center text-center">
+        <h2 className="text-base font-bold text-[#432E22] mb-2">Group not found</h2>
         <button
           onClick={() => router.push('/')}
-          className="px-4 py-2 text-xs font-black uppercase rounded-xl bg-[#ccff00] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]"
+          className="px-5 py-2.5 text-xs font-bold rounded-full bg-[#543A2A] text-[#FAF6F0] hover:bg-[#432E20] shadow-sm transition active:scale-95 cursor-pointer"
         >
-          Back to Dashboard
+          Back to Groups
         </button>
       </div>
     );
@@ -105,65 +105,46 @@ function ExpenseEntryContent() {
     : undefined;
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0] text-black pb-28 relative">
+    <div className="min-h-screen bg-transparent text-[#432E22] pb-28 relative">
       <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-4">
-        {/* Top Header Bar matching Stitch Image 2 */}
+        {/* Top Header Bar */}
         <header className="flex items-center justify-between pt-1">
           <Link
             href={`/group?id=${groupId}`}
-            className="w-10 h-10 rounded-lg border-2 border-black bg-white flex items-center justify-center text-black hover:bg-[#ffd600] transition active:translate-x-0.5 active:translate-y-0.5 shadow-[2px_2px_0px_0px_#000]"
+            className="w-10 h-10 rounded-full border border-[#E5D9CC] bg-white flex items-center justify-center text-[#543A2A] hover:bg-[#EFE4D6] transition active:scale-95 shadow-sm"
           >
             <svg className="w-4 h-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </Link>
 
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 bg-[#ccff00] border-2 border-black flex items-center justify-center font-mono font-black text-xs shadow-[1px_1px_0px_0px_#000]">
-              C/
-            </span>
-            <h1 className="text-base sm:text-lg font-black tracking-tight uppercase font-mono">
-              {existingExpense ? 'EDIT EXPENSE' : 'NEW EXPENSE'}
-            </h1>
-          </div>
+          <h1 className="text-base sm:text-lg font-bold tracking-tight text-[#432E22]">
+            {existingExpense ? 'Edit Expense' : 'Add Expense'}
+          </h1>
 
           <div className="flex items-center gap-2">
             <SyncBadge manager={repo.syncManager} />
-            <Link
-              href="/settings"
-              className="w-9 h-9 rounded-lg border-2 border-black bg-white shadow-[2px_2px_0px_0px_#000] flex items-center justify-center overflow-hidden font-mono font-bold text-xs"
-            >
-              {authState.profile?.avatarUrl ? (
-                <img src={authState.profile.avatarUrl} alt="User" className="w-full h-full object-cover" />
-              ) : (
-                '👤'
-              )}
-            </Link>
           </div>
         </header>
 
         {/* Group Sub-Chips */}
         <div className="flex items-center gap-2 pt-1">
-          <div className="px-3 py-1 rounded-md border-2 border-black bg-white text-xs font-mono font-black uppercase shadow-[1.5px_1.5px_0px_0px_#000] flex items-center gap-1.5">
+          <div className="px-3 py-1 rounded-full border border-[#E5D9CC] bg-white text-xs font-bold uppercase shadow-sm flex items-center gap-1.5 text-[#432E22]">
             <span>👥</span>
             <span className="truncate">{group.name}</span>
-          </div>
-          <div className="px-3 py-1 rounded-md border-2 border-black bg-white text-xs font-mono font-bold uppercase shadow-[1.5px_1.5px_0px_0px_#000] flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-black" />
-            <span>LEDGER READY</span>
           </div>
         </div>
 
         {/* Conflict Warning Banner */}
         {isConflict && (
-          <div className="p-3.5 rounded-xl bg-[#ffd600] border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-between gap-3 text-black">
+          <div className="p-4 rounded-2xl bg-[#FFF8EE] border border-[#ECD3B6] shadow-xs flex items-center justify-between gap-3 text-[#8C5E23]">
             <div className="flex items-center gap-2.5">
               <span className="text-lg">⚠️</span>
               <div>
-                <p className="text-xs font-black uppercase font-mono">
+                <p className="text-xs font-bold uppercase tracking-wider">
                   Version Conflict (409)
                 </p>
-                <p className="text-[11px] font-medium">
+                <p className="text-xs font-medium text-[#8D7868]">
                   Remote server has a newer version of this expense.
                 </p>
               </div>
@@ -172,9 +153,9 @@ function ExpenseEntryContent() {
             <button
               type="button"
               onClick={() => setShowConflictSheet(true)}
-              className="px-3 py-1.5 rounded-lg bg-black text-white text-xs font-mono font-black shadow-sm transition shrink-0 active:scale-95"
+              className="px-4 py-2 rounded-full bg-[#543A2A] text-[#FAF6F0] text-xs font-bold uppercase shadow-sm transition shrink-0 active:scale-95 cursor-pointer hover:bg-[#432E20]"
             >
-              RESOLVE
+              Resolve
             </button>
           </div>
         )}
@@ -209,7 +190,7 @@ function ExpenseEntryContent() {
 
 export default function ExpenseEntryPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs font-mono font-black uppercase text-black">Loading form...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-xs font-bold text-[#8D7868]">Loading form...</div>}>
       <ExpenseEntryContent />
     </Suspense>
   );

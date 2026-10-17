@@ -1,7 +1,7 @@
 'use client';
 
 // components/PayerEditor.tsx
-// Stitch-Engineered Neo-Brutalist Payer Selector
+// Warm Cafe Payer Selector
 
 import React, { useState, useEffect } from 'react';
 import type { Member } from '../lib/data/types';
@@ -79,111 +79,157 @@ export function PayerEditor({
     setMultiPayerInputs((prev) => ({ ...prev, [memberId]: val }));
   };
 
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   const selectedMember = members.find((m) => m.id === singlePayerId);
 
   return (
-    <div className="space-y-3 p-4 rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000]">
-      <div className="flex items-center justify-between">
-        <label className="text-xs font-mono font-black text-black uppercase tracking-wider">
+    <div className="space-y-3 p-4 rounded-3xl border border-[#E5D9CC] bg-[#FAF6F0] shadow-xs">
+      <div>
+        <label className="text-xs font-bold text-[#6E5849] uppercase tracking-wider">
           PAID BY
         </label>
-        <span className="text-[10px] font-mono text-black/60 font-bold uppercase">
-          SETTLEMENT ROOT
-        </span>
       </div>
 
-      {/* Segmented Toggle matching Stitch Image 2 */}
-      <div className="grid grid-cols-2 gap-2 p-1 bg-[#f0f0ea] border-2 border-black rounded-xl">
+      {/* Segmented Toggle */}
+      <div className="grid grid-cols-2 gap-1.5 p-1 bg-white border border-[#E5D9CC] rounded-full text-xs font-bold">
         <button
           type="button"
-          onClick={() => setIsMultiPayer(false)}
-          className={`py-2 text-xs font-mono font-black uppercase rounded-lg transition-all ${
+          onClick={() => {
+            setIsMultiPayer(false);
+            setIsDropdownOpen(false);
+          }}
+          className={`py-2 rounded-full transition-all cursor-pointer ${
             !isMultiPayer
-              ? 'bg-[#ccff00] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]'
-              : 'text-black/60 hover:text-black'
+              ? 'bg-[#543A2A] text-[#FAF6F0] shadow-xs'
+              : 'text-[#8D7868] hover:text-[#543A2A]'
           }`}
         >
-          PAID BY ONE
+          Paid by one
         </button>
         <button
           type="button"
-          onClick={() => setIsMultiPayer(true)}
-          className={`py-2 text-xs font-mono font-black uppercase rounded-lg transition-all ${
+          onClick={() => {
+            setIsMultiPayer(true);
+            setIsDropdownOpen(false);
+          }}
+          className={`py-2 rounded-full transition-all cursor-pointer ${
             isMultiPayer
-              ? 'bg-[#ccff00] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]'
-              : 'text-black/60 hover:text-black'
+              ? 'bg-[#543A2A] text-[#FAF6F0] shadow-xs'
+              : 'text-[#8D7868] hover:text-[#543A2A]'
           }`}
         >
-          MULTIPLE PAYERS
+          Multiple payers
         </button>
       </div>
 
       {!isMultiPayer ? (
-        <div className="p-3 rounded-xl border-2 border-black bg-[#e8e8e2] flex items-center justify-between gap-3 shadow-[2px_2px_0px_0px_#000]">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-10 h-10 rounded-lg border-2 border-black bg-white flex items-center justify-center font-black text-sm shrink-0 shadow-[1px_1px_0px_0px_#000]">
-              {selectedMember?.displayName.charAt(0).toUpperCase() || 'P'}
+        <div className="relative">
+          {/* Custom Single Payer Card with inline dropdown trigger */}
+          <div
+            onClick={() => setIsDropdownOpen((prev) => !prev)}
+            className="p-3 rounded-2xl border border-[#E5D9CC] bg-white flex items-center justify-between gap-3 shadow-xs cursor-pointer hover:border-[#D4B89B] transition select-none"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-full bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                {selectedMember?.displayName.charAt(0).toUpperCase() || 'P'}
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-[#432E22] block truncate">
+                  {selectedMember?.displayName} {selectedMember?.userId === currentUserId ? '(You)' : ''}
+                </span>
+                <span className="text-[11px] text-[#8D7868] block">
+                  Paid ₹{formatMinor(totalAmountMinor, currency)}
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-xs font-black text-black block truncate">
-                {selectedMember?.displayName} {selectedMember?.userId === currentUserId ? '(You)' : ''} paid ₹ {formatMinor(totalAmountMinor, currency)}
-              </span>
-              <span className="text-[10px] font-mono text-black/60 block">
-                Instant ledger deduction
-              </span>
+
+            <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-xs font-semibold text-[#543A2A]">
+              <span>Change</span>
+              <svg
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
             </div>
           </div>
 
-          <div className="shrink-0">
-            <select
-              value={singlePayerId}
-              onChange={(e) => setSinglePayerId(e.target.value)}
-              className="px-2 py-1 text-xs font-mono font-black rounded-lg border-2 border-black bg-white text-black shadow-[1.5px_1.5px_0px_0px_#000] focus:outline-none"
-            >
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.displayName}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* In-UI Dropdown (Drops down inside UI without opening native modal) */}
+          {isDropdownOpen && (
+            <div className="mt-2 p-1.5 bg-white border border-[#E5D9CC] rounded-2xl shadow-lg space-y-1 z-20 animate-fadeIn">
+              {members.map((m) => {
+                const isSelected = m.id === singlePayerId;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      setSinglePayerId(m.id);
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between p-2 rounded-xl text-left text-xs transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#EFE4D6] text-[#543A2A] font-bold'
+                        : 'text-[#432E22] hover:bg-[#FAF6F0] font-medium'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-full bg-[#E5D9CC] text-[#543A2A] flex items-center justify-center font-bold text-xs shrink-0">
+                        {m.displayName.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="truncate">
+                        {m.displayName} {m.userId === currentUserId ? '(You)' : ''}
+                      </span>
+                    </div>
+
+                    {isSelected && (
+                      <span className="text-xs font-bold text-[#543A2A] shrink-0">✓</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-2.5 pt-1">
           <div className="space-y-2">
             {members.map((m) => (
-              <div key={m.id} className="p-2.5 rounded-lg border-2 border-black bg-white flex items-center justify-between gap-3 shadow-[1.5px_1.5px_0px_0px_#000]">
-                <span className="text-xs font-black text-black truncate">
+              <div key={m.id} className="p-2.5 rounded-2xl border border-[#E5D9CC] bg-white flex items-center justify-between gap-3 shadow-xs">
+                <span className="text-xs font-bold text-[#432E22] truncate">
                   {m.displayName} {m.userId === currentUserId ? '(You)' : ''}
                 </span>
-                <div className="w-28 shrink-0">
+                <div className="w-28 shrink-0 flex items-center gap-1">
+                  <span className="text-xs font-bold text-[#8D7868]">₹</span>
                   <input
                     type="text"
                     inputMode="decimal"
                     placeholder="0.00"
                     value={multiPayerInputs[m.id] || ''}
                     onChange={(e) => handleInputChange(m.id, e.target.value)}
-                    className="w-full px-2 py-1 text-xs font-mono font-black text-right rounded-md border-2 border-black bg-white text-black focus:outline-none"
+                    className="w-full px-2 py-1 text-xs font-bold text-right rounded-xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] focus:outline-none focus:border-[#543A2A]"
                   />
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Residual indicator */}
-          <div className="p-2 rounded-lg border-2 border-black bg-white flex items-center justify-between text-xs font-mono font-black shadow-[1.5px_1.5px_0px_0px_#000]">
-            <span>TOTAL ALLOCATED:</span>
+          {/* Residual indicator (shows only "xxx remaining" without "TOTAL ALLOCATED") */}
+          <div className="pt-2 flex items-center justify-end text-xs font-semibold">
             {deltaMinor === 0 ? (
-              <span className="text-black bg-[#ccff00] px-2 py-0.5 rounded border border-black">
-                MATCHED ({formatMinor(totalAmountMinor, currency)})
+              <span className="font-bold text-[#2E4226] bg-[#E8F0E4] border border-[#C5D9BE] px-3 py-1 rounded-full shadow-xs">
+                Matched ({currency === 'INR' ? '₹' : ''}{formatMinor(totalAmountMinor, currency)})
               </span>
             ) : deltaMinor > 0 ? (
-              <span className="text-black bg-[#ffd600] px-2 py-0.5 rounded border border-black">
-                {formatMinor(deltaMinor, currency)} REMAINING
+              <span className="font-bold text-[#8C5E23] bg-[#FAF0E6] border border-[#ECD3B6] px-3 py-1 rounded-full shadow-xs">
+                {currency === 'INR' ? '₹' : ''}{formatMinor(deltaMinor, currency)} remaining
               </span>
             ) : (
-              <span className="text-black bg-[#ff8a80] px-2 py-0.5 rounded border border-black">
-                OVER {formatMinor(Math.abs(deltaMinor), currency)}
+              <span className="font-bold text-[#A83232] bg-[#FCE8E6] border border-[#F5C2C0] px-3 py-1 rounded-full shadow-xs">
+                Over by {currency === 'INR' ? '₹' : ''}{formatMinor(Math.abs(deltaMinor), currency)}
               </span>
             )}
           </div>
@@ -192,3 +238,4 @@ export function PayerEditor({
     </div>
   );
 }
+

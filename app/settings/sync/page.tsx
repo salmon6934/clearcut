@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { LocalStorageAdapter } from '../../../lib/data/storage-adapter';
 import { MutationQueue, MutationRecord } from '../../../lib/data/queue';
 import { LocalStore } from '../../../lib/data/local-store';
-import { drainQueue } from '../../../lib/sync/push';
+import { drainQueue, resetBackoff } from '../../../lib/sync/push';
 import { resolveExpenseConflict } from '../../../lib/sync/merge';
 import { supabase } from '../../../lib/supabase';
 import { haptics } from '../../../lib/native/haptics';
@@ -98,7 +98,8 @@ function SyncDiagnosticsContent() {
     setMessage(null);
 
     try {
-      const res = await drainQueue(queue, store, supabase);
+      resetBackoff();
+      const res = await drainQueue(queue, store, supabase, true);
       if (res.synced > 0) {
         setMessage('Mutation successfully synchronized!');
       } else if (res.conflicts > 0) {
@@ -135,76 +136,76 @@ function SyncDiagnosticsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0] text-black p-4 max-w-xl mx-auto font-sans">
+    <div className="min-h-screen bg-transparent text-[#432E22] p-4 max-w-xl mx-auto font-sans">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 pt-2">
         <Link
           href="/settings"
-          className="w-10 h-10 rounded-lg border-2 border-black bg-white flex items-center justify-center font-black text-black hover:bg-[#ffd600] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
+          className="w-10 h-10 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] flex items-center justify-center text-[#543A2A] hover:bg-[#EFE4D6] shadow-sm active:scale-95 transition cursor-pointer"
         >
           ←
         </Link>
-        <h1 className="text-sm font-mono font-black uppercase tracking-wider">
-          SYNC DIAGNOSTICS
+        <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#432E22]">
+          Sync Diagnostics
         </h1>
         <div className="w-10"></div>
       </div>
 
       {message && (
-        <div className="mb-4 p-3 rounded-lg text-xs font-mono font-black bg-[#ffd600] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+        <div className="mb-4 p-3.5 rounded-2xl text-xs font-semibold bg-[#FAF0E6] text-[#8C5E23] border border-[#ECD3B6] shadow-xs">
           {message}
         </div>
       )}
 
       {items.length === 0 ? (
-        <div className="text-center py-12 px-4 rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000]">
-          <div className="w-10 h-10 rounded-lg border-2 border-black bg-[#ccff00] text-black flex items-center justify-center mx-auto mb-3 font-mono font-black text-lg shadow-[2px_2px_0px_0px_#000]">
+        <div className="text-center py-12 px-6 rounded-3xl border border-[#E5D9CC] bg-white shadow-sm">
+          <div className="w-12 h-12 rounded-2xl border border-[#C5D9BE] bg-[#E8F0E4] text-[#2E4226] flex items-center justify-center mx-auto mb-3 text-xl font-bold">
             ✓
           </div>
-          <h2 className="text-sm font-mono font-black uppercase mb-1">ALL SYNCED!</h2>
-          <p className="text-xs font-mono text-black/60">
+          <h2 className="text-base font-bold text-[#432E22] mb-1">All Synced!</h2>
+          <p className="text-xs text-[#8D7868] font-medium">
             No conflicts or dead-letter mutations in your local queue.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="text-xs font-mono font-black text-black uppercase tracking-wider flex items-center justify-between">
-            <span>PENDING RESOLUTION ({items.length})</span>
+          <div className="text-xs font-bold text-[#8D7868] uppercase tracking-wider flex items-center justify-between">
+            <span>Pending Resolution ({items.length})</span>
             <button
               onClick={handleDiscardAll}
-              className="text-[11px] font-mono font-black text-black px-2 py-1 rounded bg-[#ff8a80] border border-black shadow-[1px_1px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
+              className="text-xs font-bold text-[#A83232] px-3 py-1 rounded-full bg-[#FCE8E6] border border-[#F5C2C0] hover:bg-[#F8D8D5] shadow-xs active:scale-95 transition cursor-pointer"
             >
-              DISCARD ALL
+              Discard All
             </button>
           </div>
 
           {items.map((item) => (
             <div
               key={item.id}
-              className="p-4 rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] space-y-3"
+              className="p-4 sm:p-5 rounded-3xl border border-[#E5D9CC] bg-white shadow-sm space-y-3"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <span
-                    className={`inline-block px-2 py-0.5 text-[10px] font-mono font-black uppercase rounded border border-black ${
+                    className={`inline-block px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full border ${
                       item.status === 'conflict'
-                        ? 'bg-[#ffd600] text-black'
-                        : 'bg-[#ff8a80] text-black'
+                        ? 'bg-[#FAF0E6] text-[#8C5E23] border-[#ECD3B6]'
+                        : 'bg-[#FCE8E6] text-[#A83232] border-[#F5C2C0]'
                     }`}
                   >
                     {item.status.toUpperCase()}
                   </span>
-                  <span className="ml-2 text-xs font-mono font-bold text-black/70">
+                  <span className="ml-2 text-xs font-semibold text-[#8D7868]">
                     {item.type}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-black/60">
+                <span className="text-[10px] text-[#8D7868] font-medium">
                   {new Date(item.updatedAt).toLocaleTimeString()}
                 </span>
               </div>
 
               {item.lastError && (
-                <div className="text-xs text-black font-mono bg-[#f0f0ea] p-2.5 rounded border border-black break-all">
+                <div className="text-xs text-[#432E22] bg-[#FAF6F0] p-3 rounded-2xl border border-[#E5D9CC] break-all font-mono">
                   {item.lastError}
                 </div>
               )}
@@ -213,26 +214,26 @@ function SyncDiagnosticsContent() {
                 {item.status === 'conflict' && item.type === 'UPSERT_EXPENSE' ? (
                   <button
                     onClick={() => handleOpenConflict(item)}
-                    className="flex-1 px-3 py-2 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ffd600] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
+                    className="flex-1 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-full bg-[#FAF0E6] text-[#8C5E23] border border-[#ECD3B6] hover:bg-[#F4E4D0] shadow-xs active:scale-95 transition cursor-pointer"
                   >
-                    RESOLVE CONFLICT
+                    Resolve Conflict
                   </button>
                 ) : (
                   <button
                     onClick={() => handleRetryItem(item)}
                     disabled={isRetrying}
-                    className="flex-1 px-3 py-2 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition disabled:opacity-50"
+                    className="flex-1 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-full bg-[#543A2A] text-[#FAF6F0] hover:bg-[#432E20] shadow-sm active:scale-95 transition disabled:opacity-50 cursor-pointer"
                   >
-                    {isRetrying ? 'RETRYING...' : 'RETRY PUSH'}
+                    {isRetrying ? 'Retrying...' : 'Retry Push'}
                   </button>
                 )}
 
                 <button
                   onClick={() => handleDiscardItem(item.id)}
                   disabled={isRetrying}
-                  className="px-3 py-2 text-xs font-mono font-black uppercase rounded-lg border-2 border-black bg-white text-black hover:bg-[#ff8a80] shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition"
+                  className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-full border border-[#F5C2C0] bg-[#FCE8E6] text-[#A83232] hover:bg-[#F8D8D5] shadow-xs active:scale-95 transition cursor-pointer"
                 >
-                  DISCARD
+                  Discard
                 </button>
               </div>
             </div>
@@ -261,7 +262,7 @@ function SyncDiagnosticsContent() {
 
 export default function SyncDiagnosticsPage() {
   return (
-    <Suspense fallback={<div className="p-4 text-xs font-mono font-black uppercase text-black">Loading diagnostics...</div>}>
+    <Suspense fallback={<div className="p-4 text-xs font-bold text-[#8D7868]">Loading diagnostics...</div>}>
       <SyncDiagnosticsContent />
     </Suspense>
   );

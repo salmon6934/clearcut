@@ -1,11 +1,10 @@
 'use client';
 
 // app/settings/page.tsx
-// Stitch Neo-Brutalist Account Settings Screen
+// Profile Page with Display Name change, Hard Refresh from DB, Log Out, and Delete Account
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
   useAuth,
   updateProfile,
@@ -16,19 +15,17 @@ import { BottomNav } from '../../components/BottomNav';
 import { SyncBadge } from '../../components/SyncBadge';
 import { useRepository } from '../../lib/data/hooks';
 import { showToast } from '../../lib/ui/toast';
+import { haptics } from '../../lib/native/haptics';
 
-const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'SGD', 'JPY'];
-
-export default function SettingsPage() {
+export default function ProfilePage() {
   const router = useRouter();
   const authState = useAuth();
   const repo = useRepository(authState.user?.id);
 
   const [displayName, setDisplayName] = useState(authState.profile?.displayName || '');
-  const [currency, setCurrency] = useState(authState.profile?.defaultCurrency || 'INR');
   const [isUpdating, setIsUpdating] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Deletion modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -39,7 +36,6 @@ export default function SettingsPage() {
   useEffect(() => {
     if (authState.profile) {
       setDisplayName(authState.profile.displayName);
-      setCurrency(authState.profile.defaultCurrency || 'INR');
     }
   }, [authState.profile]);
 
@@ -49,19 +45,45 @@ export default function SettingsPage() {
 
     setIsUpdating(true);
     setSaveSuccess(false);
+    await haptics.tap().catch(() => {});
 
     const { error } = await updateProfile(displayName.trim());
     setIsUpdating(false);
 
     if (!error) {
       setSaveSuccess(true);
+      showToast('Display name updated!', 'success', 2500);
       setTimeout(() => setSaveSuccess(false), 3000);
+    } else {
+      showToast(error.message || 'Failed to update name', 'error', 3000);
     }
   };
 
   const handleSignOut = async () => {
+    if (!window.confirm('Are you sure you want to log out?')) return;
     await signOut();
     router.push('/auth');
+  };
+
+  const handleHardRefresh = async () => {
+    if (!window.confirm('Re-fetch everything from the database and reload local data?')) {
+      return;
+    }
+    setIsRefreshing(true);
+    await haptics.tap().catch(() => {});
+    try {
+      const snapshot = await repo.resetLocalCacheAndResync();
+      if (snapshot && snapshot.status === 'error' && snapshot.lastError) {
+        showToast(`Sync warning: ${snapshot.lastError}`, 'warning', 3500);
+      } else {
+        showToast('Successfully re-fetched all data from DB!', 'success', 2500);
+      }
+      router.replace('/');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to re-fetch from database', 'error', 3000);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -82,64 +104,45 @@ export default function SettingsPage() {
     }
   };
 
-  const handleResetLocalCache = async () => {
-    if (!window.confirm('Wipe local offline cache and reload fresh data from Supabase?')) {
-      return;
-    }
-    setIsResetting(true);
-    try {
-      const snapshot = await repo.resetLocalCacheAndResync();
-      if (snapshot && snapshot.status === 'error' && snapshot.lastError) {
-        showToast(`Cache reset: ${snapshot.lastError}`, 'warning', 3500);
-      } else {
-        showToast('Local cache wiped and freshly loaded from Supabase!', 'success', 2500);
-      }
-      router.replace('/');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to resync from Supabase', 'error', 3000);
-    } finally {
-      setIsResetting(false);
-    }
-  };
-
   const email = authState.user?.email || 'Offline Account';
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0] text-black pb-28">
-      {/* Top Header matching Dashboard/Friends/Activity */}
-      <header className="sticky top-0 z-30 bg-[#f5f5f0] border-b-2 border-black px-4 py-3">
-        <div className="max-w-xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#ffd600] border-2 border-black flex items-center justify-center font-mono font-black text-sm shadow-[2px_2px_0px_0px_#000]">
-              ⚙️
+    <div className="min-h-screen bg-transparent text-[#432E22] pb-28">
+      <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-5">
+        {/* Seamless Top Header Bar labeled "Profile" */}
+        <header className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#543A2A] text-[#FAF6F0] flex items-center justify-center shadow-sm">
+              <svg className="w-5 h-5 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
             </div>
-            <div>
-              <h1 className="text-base font-black tracking-tight uppercase leading-none">
-                SETTINGS
-              </h1>
-            </div>
+            <h1 className="text-2xl font-extrabold text-[#432E22] tracking-tight">
+              Profile
+            </h1>
           </div>
 
-          <SyncBadge manager={repo.syncManager} />
-        </div>
-      </header>
-
-      <div className="max-w-xl mx-auto p-4 sm:p-5 space-y-4">
-        {/* Profile Details Card */}
-        <div className="p-5 rounded-2xl bg-white border-2 border-black shadow-[4px_4px_0px_0px_#000] space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b-2 border-black">
-            <div className="w-12 h-12 rounded-xl bg-[#ccff00] border-2 border-black text-black font-black font-mono text-xl flex items-center justify-center shadow-[2px_2px_0px_0px_#000]">
+          <div className="flex items-center gap-2">
+            <SyncBadge manager={repo.syncManager} />
+          </div>
+        </header>
+        {/* User Card */}
+        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#E5D9CC] shadow-sm space-y-5">
+          <div className="flex items-center gap-3.5 pb-4 border-b border-[#E5D9CC]">
+            <div className="w-14 h-14 rounded-full bg-[#543A2A] text-[#FAF6F0] font-bold text-2xl flex items-center justify-center shadow-xs">
               {displayName.charAt(0).toUpperCase() || 'U'}
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm font-black text-black truncate uppercase font-mono">{displayName || 'User'}</h2>
-              <p className="text-xs text-black/60 truncate font-mono">{email}</p>
+              <h2 className="text-base font-bold text-[#432E22] truncate">{displayName || 'User'}</h2>
+              <p className="text-xs text-[#8D7868] truncate font-medium">{email}</p>
             </div>
           </div>
 
-          <form onSubmit={handleSaveProfile} className="space-y-4 pt-1">
+          {/* Change Display Name */}
+          <form onSubmit={handleSaveProfile} className="space-y-4">
             <div>
-              <label className="block text-xs font-mono font-black text-black uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#6E5849] uppercase tracking-wider mb-1.5">
                 Display Name
               </label>
               <input
@@ -148,31 +151,14 @@ export default function SettingsPage() {
                 onChange={(e) => setDisplayName(e.target.value)}
                 maxLength={60}
                 required
-                className="w-full px-3.5 py-2.5 text-sm font-bold rounded-xl border-2 border-black bg-white text-black shadow-[2px_2px_0px_0px_#000] focus:outline-none focus:bg-[#faffea]"
+                className="w-full px-4 py-2.5 text-sm font-medium rounded-2xl border border-[#E5D9CC] bg-white text-[#432E22] placeholder:text-[#A89689] focus:outline-none focus:border-[#543A2A] shadow-xs"
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-mono font-black text-black uppercase tracking-wider mb-1.5">
-                Default Currency
-              </label>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm font-mono font-bold rounded-xl border-2 border-black bg-white text-black shadow-[2px_2px_0px_0px_#000] focus:outline-none"
-              >
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between pt-1">
               {saveSuccess ? (
-                <span className="text-xs font-mono font-black text-black bg-[#ccff00] px-2 py-0.5 rounded border border-black shadow-[1px_1px_0px_0px_#000]">
-                  ✓ PROFILE SAVED!
+                <span className="text-xs font-bold text-[#2E4226] bg-[#E8F0E4] px-3 py-1 rounded-full border border-[#C5D9BE]">
+                  ✓ Saved!
                 </span>
               ) : (
                 <span />
@@ -181,83 +167,56 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={isUpdating || !displayName.trim()}
-                className="px-5 py-2.5 text-xs font-mono font-black uppercase rounded-xl bg-[#ccff00] hover:bg-[#bbf000] text-black border-2 border-black shadow-[3px_3px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 cursor-pointer"
+                className="px-5 py-2.5 text-xs font-bold uppercase rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] shadow-sm transition active:scale-95 disabled:opacity-40 cursor-pointer"
               >
-                {isUpdating ? 'SAVING...' : 'SAVE PROFILE →'}
+                {isUpdating ? 'Saving...' : 'Save Name'}
               </button>
             </div>
           </form>
         </div>
 
-        {/* Sync & Diagnostics Section */}
-        <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[3px_3px_0px_0px_#000]">
-          <Link
-            href="/settings/sync"
-            className="flex items-center justify-between group p-1"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg border-2 border-black bg-[#00e5ff] text-black flex items-center justify-center text-sm shadow-[1.5px_1.5px_0px_0px_#000]">
-                🔄
-              </div>
-              <div>
-                <p className="text-xs font-mono font-black text-black uppercase">
-                  Sync & Conflict Diagnostics
-                </p>
-                <p className="text-[11px] font-mono text-black/60 font-bold">
-                  Inspect queue, sync status, and storage
-                </p>
-              </div>
-            </div>
-            <span className="text-sm font-black">→</span>
-          </Link>
-
-          {/* Reset Local Data / Clean Sync */}
-          <div className="pt-2 border-t-2 border-black/10 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-mono font-black text-black uppercase">
-                Reset Offline Cache
-              </p>
-              <p className="text-[11px] font-mono text-black/60 font-bold">
-                Wipes local database and re-downloads fresh data
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleResetLocalCache}
-              disabled={isResetting}
-              className="py-1.5 px-3 text-[11px] font-mono font-black uppercase rounded-lg border-2 border-black bg-[#ffd600] text-black shadow-[2px_2px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 transition cursor-pointer"
-            >
-              {isResetting ? 'RESETTING...' : 'RESET DATA'}
-            </button>
+        {/* Hard Refresh / Re-fetch from DB */}
+        <div className="p-5 rounded-3xl bg-white border border-[#E5D9CC] shadow-sm flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-[#432E22]">
+              Hard Refresh
+            </h3>
+            <p className="text-xs text-[#8D7868] font-medium pt-0.5">
+              Re-fetch everything fresh from the database
+            </p>
           </div>
+
+          <button
+            type="button"
+            onClick={handleHardRefresh}
+            disabled={isRefreshing}
+            className="px-4 py-2 text-xs font-bold uppercase rounded-full bg-[#D4B89B] hover:bg-[#C8A27A] text-[#432E22] shadow-xs active:scale-95 disabled:opacity-50 transition cursor-pointer shrink-0"
+          >
+            {isRefreshing ? 'Refreshing...' : '↻ Re-fetch DB'}
+          </button>
         </div>
 
         {/* Account Actions: Logout & Delete Account */}
-        <div className="p-4 rounded-xl bg-white border-2 border-black shadow-[3px_3px_0px_0px_#000] space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-black text-black uppercase">
-              ACCOUNT ACTIONS
-            </span>
-            <span className="text-[11px] font-mono text-black/60 font-bold">
-              {authState.user ? authState.user.email : 'Offline Mode'}
-            </span>
+        <div className="p-5 rounded-3xl bg-white border border-[#E5D9CC] shadow-sm space-y-3">
+          <div className="text-xs font-bold text-[#6E5849] uppercase tracking-wider">
+            Account Actions
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-1">
             <button
               type="button"
               onClick={handleSignOut}
-              className="py-2.5 px-3 text-xs font-mono font-black uppercase rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] text-black shadow-[2px_2px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 cursor-pointer text-center"
+              className="py-3 px-4 text-xs font-bold uppercase rounded-full border border-[#E5D9CC] bg-white hover:bg-[#FAF6F0] text-[#543A2A] shadow-xs transition active:scale-95 cursor-pointer text-center"
             >
-              LOGOUT
+              Log Out
             </button>
 
             <button
               type="button"
               onClick={() => setShowDeleteModal(true)}
-              className="py-2.5 px-3 text-xs font-mono font-black uppercase rounded-xl border-2 border-black bg-[#ff8a80] hover:bg-[#ff7060] text-black shadow-[2px_2px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 cursor-pointer text-center"
+              className="py-3 px-4 text-xs font-bold uppercase rounded-full bg-[#FCE8E6] hover:bg-[#F5C2C0] text-[#A83232] border border-[#F5C2C0] shadow-xs transition active:scale-95 cursor-pointer text-center"
             >
-              DELETE ACCOUNT
+              Delete Account
             </button>
           </div>
         </div>
@@ -266,26 +225,26 @@ export default function SettingsPage() {
       {/* Persistent Bottom Nav */}
       <BottomNav />
 
-      {/* Confirmation Modal */}
+      {/* Delete Account Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white border-2 border-black rounded-2xl p-6 shadow-[5px_5px_0px_0px_#000] space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="max-w-md w-full bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-xl space-y-4">
             <div className="flex items-center gap-3">
               <span className="text-2xl">⚠️</span>
               <div>
-                <h3 className="text-base font-black uppercase font-mono text-black">
-                  DELETE ACCOUNT PERMANENTLY?
+                <h3 className="text-base font-bold text-[#A83232]">
+                  Delete Account Permanently?
                 </h3>
-                <p className="text-xs text-black/60 font-mono">This action cannot be undone.</p>
+                <p className="text-xs text-[#8D7868]">This action cannot be undone.</p>
               </div>
             </div>
 
-            <p className="text-xs text-black font-mono leading-relaxed">
-              All your personal identifiers will be permanently removed. Your ledger history will be converted to an anonymous member so other group members' balances remain balanced.
+            <p className="text-xs text-[#432E22] leading-relaxed">
+              All your personal identifiers will be permanently removed. Your expense history will be preserved as an anonymous member so other members' balances stay accurate.
             </p>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-mono font-black text-black">
+              <label className="text-xs font-bold text-[#6E5849] block">
                 Type <strong>DELETE</strong> to confirm:
               </label>
               <input
@@ -293,12 +252,12 @@ export default function SettingsPage() {
                 value={deleteConfirmationText}
                 onChange={(e) => setDeleteConfirmationText(e.target.value)}
                 placeholder="DELETE"
-                className="w-full px-3.5 py-2 text-sm font-mono font-bold rounded-xl border-2 border-black bg-white text-black shadow-[2px_2px_0px_0px_#000] focus:outline-none"
+                className="w-full px-4 py-2.5 text-sm font-bold rounded-2xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] focus:outline-none focus:border-[#A83232]"
               />
             </div>
 
             {deleteError && (
-              <p className="text-xs font-mono font-bold text-rose-600">{deleteError}</p>
+              <p className="text-xs font-bold text-[#A83232]">{deleteError}</p>
             )}
 
             <div className="flex gap-2.5 pt-2">
@@ -310,7 +269,7 @@ export default function SettingsPage() {
                   setDeleteError(null);
                 }}
                 disabled={isDeleting}
-                className="flex-1 py-2.5 text-xs font-mono font-bold uppercase rounded-xl border-2 border-black bg-white hover:bg-[#ffd600] shadow-[2px_2px_0px_0px_#000] transition"
+                className="flex-1 py-2.5 text-xs font-bold uppercase rounded-full border border-[#E5D9CC] bg-white hover:bg-[#FAF6F0] text-[#543A2A] shadow-xs transition"
               >
                 Cancel
               </button>
@@ -318,7 +277,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={handleDeleteAccount}
                 disabled={isDeleting || deleteConfirmationText.trim().toUpperCase() !== 'DELETE'}
-                className="flex-1 py-2.5 text-xs font-mono font-black uppercase rounded-xl bg-[#ff8a80] hover:bg-[#ff7060] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 py-2.5 text-xs font-bold uppercase rounded-full bg-[#A83232] hover:bg-[#8D2525] text-white shadow-xs transition active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isDeleting ? 'Deleting...' : 'Confirm Delete'}
               </button>
@@ -329,3 +288,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

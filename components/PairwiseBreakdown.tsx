@@ -1,7 +1,7 @@
 'use client';
 
 // components/PairwiseBreakdown.tsx
-// Stitch-Engineered Pairwise Debt Breakdown & Simplified Algorithmic Netting
+// Warm Cafe Pairwise Debt Breakdown & Debt Simplification
 
 import React, { useState } from 'react';
 import type { PairwiseDebt } from '../lib/engine/balances';
@@ -48,57 +48,57 @@ export function PairwiseBreakdown({
   const isAllSettled = currentList.length === 0;
 
   return (
-    <div className="bg-white border-2 border-black rounded-2xl p-4 sm:p-5 shadow-[4px_4px_0px_0px_#000] space-y-4">
-      {/* Header & Tab Selector matching Stitch Image 3 */}
+    <div className="bg-white border border-[#E5D9CC] rounded-3xl p-5 shadow-xs space-y-4">
+      {/* Header & Tab Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-black text-black uppercase font-mono tracking-wider flex items-center gap-2">
+          <h3 className="text-sm font-bold text-[#432E22] flex items-center gap-2">
             <span>⚖️</span>
-            <span>CLEARINGHOUSE NETTING</span>
+            <span>Debt Simplification</span>
           </h3>
-          <p className="text-xs text-black/60 font-mono mt-0.5">
+          <p className="text-xs text-[#8D7868] mt-0.5">
             {isSimplified
-              ? 'Optimal graph reduction minimizing group transfers'
-              : 'Raw bilateral ledger obligations before clearing'}
+              ? 'Minimizes the total number of transfers needed'
+              : 'Direct pairwise balances between members'}
           </p>
         </div>
 
-        {/* View mode toggle matching Image 3 */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* View mode toggle */}
+        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-full bg-[#EFE4D6] border border-[#E5D9CC] text-xs font-bold">
           <button
             type="button"
             onClick={() => setViewMode('simplified')}
-            className={`px-3 py-1.5 rounded-lg border-2 border-black text-xs font-mono font-black transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full transition-all cursor-pointer ${
               isSimplified
-                ? 'bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000]'
-                : 'bg-white text-black/70 hover:bg-[#fafaf6]'
+                ? 'bg-[#543A2A] text-[#FAF6F0] shadow-xs'
+                : 'text-[#8D7868] hover:text-[#543A2A]'
             }`}
           >
-            ✨ SIMPLIFIED ({suggestedPayments.length})
+            Simplified ({suggestedPayments.length})
           </button>
           <button
             type="button"
             onClick={() => setViewMode('pairwise')}
-            className={`px-3 py-1.5 rounded-lg border-2 border-black text-xs font-mono font-black transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full transition-all cursor-pointer ${
               !isSimplified
-                ? 'bg-[#ccff00] text-black shadow-[2px_2px_0px_0px_#000]'
-                : 'bg-white text-black/70 hover:bg-[#fafaf6]'
+                ? 'bg-[#543A2A] text-[#FAF6F0] shadow-xs'
+                : 'text-[#8D7868] hover:text-[#543A2A]'
             }`}
           >
-            🔀 PAIRWISE ({pairwiseDebts.length})
+            Pairwise ({pairwiseDebts.length})
           </button>
         </div>
       </div>
 
       {/* Debt List */}
       {isAllSettled ? (
-        <div className="text-center py-6 px-4 rounded-xl bg-white border-2 border-dashed border-black">
-          <span className="text-2xl mb-1 block">🎉</span>
-          <p className="text-xs sm:text-sm font-black font-mono text-black uppercase">
+        <div className="text-center py-6 px-4 rounded-2xl bg-[#FAF6F0] border border-[#E5D9CC]">
+          <span className="text-2xl mb-1 block">✓</span>
+          <p className="text-xs sm:text-sm font-bold text-[#432E22]">
             All settled up!
           </p>
-          <p className="text-xs text-black/60 font-mono mt-0.5">
-            Zero outstanding debt in this ledger.
+          <p className="text-xs text-[#8D7868] mt-0.5">
+            Zero outstanding debt in this group.
           </p>
         </div>
       ) : (
@@ -117,9 +117,9 @@ export function PairwiseBreakdown({
             return (
               <div
                 key={`${item.fromMemberId}-${item.toMemberId}-${idx}`}
-                className={`flex items-center justify-between p-3 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_#000] transition-all ${
+                className={`flex items-center justify-between p-3.5 rounded-2xl border border-[#E5D9CC] shadow-xs transition hover:border-[#D4B89B] ${
                   isMeInvolved
-                    ? 'bg-[#fffde6]'
+                    ? 'bg-[#FAF6F0]'
                     : 'bg-white'
                 }`}
               >
@@ -128,40 +128,40 @@ export function PairwiseBreakdown({
                   <div className="flex items-center -space-x-1 shrink-0">
                     <span
                       title={debtorName}
-                      className="w-7 h-7 rounded-lg border-2 border-black bg-[#ff8a80] text-black flex items-center justify-center text-xs font-black"
+                      className="w-7 h-7 rounded-full bg-[#E5BFB0] text-[#432E22] flex items-center justify-center text-xs font-bold shadow-xs border border-white"
                     >
                       {debtorInitial}
                     </span>
                     <span
                       title={creditorName}
-                      className="w-7 h-7 rounded-lg border-2 border-black bg-[#ccff00] text-black flex items-center justify-center text-xs font-black"
+                      className="w-7 h-7 rounded-full bg-[#D4B89B] text-[#432E22] flex items-center justify-center text-xs font-bold shadow-xs border border-white"
                     >
                       {creditorInitial}
                     </span>
                   </div>
 
                   <div className="min-w-0 text-xs">
-                    <div className="truncate font-black text-black">
-                      <span>{debtorName}</span>
-                      <span className="text-black/60 font-mono font-bold mx-1.5">➔</span>
-                      <span>{creditorName}</span>
+                    <div className="truncate font-bold text-[#432E22]">
+                      <span className={isDebtorMe ? 'text-[#A83232] font-extrabold' : ''}>{debtorName}</span>
+                      <span className="text-[#8D7868] font-normal mx-1.5">➔</span>
+                      <span className={isCreditorMe ? 'text-[#2E4226] font-extrabold' : ''}>{creditorName}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Amount & Settle Action */}
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs sm:text-sm font-black font-mono text-black">
-                    {formattedAmount}
+                  <span className="text-xs sm:text-sm font-bold text-[#432E22]">
+                    ₹{formattedAmount}
                   </span>
 
                   {onSettleUp && isDebtorMe && (
                     <button
                       type="button"
                       onClick={() => onSettleUp(item.fromMemberId, item.toMemberId, item.amountMinor)}
-                      className="px-2.5 py-1 rounded-lg bg-[#ccff00] hover:bg-[#bbf000] text-black border-2 border-black text-xs font-mono font-black shadow-[1.5px_1.5px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                      className="px-3 py-1 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] text-xs font-bold shadow-xs active:scale-95 transition cursor-pointer"
                     >
-                      SETTLE
+                      Settle
                     </button>
                   )}
                 </div>
@@ -173,3 +173,4 @@ export function PairwiseBreakdown({
     </div>
   );
 }
+

@@ -1,7 +1,7 @@
 'use client';
 
 // components/ExpenseForm.tsx
-// Comprehensive Expense Creation & Edit Form Integrating Payer & Split Editors
+// Streamlined Expense Creation & Edit Form containing only essential fields
 
 import React, { useState } from 'react';
 import type { Member, ExpenseDraft, SplitType } from '../lib/data/types';
@@ -10,8 +10,6 @@ import { parseMoneyToMinor, formatMinor } from '../lib/engine/money';
 import { PayerEditor, type PayerAllocation } from './PayerEditor';
 import { SplitEditor } from './SplitEditor';
 import { validateExpense } from '../lib/engine/validate';
-import { ReceiptPicker } from './ReceiptPicker';
-import { uploadReceiptToStorage } from '../lib/native/camera';
 
 interface ExpenseFormProps {
   groupId: string;
@@ -26,11 +24,11 @@ interface ExpenseFormProps {
 const CATEGORIES = [
   { id: 'general', label: 'General', icon: '🧾' },
   { id: 'food', label: 'Food & Dining', icon: '🍽️' },
-  { id: 'drinks', label: 'Drinks & Bar', icon: '🍻' },
+  { id: 'drinks', label: 'Drinks & Bar', icon: '☕' },
   { id: 'groceries', label: 'Groceries', icon: '🛒' },
-  { id: 'transport', label: 'Transport / Taxi', icon: '🚕' },
+  { id: 'transport', label: 'Transport', icon: '🚕' },
   { id: 'hotel', label: 'Stay / Hotel', icon: '🏨' },
-  { id: 'entertainment', label: 'Fun & Movies', icon: '🎟️' },
+  { id: 'entertainment', label: 'Entertainment', icon: '🎟️' },
   { id: 'shopping', label: 'Shopping', icon: '🛍️' },
 ];
 
@@ -51,10 +49,7 @@ export function ExpenseForm({
   const [expenseDate, setExpenseDate] = useState(
     initialDraft?.expenseDate || new Date().toISOString().split('T')[0]
   );
-  const [notes, setNotes] = useState(initialDraft?.notes || '');
   const [error, setError] = useState<string | null>(null);
-  const [receiptBlob, setReceiptBlob] = useState<Blob | null>(null);
-  const [receiptPath, setReceiptPath] = useState<string | null>(initialDraft?.receiptPath || null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Payers & Splits state from child editors
@@ -115,30 +110,18 @@ export function ExpenseForm({
       // Filter to active participants only (satisfies DB constraint: paid_minor > 0 or owed_minor > 0)
       const unifiedSplits = rawSplits.filter((s) => s.paidMinor > 0 || s.owedMinor > 0);
 
-      const expenseId = initialDraft?.id || (typeof crypto !== 'undefined' ? crypto.randomUUID() : 'draft-id');
-      let finalReceiptPath = receiptPath;
-
-      if (receiptBlob) {
-        try {
-          const uploadRes = await uploadReceiptToStorage(groupId, expenseId, receiptBlob);
-          finalReceiptPath = uploadRes.path;
-        } catch (uploadErr) {
-          console.warn('Failed to upload receipt, saving expense anyway:', uploadErr);
-        }
-      }
-
       const draft: ExpenseDraft = {
-        id: initialDraft?.id ? initialDraft.id : (receiptBlob ? expenseId : undefined),
+        id: initialDraft?.id,
         groupId,
         title: title.trim(),
         amountMinor: totalAmountMinor,
         currency,
         category,
         expenseDate,
-        notes: notes.trim() || null,
+        notes: null,
         splitType,
         splits: unifiedSplits.length > 0 ? unifiedSplits : rawSplits,
-        receiptPath: finalReceiptPath,
+        receiptPath: null,
       };
 
       // Dry-run Invariant I2 verification
@@ -160,42 +143,37 @@ export function ExpenseForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-lg mx-auto">
       {error && (
-        <div className="p-3.5 rounded-xl text-xs font-black uppercase font-mono bg-[#ff8a80] text-black border-2 border-black shadow-[2px_2px_0px_0px_#000]">
+        <div className="p-3.5 rounded-2xl text-xs font-bold bg-[#FCE8E6] text-[#A83232] border border-[#F5C2C0] shadow-sm">
           {error}
         </div>
       )}
 
       {/* Expense Description */}
       <div className="space-y-1.5">
-        <label className="block text-xs font-mono font-black text-black uppercase tracking-wider">
-          EXPENSE DESCRIPTION
+        <label className="block text-xs font-bold text-[#6E5849] uppercase tracking-wider">
+          DESCRIPTION
         </label>
         <div className="relative flex items-center">
           <input
             type="text"
             required
             maxLength={120}
-            placeholder="Dinner at Social, Roadtrip fuel..."
+            placeholder="e.g. Coffee, Dinner, Groceries"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-3 text-base font-bold rounded-xl border-2 border-black bg-[#e8e8e2] text-black placeholder:text-black/40 focus:outline-none focus:bg-white shadow-[2px_2px_0px_0px_#000]"
+            className="w-full px-4 py-3 text-base font-medium rounded-2xl border border-[#E5D9CC] bg-white text-[#432E22] placeholder:text-[#A89689] focus:outline-none focus:border-[#543A2A] shadow-sm"
           />
-          {title.trim().length > 0 && (
-            <span className="absolute right-3.5 text-black font-black text-sm">
-              ✓
-            </span>
-          )}
         </div>
       </div>
 
-      {/* Total Amount Hero Card matching Stitch Image 2 */}
-      <div className="p-4 sm:p-5 rounded-2xl border-2 border-black bg-[#ccff00] shadow-[4px_4px_0px_0px_#000] space-y-3">
-        <label className="block text-xs font-mono font-black text-black uppercase tracking-wider">
+      {/* Total Amount Hero Card */}
+      <div className="p-4 sm:p-5 rounded-3xl border border-[#E5D9CC] bg-[#FAF6F0] shadow-sm space-y-3">
+        <label className="block text-xs font-bold text-[#6E5849] uppercase tracking-wider">
           TOTAL AMOUNT ({currency})
         </label>
 
-        <div className="p-3 bg-[#e6ff66] border-2 border-black rounded-xl flex items-center gap-2 shadow-[2px_2px_0px_0px_#000]">
-          <span className="text-3xl font-black font-mono text-black">
+        <div className="p-3 bg-white border border-[#E5D9CC] rounded-2xl flex items-center gap-2 shadow-xs">
+          <span className="text-3xl font-bold text-[#543A2A]">
             {currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '₹'}
           </span>
           <input
@@ -205,37 +183,28 @@ export function ExpenseForm({
             placeholder="0.00"
             value={amountStr}
             onChange={(e) => setAmountStr(e.target.value)}
-            className="w-full text-3xl sm:text-4xl font-black tracking-tight bg-transparent text-black placeholder:text-black/40 focus:outline-none font-mono"
+            className="w-full text-3xl sm:text-4xl font-bold tracking-tight bg-transparent text-[#432E22] placeholder:text-[#A89689] focus:outline-none"
           />
         </div>
 
         <div className="flex items-center gap-2 pt-1">
-          <div className="px-3 py-1 rounded-lg border-2 border-black bg-white text-xs font-mono font-bold text-black shadow-[2px_2px_0px_0px_#000] flex items-center gap-1.5">
+          <div className="px-3 py-1.5 rounded-full border border-[#E5D9CC] bg-white text-xs font-semibold text-[#543A2A] shadow-xs flex items-center gap-1.5">
             <span>📅</span>
             <input
               type="date"
               value={expenseDate}
               onChange={(e) => setExpenseDate(e.target.value)}
-              className="bg-transparent border-none text-xs font-mono font-bold text-black focus:outline-none"
+              className="bg-transparent border-none text-xs font-semibold text-[#543A2A] focus:outline-none"
             />
-          </div>
-
-          <div className="px-3 py-1 rounded-lg border-2 border-black bg-white text-xs font-mono font-black text-black shadow-[2px_2px_0px_0px_#000]">
-            ₹ {currency}
           </div>
         </div>
       </div>
 
       {/* Category Selector */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-mono font-black text-black uppercase tracking-wider">
-            CATEGORY
-          </span>
-          <span className="px-2 py-0.5 rounded border border-black bg-black text-white text-[10px] font-mono font-bold uppercase">
-            {CATEGORIES.find((c) => c.id === category)?.label.toUpperCase() || 'GENERAL'}
-          </span>
-        </div>
+        <label className="block text-xs font-bold text-[#6E5849] uppercase tracking-wider">
+          CATEGORY
+        </label>
 
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {CATEGORIES.map((c) => {
@@ -245,32 +214,19 @@ export function ExpenseForm({
                 key={c.id}
                 type="button"
                 onClick={() => setCategory(c.id)}
-                className={`px-3 py-2 rounded-xl border-2 border-black text-xs font-mono font-black shrink-0 transition flex items-center gap-1.5 cursor-pointer shadow-[2px_2px_0px_0px_#000] ${
+                className={`px-3.5 py-2 rounded-full text-xs font-bold shrink-0 transition flex items-center gap-1.5 cursor-pointer border ${
                   isSelected
-                    ? 'bg-black text-[#ccff00]'
-                    : 'bg-white text-black hover:bg-[#fafaf6]'
+                    ? 'bg-[#543A2A] text-[#FAF6F0] border-[#543A2A] shadow-sm'
+                    : 'bg-white text-[#543A2A] border-[#E5D9CC] hover:bg-[#EFE4D6]'
                 }`}
               >
                 <span>{c.icon}</span>
-                <span>{c.id.toUpperCase()}</span>
+                <span>{c.label}</span>
               </button>
             );
           })}
         </div>
       </div>
-
-      {/* Receipt Attachment (T-2.9.1) */}
-      <ReceiptPicker
-        receiptPath={receiptPath}
-        onReceiptSelected={(blob) => {
-          setReceiptBlob(blob);
-        }}
-        onReceiptRemoved={() => {
-          setReceiptBlob(null);
-          setReceiptPath(null);
-        }}
-        disabled={isSaving}
-      />
 
       {/* Who Paid Section */}
       <PayerEditor
@@ -302,37 +258,23 @@ export function ExpenseForm({
         }}
       />
 
-      {/* Notes */}
-      <div className="p-3.5 rounded-xl border-2 border-black bg-white shadow-[3px_3px_0px_0px_#000] space-y-1.5">
-        <label className="block text-xs font-mono font-black text-black uppercase tracking-wider">
-          NOTES & DETAILS
-        </label>
-        <textarea
-          rows={2}
-          placeholder="Add table number, notes, or tip details..."
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          className="w-full px-3 py-2 text-sm rounded-lg border-2 border-black bg-white text-black focus:outline-none focus:bg-[#faffea] resize-none font-medium"
-        />
-      </div>
-
-      {/* Sticky Save Expense CTA matching Stitch Image 2 */}
+      {/* Sticky Save Expense CTA */}
       <div className="pt-2 sticky bottom-4 z-30">
         <button
           type="submit"
           disabled={!isFormSubmittable}
-          className="w-full py-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] text-black font-black text-base uppercase border-2 border-black shadow-[4px_4px_0px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none transition cursor-pointer flex items-center justify-center gap-2"
+          className="w-full py-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] font-bold text-sm tracking-wide shadow-xl active:scale-95 disabled:bg-[#8D7868] disabled:text-[#EFE4D6] disabled:opacity-100 disabled:pointer-events-none transition cursor-pointer flex items-center justify-center gap-2"
         >
           {isSaving ? (
             <>
-              <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-              <span>SAVING EXPENSE...</span>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>SAVING...</span>
             </>
           ) : (
             <>
               <span>✓</span>
               <span>
-                SAVE EXPENSE • {formatMinor(totalAmountMinor, currency)}
+                SAVE EXPENSE {totalAmountMinor > 0 ? `• ₹${formatMinor(totalAmountMinor, currency)}` : ''}
               </span>
             </>
           )}

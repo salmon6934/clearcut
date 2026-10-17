@@ -5,7 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { LocalStore } from '../data/local-store';
 import type { MutationQueue } from '../data/queue';
 import type { StorageAdapter } from '../data/storage-adapter';
-import { drainQueue } from './push';
+import { drainQueue, resetBackoff } from './push';
 import { pullChanges } from './pull';
 import { isNativePlatform } from '../native/platform';
 
@@ -59,10 +59,10 @@ export class SyncLifecycleManager {
    */
   init(): () => void {
     const handleOnline = () => {
-      showToast('Back online! Syncing ledger with Supabase...', 'info', 2500);
+      showToast('Back online! Syncing with Supabase...', 'info', 2500);
       this.kick('online_event', true).then((res) => {
         if (res.status === 'idle') {
-          showToast('Sync complete! Ledger is up to date.', 'success', 2500);
+          showToast('Sync complete! Up to date.', 'success', 2500);
         }
       });
     };
@@ -177,6 +177,11 @@ export class SyncLifecycleManager {
       return this.getState();
     }
 
+    const isManual = reason === 'manual_refresh' || reason === 'user_clean_resync' || reason === 'online_event';
+    if (isManual || fullRefresh) {
+      resetBackoff();
+    }
+
     this.isSyncing = true;
     this.status = 'syncing';
     this.lastError = null;
@@ -184,7 +189,7 @@ export class SyncLifecycleManager {
 
     try {
       // 1. Push drain pending mutations
-      const pushResult = await drainQueue(this.queue, this.store, this.supabase);
+      const pushResult = await drainQueue(this.queue, this.store, this.supabase, isManual || fullRefresh);
 
       // 2. Pull remote changes (passive mounts use incremental diffs rather than full refresh)
       const shouldFullRefresh = isPassiveMount ? false : fullRefresh;
@@ -193,11 +198,23 @@ export class SyncLifecycleManager {
       const now = new Date();
       this.lastSyncedAt = now.toISOString();
       this.lastSyncTimestamp = now.getTime();
-      if (pushResult.halted && pushResult.backoffMs) {
-        this.status = 'error';
-        this.lastError = `Sync paused: network backoff (${Math.round(pushResult.backoffMs / 1000)}s)`;
+
+      const pendingCount = this.queue.getPendingCount();
+      if (pendingCount === 0) {
+        this.status = 'idle';
+        this.lastError = null;
+        resetBackoff();
+      } else if (pushResult.halted && pushResult.backoffMs) {
+        if (!isDeviceOnline()) {
+          this.status = 'offline';
+          this.lastError = 'Offline - changes will sync when connected';
+        } else {
+          this.status = 'error';
+          this.lastError = `Sync paused: retrying in ${Math.max(1, Math.round(pushResult.backoffMs / 1000))}s`;
+        }
       } else {
         this.status = 'idle';
+        this.lastError = null;
       }
     } catch (err: any) {
       console.warn('[SyncLifecycle] Sync cycle error:', err);
@@ -217,6 +234,7 @@ export class SyncLifecycleManager {
   async resetAndCleanSync(): Promise<SyncStateSnapshot> {
     this.store.clearAllData();
     this.queue.clear();
+    resetBackoff();
     try {
       this.adapter.removeItem('sync:cursors');
     } catch (err) {

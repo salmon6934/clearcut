@@ -154,21 +154,21 @@ export function AuthForm() {
   };
 
   return (
-    <div className="w-full max-w-sm mx-auto my-auto p-6 sm:p-8 rounded-2xl bg-white border-2 border-black shadow-[5px_5px_0px_0px_#000] relative">
-      {/* Brand Header matching Stitch */}
+    <div className="w-full max-w-sm mx-auto my-auto p-6 sm:p-8 rounded-3xl bg-white border border-[#E5D9CC] shadow-xl relative">
+      {/* Brand Header */}
       <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-12 h-12 bg-[#ccff00] border-2 border-black mb-3 shadow-[2px_2px_0px_0px_#000]">
-          <span className="text-black font-black text-2xl font-mono leading-none">C</span>
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-3 shadow-md overflow-hidden border border-[#E5D9CC]/80 bg-[#FAF6F0]">
+          <img src="/icon.png?v=2" alt="Clearcut Logo" className="w-full h-full object-cover" />
         </div>
-        <h1 className="text-2xl font-black tracking-tight text-black uppercase font-mono">CLEARCUT</h1>
-        <p className="text-xs font-mono font-bold text-black/60 mt-0.5 uppercase tracking-wider">
-          P2P LEDGER V2.4 • ZERO-FLOAT
+        <h1 className="text-2xl font-bold tracking-tight text-[#432E22]">Clearcut</h1>
+        <p className="text-xs font-semibold text-[#8D7868] mt-1">
+          Shared Expenses & Settlements
         </p>
       </div>
 
       {/* Error Alert */}
       {errorMessage && (
-        <div className="mb-4 p-3 rounded-xl bg-[#ff8a80] border-2 border-black text-black text-xs font-mono font-bold shadow-[2px_2px_0px_0px_#000]">
+        <div className="mb-4 p-3 rounded-2xl bg-[#FCE8E6] border border-[#F5C2C0] text-[#A83232] text-xs font-semibold">
           {errorMessage}
         </div>
       )}
@@ -180,22 +180,22 @@ export function AuthForm() {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-[#ffd600] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 text-black font-black font-mono text-xs uppercase transition-all shadow-[3px_3px_0px_0px_#000] flex items-center justify-center gap-3 border-2 border-black cursor-pointer"
+            className="w-full py-3 px-4 rounded-full bg-[#FAF6F0] hover:bg-[#EFE4D6] active:scale-95 disabled:opacity-50 text-[#432E22] font-bold text-xs uppercase tracking-wider transition-all shadow-xs flex items-center justify-center gap-2 border border-[#E5D9CC] cursor-pointer"
           >
-            <span>CONTINUE WITH GOOGLE</span>
+            <span>Continue with Google</span>
           </button>
 
           <div className="relative flex items-center justify-center my-4">
-            <div className="border-t-2 border-black w-full" />
-            <span className="bg-white px-2 text-[10px] font-mono font-black uppercase text-black/60 tracking-wider absolute">
-              OR WITH EMAIL
+            <div className="border-t border-[#E5D9CC] w-full" />
+            <span className="bg-white px-3 text-[11px] font-semibold text-[#8D7868] absolute">
+              or with email
             </span>
           </div>
 
           <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-xs font-mono font-black uppercase tracking-wider text-black mb-1.5">
-                EMAIL ADDRESS
+              <label htmlFor="email" className="block text-xs font-bold text-[#432E22] mb-1.5">
+                Email Address
               </label>
               <input
                 id="email"
@@ -205,16 +205,16 @@ export function AuthForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-xl bg-white border-2 border-black text-black placeholder:text-black/40 focus:outline-none focus:bg-[#faffea] text-sm font-semibold shadow-[2px_2px_0px_0px_#000]"
+                className="w-full px-4 py-3 rounded-2xl bg-[#FAF6F0] border border-[#E5D9CC] text-[#432E22] placeholder:text-[#8D7868]/60 focus:outline-none focus:border-[#543A2A] text-sm font-medium transition-colors"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading || !email}
-              className="w-full py-3.5 px-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none text-black font-black font-mono text-xs uppercase transition-all border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center cursor-pointer"
+              className="w-full py-3.5 px-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-[#FAF6F0] font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center cursor-pointer"
             >
-              {isLoading ? 'SENDING CODE...' : 'SEND OTP CODE →'}
+              {isLoading ? 'Sending code...' : 'Send OTP Code →'}
             </button>
           </form>
         </div>
@@ -223,16 +223,16 @@ export function AuthForm() {
       {/* STEP 2: Magic Link / OTP */}
       {step === 'otp' && (
         <form onSubmit={handleVerifyOtp} className="space-y-4">
-          <div className="text-center p-3.5 rounded-xl bg-[#f0f0ea] border-2 border-black mb-2">
-            <h2 className="text-xs font-mono font-black uppercase text-black">CHECK YOUR EMAIL</h2>
-            <p className="text-xs text-black/60 mt-1 font-mono">
-              Code sent to <span className="font-bold text-black">{email}</span>.
+          <div className="text-center p-3.5 rounded-2xl bg-[#FAF6F0] border border-[#E5D9CC] mb-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#432E22]">Check Your Email</h2>
+            <p className="text-xs text-[#8D7868] mt-1 font-medium">
+              Code sent to <span className="font-bold text-[#432E22]">{email}</span>.
             </p>
           </div>
 
           <div>
-            <label htmlFor="otp" className="block text-xs font-mono font-black uppercase tracking-wider text-black mb-1.5 text-center">
-              ENTER OTP CODE
+            <label htmlFor="otp" className="block text-xs font-bold uppercase tracking-wider text-[#432E22] mb-1.5 text-center">
+              Enter OTP Code
             </label>
             <input
               id="otp"
@@ -245,19 +245,19 @@ export function AuthForm() {
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="123456"
-              className="w-full px-4 py-3 rounded-xl bg-white border-2 border-black text-black tracking-[0.25em] text-center text-xl font-mono font-black focus:outline-none focus:bg-[#faffea] shadow-[2px_2px_0px_0px_#000]"
+              className="w-full px-4 py-3 rounded-2xl bg-[#FAF6F0] border border-[#E5D9CC] text-[#432E22] tracking-[0.3em] text-center text-2xl font-bold focus:outline-none focus:border-[#543A2A] shadow-xs transition-colors"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading || otpCode.length !== 6}
-            className="w-full py-3.5 px-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none text-black font-black font-mono text-xs uppercase transition-all border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center cursor-pointer"
+            className="w-full py-3.5 px-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-[#FAF6F0] font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center cursor-pointer"
           >
-            {isLoading ? 'VERIFYING...' : 'VERIFY CODE →'}
+            {isLoading ? 'Verifying...' : 'Verify Code →'}
           </button>
 
-          <div className="flex items-center justify-between text-xs font-mono font-bold text-black/60 pt-1">
+          <div className="flex items-center justify-between text-xs font-semibold text-[#8D7868] pt-1">
             <button
               type="button"
               onClick={() => {
@@ -265,7 +265,7 @@ export function AuthForm() {
                 setOtpCode('');
                 setErrorMessage(null);
               }}
-              className="hover:text-black underline"
+              className="hover:text-[#432E22] underline cursor-pointer"
             >
               Change Email
             </button>
@@ -274,7 +274,7 @@ export function AuthForm() {
               type="button"
               disabled={cooldown > 0 || isLoading}
               onClick={handleSendOtp}
-              className="text-black hover:underline disabled:text-black/40 font-bold"
+              className="text-[#432E22] hover:underline disabled:text-[#8D7868]/40 font-bold cursor-pointer"
             >
               {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Code'}
             </button>
@@ -286,13 +286,13 @@ export function AuthForm() {
       {step === 'profile' && (
         <form onSubmit={handleSaveProfile} className="space-y-4">
           <div className="text-center mb-2">
-            <h2 className="text-base font-black font-mono uppercase text-black">WHAT SHOULD FRIENDS CALL YOU?</h2>
-            <p className="text-xs text-black/60 mt-0.5 font-mono">Your display name for ledger expenses</p>
+            <h2 className="text-base font-bold text-[#432E22]">What should friends call you?</h2>
+            <p className="text-xs text-[#8D7868] mt-0.5 font-medium">Your display name for shared expenses</p>
           </div>
 
           <div>
-            <label htmlFor="displayName" className="block text-xs font-mono font-black uppercase tracking-wider text-black mb-1.5">
-              YOUR NAME
+            <label htmlFor="displayName" className="block text-xs font-bold text-[#432E22] mb-1.5">
+              Your Name
             </label>
             <input
               id="displayName"
@@ -303,16 +303,16 @@ export function AuthForm() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="e.g. Rahul, Sneha, Aditya"
-              className="w-full px-4 py-3 rounded-xl bg-white border-2 border-black text-black placeholder:text-black/40 focus:outline-none focus:bg-[#faffea] text-base font-bold shadow-[2px_2px_0px_0px_#000]"
+              className="w-full px-4 py-3 rounded-2xl bg-[#FAF6F0] border border-[#E5D9CC] text-[#432E22] placeholder:text-[#8D7868]/60 focus:outline-none focus:border-[#543A2A] text-base font-semibold shadow-xs transition-colors"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading || !displayName.trim()}
-            className="w-full py-3.5 px-4 rounded-xl bg-[#ccff00] hover:bg-[#bbf000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none text-black font-black font-mono text-xs uppercase transition-all border-2 border-black shadow-[3px_3px_0px_0px_#000] flex items-center justify-center cursor-pointer"
+            className="w-full py-3.5 px-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-[#FAF6F0] font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center cursor-pointer"
           >
-            {isLoading ? 'SAVING...' : 'START SPLITTING →'}
+            {isLoading ? 'Saving...' : 'Start Splitting →'}
           </button>
         </form>
       )}
