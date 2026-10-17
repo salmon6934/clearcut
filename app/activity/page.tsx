@@ -27,15 +27,18 @@ interface ActivityItem {
   badgeEmoji: string;
 }
 
+let hasClientHydratedActivity = false;
+
 export default function ActivityPage() {
   const router = useRouter();
   const repo = useRepository();
   const groups = useAllGroups(repo, false);
 
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(hasClientHydratedActivity);
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'settlement'>('all');
 
   useEffect(() => {
+    hasClientHydratedActivity = true;
     setMounted(true);
     repo.syncManager?.kick('activity_mount', true).catch(() => {});
   }, [repo]);

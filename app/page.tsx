@@ -57,6 +57,8 @@ const GROUP_TYPE_CONFIG: Record<
 
 const SUPPORTED_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'AED', 'SGD'];
 
+let hasClientHydrated = false;
+
 export default function DashboardPage() {
   const router = useRouter();
   const authState = useAuth();
@@ -67,7 +69,7 @@ export default function DashboardPage() {
   const dashboardTotals = useDashboardTotals(repo, currentUserId);
   const friends = useFriendsBalances(repo, currentUserId);
 
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(hasClientHydrated);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isTopMenuOpen, setIsTopMenuOpen] = useState(false);
   const [isSelectTargetModalOpen, setIsSelectTargetModalOpen] = useState(false);
@@ -83,6 +85,7 @@ export default function DashboardPage() {
   const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
+    hasClientHydrated = true;
     setMounted(true);
     repo.syncManager?.kick('dashboard_mount', false).catch(() => { });
   }, [repo]);

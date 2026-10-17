@@ -26,6 +26,8 @@ const AVATAR_COLORS = [
   'bg-[#B5C2A3] text-[#2E4226]', // Warm Sage
 ];
 
+let hasClientHydratedFriends = false;
+
 export default function FriendsPage() {
   const router = useRouter();
   const authState = useAuth();
@@ -34,7 +36,7 @@ export default function FriendsPage() {
 
   const friends = useFriendsBalances(repo, currentUserId);
 
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(hasClientHydratedFriends);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFriendId, setExpandedFriendId] = useState<string | null>(null);
 
@@ -56,6 +58,7 @@ export default function FriendsPage() {
   const [pushStatus, setPushStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
+    hasClientHydratedFriends = true;
     setMounted(true);
     repo.syncManager?.kick('friends_mount', true).catch(() => { });
   }, [repo]);
