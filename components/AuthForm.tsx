@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowRight } from 'lucide-react';
 import { signInWithOtp, verifyOtp, updateProfile, subscribeAuth, signInWithGoogle } from '@/lib/auth';
 import { haptics } from '@/lib/native/haptics';
 
@@ -212,9 +213,10 @@ export function AuthForm() {
             <button
               type="submit"
               disabled={isLoading || !email}
-              className="w-full py-3.5 px-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-[#FAF6F0] font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center cursor-pointer"
+              className="w-full py-3.5 px-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-[#FAF6F0] font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              {isLoading ? 'Sending code...' : 'Send OTP Code →'}
+              <span>{isLoading ? 'Sending code...' : 'Send OTP Code'}</span>
+              {!isLoading && <ArrowRight className="w-3.5 h-3.5" />}
             </button>
           </form>
         </div>
@@ -252,9 +254,10 @@ export function AuthForm() {
           <button
             type="submit"
             disabled={isLoading || otpCode.length !== 6}
-            className="w-full py-3.5 px-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-[#FAF6F0] font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center cursor-pointer"
+            className="w-full py-3.5 px-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-[#FAF6F0] font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            {isLoading ? 'Verifying...' : 'Verify Code →'}
+            <span>{isLoading ? 'Verifying...' : 'Verify Code'}</span>
+            {!isLoading && <ArrowRight className="w-3.5 h-3.5" />}
           </button>
 
           <div className="flex items-center justify-between text-xs font-semibold text-[#8D7868] pt-1">
@@ -310,9 +313,10 @@ export function AuthForm() {
           <button
             type="submit"
             disabled={isLoading || !displayName.trim()}
-            className="w-full py-3.5 px-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-[#FAF6F0] font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center cursor-pointer"
+            className="w-full py-3.5 px-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-[#FAF6F0] font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            {isLoading ? 'Saving...' : 'Start Splitting →'}
+            <span>{isLoading ? 'Saving...' : 'Start Splitting'}</span>
+            {!isLoading && <ArrowRight className="w-3.5 h-3.5" />}
           </button>
         </form>
       )}

@@ -120,4 +120,50 @@ describe('T-1.9: Core UI Components Logic & Validation', () => {
     expect(adjSplits.reduce((acc, s) => acc + s.owedMinor, 0)).toBe(totalMinor);
     expect(adjSplits.find((s) => s.memberId === 'm-1')?.owedMinor).toBe(7000);
   });
+
+  it('validates expense presets: owed full, owe full, paid half, friend paid half', () => {
+    const totalMinor = 10000; // ₹100.00
+    const myMemberId = 'm-me';
+    const friendMemberId = 'm-friend';
+
+    // Preset 1: I am owed the full amount (I paid, friend owes all)
+    const owedFullSplits: Split[] = [
+      { memberId: myMemberId, paidMinor: totalMinor, owedMinor: 0 },
+      { memberId: friendMemberId, paidMinor: 0, owedMinor: totalMinor },
+    ];
+    expect(owedFullSplits.reduce((acc, s) => acc + s.paidMinor, 0)).toBe(totalMinor);
+    expect(owedFullSplits.reduce((acc, s) => acc + s.owedMinor, 0)).toBe(totalMinor);
+    // My net: +10000
+    expect(owedFullSplits[0]!.paidMinor - owedFullSplits[0]!.owedMinor).toBe(totalMinor);
+
+    // Preset 2: I owe the full amount (Friend paid, I owe all)
+    const oweFullSplits: Split[] = [
+      { memberId: myMemberId, paidMinor: 0, owedMinor: totalMinor },
+      { memberId: friendMemberId, paidMinor: totalMinor, owedMinor: 0 },
+    ];
+    expect(oweFullSplits.reduce((acc, s) => acc + s.paidMinor, 0)).toBe(totalMinor);
+    expect(oweFullSplits.reduce((acc, s) => acc + s.owedMinor, 0)).toBe(totalMinor);
+    // My net: -10000
+    expect(oweFullSplits[0]!.paidMinor - oweFullSplits[0]!.owedMinor).toBe(-totalMinor);
+
+    // Preset 3: I paid and my friend owes half amount (I paid, 50/50 split)
+    const paidHalfSplits: Split[] = [
+      { memberId: myMemberId, paidMinor: totalMinor, owedMinor: 5000 },
+      { memberId: friendMemberId, paidMinor: 0, owedMinor: 5000 },
+    ];
+    expect(paidHalfSplits.reduce((acc, s) => acc + s.paidMinor, 0)).toBe(totalMinor);
+    expect(paidHalfSplits.reduce((acc, s) => acc + s.owedMinor, 0)).toBe(totalMinor);
+    // My net: +5000 (friend owes me half)
+    expect(paidHalfSplits[0]!.paidMinor - paidHalfSplits[0]!.owedMinor).toBe(5000);
+
+    // Preset 4: My friend paid and I owe half amount (Friend paid, 50/50 split)
+    const friendPaidHalfSplits: Split[] = [
+      { memberId: myMemberId, paidMinor: 0, owedMinor: 5000 },
+      { memberId: friendMemberId, paidMinor: totalMinor, owedMinor: 5000 },
+    ];
+    expect(friendPaidHalfSplits.reduce((acc, s) => acc + s.paidMinor, 0)).toBe(totalMinor);
+    expect(friendPaidHalfSplits.reduce((acc, s) => acc + s.owedMinor, 0)).toBe(totalMinor);
+    // My net: -5000 (I owe friend half)
+    expect(friendPaidHalfSplits[0]!.paidMinor - friendPaidHalfSplits[0]!.owedMinor).toBe(-5000);
+  });
 });

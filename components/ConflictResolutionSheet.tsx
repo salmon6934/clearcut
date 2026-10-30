@@ -5,6 +5,7 @@
 // Brew & Browse Warm Cafe Styling
 
 import React, { useEffect } from 'react';
+import { AlertTriangle, Trash2, X } from 'lucide-react';
 import type { Expense, Member } from '../lib/data/types';
 import { formatMinor } from '../lib/engine/money';
 
@@ -62,8 +63,8 @@ export function ConflictResolutionSheet({
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-[#E5D9CC] flex items-start justify-between gap-3 bg-[#FAF6F0]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center text-lg font-bold shrink-0">
-              ⚡
+            <div className="w-10 h-10 rounded-2xl bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-[#432E22]">
@@ -80,7 +81,7 @@ export function ConflictResolutionSheet({
             onClick={onClose}
             className="w-8 h-8 rounded-full border border-[#E5D9CC] bg-white flex items-center justify-center font-bold text-[#432E22] hover:bg-[#FAF6F0] shadow-xs transition cursor-pointer"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -88,7 +89,7 @@ export function ConflictResolutionSheet({
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4">
           {isServerDeleted && (
             <div className="p-3 rounded-2xl bg-[#FCE8E6] border border-[#F5C2C0] text-[#A83232] text-xs font-semibold flex items-center gap-2">
-              <span>🗑️</span>
+              <Trash2 className="w-4 h-4" />
               <span>This expense was deleted on the server while you were editing it.</span>
             </div>
           )}
@@ -116,7 +117,7 @@ export function ConflictResolutionSheet({
               <div>
                 <span className="text-[#8D7868] block text-[10px] font-semibold uppercase">Amount</span>
                 <span className="font-bold text-[#2E4226] text-base bg-[#E8F0E4] px-2 py-0.5 rounded-full border border-[#C5D9BE] inline-block mt-0.5">
-                  ₹ {formatMinor(localExpense.amountMinor, localExpense.currency)}
+                  {formatMinor(localExpense.amountMinor, localExpense.currency)}
                 </span>
               </div>
 
@@ -133,7 +134,7 @@ export function ConflictResolutionSheet({
                   {(localExpense.splits || []).map((s) => (
                     <div key={s.memberId} className="flex justify-between text-[#432E22]">
                       <span className="font-medium">{memberMap.get(s.memberId) || s.memberId}:</span>
-                      <span className="font-bold">₹ {formatMinor(s.owedMinor, localExpense.currency)}</span>
+                      <span className="font-bold">{formatMinor(s.owedMinor, localExpense.currency)}</span>
                     </div>
                   ))}
                 </div>
@@ -161,7 +162,7 @@ export function ConflictResolutionSheet({
               <div>
                 <span className="text-[#8D7868] block text-[10px] font-semibold uppercase">Amount</span>
                 <span className="font-bold text-[#432E22] text-base inline-block mt-0.5">
-                  {isServerDeleted ? '—' : `₹ ${formatMinor(serverAmountMinor, serverCurrency)}`}
+                  {isServerDeleted ? '—' : formatMinor(serverAmountMinor, serverCurrency)}
                 </span>
               </div>
 
@@ -183,7 +184,7 @@ export function ConflictResolutionSheet({
                         <div key={s.member_id || s.memberId} className="flex justify-between text-[#432E22]">
                           <span className="font-medium">{memberMap.get(s.member_id || s.memberId) || s.member_id || s.memberId}:</span>
                           <span className="font-bold">
-                            ₹ {formatMinor(Number(s.owed_minor || s.owedMinor || 0), serverCurrency)}
+                            {formatMinor(Number(s.owed_minor || s.owedMinor || 0), serverCurrency)}
                           </span>
                         </div>
                       ))

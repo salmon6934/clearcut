@@ -4,6 +4,7 @@
 // Warm Cafe Payer Selector
 
 import React, { useState, useEffect } from 'react';
+import { Check } from 'lucide-react';
 import type { Member } from '../lib/data/types';
 import { formatMinor, parseMoneyToMinor } from '../lib/engine/money';
 
@@ -18,6 +19,7 @@ interface PayerEditorProps {
   currency: string;
   currentUserId?: string;
   initialPayers?: PayerAllocation[];
+  selectedPayerId?: string;
   onChange: (payers: PayerAllocation[], isValid: boolean) => void;
 }
 
@@ -27,6 +29,7 @@ export function PayerEditor({
   currency,
   currentUserId,
   initialPayers,
+  selectedPayerId: controlledPayerId,
   onChange,
 }: PayerEditorProps) {
   const [isMultiPayer, setIsMultiPayer] = useState(
@@ -41,6 +44,13 @@ export function PayerEditor({
       ? initialPayers[0]!.memberId
       : defaultSinglePayerId
   );
+
+  useEffect(() => {
+    if (controlledPayerId) {
+      setSinglePayerId(controlledPayerId);
+      setIsMultiPayer(false);
+    }
+  }, [controlledPayerId]);
 
   const [multiPayerInputs, setMultiPayerInputs] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
@@ -139,7 +149,7 @@ export function PayerEditor({
                   {selectedMember?.displayName} {selectedMember?.userId === currentUserId ? '(You)' : ''}
                 </span>
                 <span className="text-[11px] text-[#8D7868] block">
-                  Paid ₹{formatMinor(totalAmountMinor, currency)}
+                  Paid {formatMinor(totalAmountMinor, currency)}
                 </span>
               </div>
             </div>
@@ -186,7 +196,7 @@ export function PayerEditor({
                     </div>
 
                     {isSelected && (
-                      <span className="text-xs font-bold text-[#543A2A] shrink-0">✓</span>
+                      <Check className="w-4 h-4 text-[#543A2A] shrink-0" />
                     )}
                   </button>
                 );
@@ -221,15 +231,15 @@ export function PayerEditor({
           <div className="pt-2 flex items-center justify-end text-xs font-semibold">
             {deltaMinor === 0 ? (
               <span className="font-bold text-[#2E4226] bg-[#E8F0E4] border border-[#C5D9BE] px-3 py-1 rounded-full shadow-xs">
-                Matched ({currency === 'INR' ? '₹' : ''}{formatMinor(totalAmountMinor, currency)})
+                Matched ({formatMinor(totalAmountMinor, currency)})
               </span>
             ) : deltaMinor > 0 ? (
               <span className="font-bold text-[#8C5E23] bg-[#FAF0E6] border border-[#ECD3B6] px-3 py-1 rounded-full shadow-xs">
-                {currency === 'INR' ? '₹' : ''}{formatMinor(deltaMinor, currency)} remaining
+                {formatMinor(deltaMinor, currency)} remaining
               </span>
             ) : (
               <span className="font-bold text-[#A83232] bg-[#FCE8E6] border border-[#F5C2C0] px-3 py-1 rounded-full shadow-xs">
-                Over by {currency === 'INR' ? '₹' : ''}{formatMinor(Math.abs(deltaMinor), currency)}
+                Over by {formatMinor(Math.abs(deltaMinor), currency)}
               </span>
             )}
           </div>

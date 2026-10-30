@@ -6,6 +6,17 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+  Zap,
+  Bell,
+  User,
+  Check,
+  AlertTriangle,
+  MessageSquare,
+  Share2,
+  Copy,
+  X,
+} from 'lucide-react';
 import { useRepository, useFriendsBalances } from '../../lib/data/hooks';
 import { formatMinor } from '../../lib/engine/money';
 import { useAuth } from '../../lib/auth';
@@ -269,7 +280,7 @@ export default function FriendsPage() {
           {overallNet > 0 ? (
             <div className="space-y-1">
               <div className="text-2xl sm:text-3xl font-extrabold text-[#543A2A]">
-                You are owed ₹{formatMinor(overallNet, primaryCurrency)}
+                You are owed {formatMinor(overallNet, primaryCurrency)}
               </div>
               <p className="text-xs text-[#8D7868]">
                 Across {friends.filter((f) => (f.netPerCurrency[primaryCurrency] ?? 0) > 0).length} friends
@@ -278,7 +289,7 @@ export default function FriendsPage() {
           ) : overallNet < 0 ? (
             <div className="space-y-1">
               <div className="text-2xl sm:text-3xl font-extrabold text-[#A83232]">
-                You owe ₹{formatMinor(Math.abs(overallNet), primaryCurrency)}
+                You owe {formatMinor(Math.abs(overallNet), primaryCurrency)}
               </div>
               <p className="text-xs text-[#8D7868]">
                 Across {friends.filter((f) => (f.netPerCurrency[primaryCurrency] ?? 0) < 0).length} friends
@@ -317,9 +328,9 @@ export default function FriendsPage() {
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-2.5 text-xs text-[#A89689] hover:text-[#543A2A]"
+              className="absolute right-3 top-2.5 text-[#A89689] hover:text-[#543A2A]"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -389,13 +400,13 @@ export default function FriendsPage() {
                         {net > 0 ? (
                           <div>
                             <span className="text-xs font-bold text-[#543A2A]">
-                              Owes you ₹{formatMinor(net, primaryCurrency)}
+                              Owes you {formatMinor(net, primaryCurrency)}
                             </span>
                           </div>
                         ) : net < 0 ? (
                           <div>
                             <span className="text-xs font-bold text-[#A83232]">
-                              You owe ₹{formatMinor(Math.abs(net), primaryCurrency)}
+                              You owe {formatMinor(Math.abs(net), primaryCurrency)}
                             </span>
                           </div>
                         ) : (
@@ -448,7 +459,7 @@ export default function FriendsPage() {
                                 </div>
                               </div>
                               <div className="font-bold text-[#543A2A] shrink-0">
-                                ₹{formatMinor(expense.amountMinor, expense.currency)}
+                                {formatMinor(expense.amountMinor, expense.currency)}
                               </div>
                             </div>
                           ))}
@@ -462,7 +473,8 @@ export default function FriendsPage() {
                           onClick={(e) => handleOpenSettle(friend, e)}
                           className="flex-1 py-2.5 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] text-xs font-bold uppercase shadow-sm active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
                         >
-                          <span>⚡ Settle</span>
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>Settle</span>
                         </button>
 
                         <button
@@ -470,7 +482,8 @@ export default function FriendsPage() {
                           onClick={(e) => handleOpenReminder(friend, e)}
                           className="flex-1 py-2.5 rounded-full bg-[#D4B89B] hover:bg-[#C8A27A] text-[#432E22] text-xs font-bold uppercase shadow-sm active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
                         >
-                          <span>🔔 Remind</span>
+                          <Bell className="w-3.5 h-3.5" />
+                          <span>Remind</span>
                         </button>
                       </div>
                     </div>
@@ -508,14 +521,14 @@ export default function FriendsPage() {
             <div className="flex items-center justify-between border-b border-[#E5D9CC] pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-[#EFE4D6] flex items-center justify-center text-sm font-bold text-[#543A2A]">
-                  🔔
+                  <Bell className="w-4 h-4 text-[#543A2A]" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-[#432E22]">
                     Remind {reminderFriend.displayName}
                   </h3>
                   <p className="text-[11px] text-[#8D7868]">
-                    Balance: ₹{formatMinor(reminderFriend.netPerCurrency[primaryCurrency] || 0, primaryCurrency)}
+                    Balance: {formatMinor(reminderFriend.netPerCurrency[primaryCurrency] || 0, primaryCurrency)}
                   </p>
                 </div>
               </div>
@@ -523,9 +536,9 @@ export default function FriendsPage() {
               <button
                 type="button"
                 onClick={() => setReminderFriend(null)}
-                className="w-8 h-8 rounded-full border border-[#E5D9CC] bg-white hover:bg-[#EFE4D6] flex items-center justify-center text-xs text-[#543A2A] transition cursor-pointer"
+                className="w-8 h-8 rounded-full border border-[#E5D9CC] bg-white hover:bg-[#EFE4D6] flex items-center justify-center text-[#543A2A] transition cursor-pointer"
               >
-                ✕
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -533,14 +546,14 @@ export default function FriendsPage() {
             <div>
               {reminderFriend.userId ? (
                 <div className="px-3 py-2 rounded-2xl bg-[#E8F0E4] border border-[#C5D9BE] flex items-center gap-2">
-                  <span className="text-sm">🔔</span>
+                  <Bell className="w-4 h-4 text-[#2E4226]" />
                   <div className="text-[11px] font-medium text-[#2E4226]">
                     Direct push notifications supported
                   </div>
                 </div>
               ) : (
                 <div className="px-3 py-2 rounded-2xl bg-[#FAF6F0] border border-[#E5D9CC] flex items-center gap-2">
-                  <span className="text-sm">👤</span>
+                  <User className="w-4 h-4 text-[#8D7868]" />
                   <div className="text-[11px] font-medium text-[#8D7868]">
                     Share via WhatsApp or SMS below
                   </div>
@@ -556,7 +569,7 @@ export default function FriendsPage() {
                     : 'bg-[#FCE8E6] text-[#A83232]'
                   }`}
               >
-                <span>{pushStatus.success ? '✓' : '⚠️'}</span>
+                {pushStatus.success ? <Check className="w-4 h-4 text-[#2E4226]" /> : <AlertTriangle className="w-4 h-4 text-[#A83232]" />}
                 <span>{pushStatus.message}</span>
               </div>
             )}
@@ -582,7 +595,8 @@ export default function FriendsPage() {
                   onClick={handleSendPush}
                   className="w-full py-3 px-4 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] text-xs font-bold uppercase shadow-sm flex items-center justify-center gap-2 active:scale-95 transition cursor-pointer disabled:opacity-50"
                 >
-                  <span>{isSendingPush ? 'Sending...' : '⚡ Send Push Notification'}</span>
+                  <Zap className="w-4 h-4" />
+                  <span>{isSendingPush ? 'Sending...' : 'Send Push Notification'}</span>
                 </button>
               )}
 
@@ -594,7 +608,8 @@ export default function FriendsPage() {
                     onClick={handleSendWhatsApp}
                     className="py-2.5 px-3 rounded-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-xs uppercase shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
                   >
-                    <span>💬 WhatsApp</span>
+                    <MessageSquare className="w-4 h-4" />
+                    <span>WhatsApp</span>
                   </button>
 
                   <button
@@ -602,7 +617,8 @@ export default function FriendsPage() {
                     onClick={handleShareReminder}
                     className="py-2.5 px-3 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] font-bold text-xs uppercase shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
                   >
-                    <span>📲 SMS / Share</span>
+                    <Share2 className="w-4 h-4" />
+                    <span>SMS / Share</span>
                   </button>
                 </div>
 
@@ -612,7 +628,17 @@ export default function FriendsPage() {
                     onClick={handleCopyReminder}
                     className="w-full py-2 px-3 rounded-full border border-[#E5D9CC] bg-white hover:bg-[#EFE4D6] text-[#543A2A] font-bold text-xs uppercase shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
                   >
-                    <span>{copiedReminder ? '✓ Copied to clipboard!' : '📋 Copy Message'}</span>
+                    {copiedReminder ? (
+                      <>
+                        <Check className="w-4 h-4 text-[#2E4226]" />
+                        <span>Copied to clipboard!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>Copy Message</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Folder, Receipt, Zap, type LucideIcon } from 'lucide-react';
 import { useRepository, useAllGroups } from '../../lib/data/hooks';
 import { formatMinor } from '../../lib/engine/money';
 import { BottomNav } from '../../components/BottomNav';
@@ -24,7 +25,7 @@ interface ActivityItem {
   title: string;
   subtitle: string;
   amountMinor?: number;
-  badgeEmoji: string;
+  badgeIcon: LucideIcon;
 }
 
 let hasClientHydratedActivity = false;
@@ -79,7 +80,7 @@ export default function ActivityPage() {
       currency: group.currency,
       title: `Group "${group.name}" Created`,
       subtitle: `${members.length} member${members.length > 1 ? 's' : ''} enrolled in ${group.currency}`,
-      badgeEmoji: '📁',
+      badgeIcon: Folder,
     });
 
     // 2. Expenses (Active only)
@@ -99,7 +100,7 @@ export default function ActivityPage() {
         title: exp.title,
         subtitle: payerNames ? `Paid by ${payerNames}` : `Expense recorded`,
         amountMinor: exp.amountMinor,
-        badgeEmoji: '🧾',
+        badgeIcon: Receipt,
       });
     }
 
@@ -118,7 +119,7 @@ export default function ActivityPage() {
         title: `${fromName} paid ${toName}`,
         subtitle: s.note || `Settlement recorded`,
         amountMinor: s.amountMinor,
-        badgeEmoji: '⚡',
+        badgeIcon: Zap,
       });
     }
   }
@@ -207,8 +208,8 @@ export default function ActivityPage() {
                     href={`/group?id=${act.groupId}`}
                     className="flex items-start gap-3 min-w-0 flex-1 hover:opacity-85 transition"
                   >
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-base shrink-0 shadow-xs bg-[#EFE4D6] text-[#543A2A]">
-                      {act.badgeEmoji}
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-xs bg-[#EFE4D6] text-[#543A2A]">
+                      {React.createElement(act.badgeIcon, { className: "w-4 h-4 text-[#543A2A]" })}
                     </div>
 
                     <div className="min-w-0">
@@ -238,7 +239,7 @@ export default function ActivityPage() {
                     {typeof act.amountMinor === 'number' && (
                       <div className="text-right">
                         <div className="font-bold text-sm sm:text-base text-[#432E22]">
-                          ₹{formatMinor(act.amountMinor, act.currency)}
+                          {formatMinor(act.amountMinor, act.currency)}
                         </div>
                       </div>
                     )}

@@ -4,6 +4,7 @@
 // Brew & Browse Warm Cafe Group Balance Summary Card
 
 import React from 'react';
+import { ArrowDownLeft, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { formatMinor } from '../lib/engine/money';
 
 interface BalanceSummaryProps {
@@ -38,17 +39,20 @@ export function BalanceSummary({
           <div className="flex items-center gap-2">
             {isOwed && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAEFE8] text-[#3D5638] border border-[#D5E2D2] text-xs font-bold uppercase tracking-wider">
-                <span>↙ YOU ARE OWED</span>
+                <ArrowDownLeft className="w-3.5 h-3.5" />
+                <span>YOU ARE OWED</span>
               </span>
             )}
             {owes && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F8EDEA] text-[#9A3C2D] border border-[#EBD7D3] text-xs font-bold uppercase tracking-wider">
-                <span>↗ YOU OWE</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                <span>YOU OWE</span>
               </span>
             )}
             {isSettled && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EFE4D6] text-[#543A2A] border border-[#E5D9CC] text-xs font-bold uppercase tracking-wider">
-                <span>✓ ALL SETTLED UP</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#2E7D32]" />
+                <span>ALL SETTLED UP</span>
               </span>
             )}
           </div>

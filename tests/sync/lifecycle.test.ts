@@ -137,4 +137,20 @@ describe('T-1.7.3: Sync Orchestrator & Lifecycle Triggers', () => {
     // Verify pull was called
     expect(mockSupabase.rpc).toHaveBeenCalledWith('pull_changes_v1', expect.anything());
   });
+
+  it('does not skip passive mount sync if local store is empty', async () => {
+    const { manager, store, mockSupabase } = setup();
+
+    expect(store.getAllGroups(true).length).toBe(0);
+
+    // First kick sets lastSyncTimestamp
+    await manager.kick('manual_refresh');
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('pull_changes_v1', expect.anything());
+
+    mockSupabase.rpc.mockClear();
+
+    // Now passive mount immediately within 30s: should NOT be skipped because store is empty
+    await manager.kick('dashboard_mount');
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('pull_changes_v1', expect.anything());
+  });
 });

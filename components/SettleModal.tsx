@@ -4,6 +4,7 @@
 // Warm Cafe Settlement Modal
 
 import React, { useState, useEffect } from 'react';
+import { QrCode, Banknote, Smartphone, Landmark, ArrowRight, Check, X, type LucideIcon } from 'lucide-react';
 import type { Member, SettlementDraft, SettlementMethod } from '../lib/data/types';
 import { parseMoneyToMinor, formatMinor } from '../lib/engine/money';
 import { useHardwareBackButton } from '../lib/native/back-button';
@@ -20,11 +21,11 @@ interface SettleModalProps {
   onSettle: (draft: SettlementDraft) => void;
 }
 
-const SETTLEMENT_METHODS: { id: SettlementMethod; label: string; icon: string }[] = [
-  { id: 'upi', label: 'UPI / QR', icon: '⚡' },
-  { id: 'cash', label: 'Cash', icon: '💵' },
-  { id: 'venmo', label: 'Venmo', icon: '💳' },
-  { id: 'bank', label: 'Bank Transfer', icon: '🏦' },
+const SETTLEMENT_METHODS: { id: SettlementMethod; label: string; icon: LucideIcon }[] = [
+  { id: 'upi', label: 'UPI / QR', icon: QrCode },
+  { id: 'cash', label: 'Cash', icon: Banknote },
+  { id: 'venmo', label: 'Venmo', icon: Smartphone },
+  { id: 'bank', label: 'Bank Transfer', icon: Landmark },
 ];
 
 export function SettleModal({
@@ -120,7 +121,7 @@ export function SettleModal({
             aria-label="Close dialog"
             className="w-8 h-8 rounded-full border border-[#E5D9CC] bg-white hover:bg-[#FAF6F0] text-[#543A2A] font-bold text-xs flex items-center justify-center transition cursor-pointer"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -154,7 +155,7 @@ export function SettleModal({
               <div className="flex items-center justify-center gap-1">
                 <div className="h-0.5 bg-[#E5D9CC] flex-1" />
                 <div className="w-6 h-6 rounded-full bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center font-bold text-xs">
-                  ➔
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </div>
                 <div className="h-0.5 bg-[#E5D9CC] flex-1" />
               </div>
@@ -274,6 +275,7 @@ export function SettleModal({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {SETTLEMENT_METHODS.map((m) => {
                 const isSelected = method === m.id;
+                const MethodIcon = m.icon;
                 return (
                   <button
                     key={m.id}
@@ -285,7 +287,7 @@ export function SettleModal({
                         : 'bg-white text-[#543A2A] border-[#E5D9CC] hover:bg-[#FAF6F0]'
                     }`}
                   >
-                    <span>{m.icon}</span>
+                    <MethodIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-[#FAF6F0]' : 'text-[#7A6251]'}`} />
                     <span className="truncate">{m.label}</span>
                   </button>
                 );
@@ -313,7 +315,8 @@ export function SettleModal({
               type="submit"
               className="w-full py-3.5 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] font-bold text-sm tracking-wide shadow-sm active:scale-95 transition cursor-pointer flex items-center justify-center gap-2"
             >
-              <span>✓ Record Settlement</span>
+              <Check className="w-4 h-4" />
+              <span>Record Settlement</span>
             </button>
           </div>
         </form>

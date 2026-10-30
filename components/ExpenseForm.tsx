@@ -4,6 +4,25 @@
 // Streamlined Expense Creation & Edit Form containing only essential fields
 
 import React, { useState } from 'react';
+import {
+  Receipt,
+  Utensils,
+  Wine,
+  ShoppingCart,
+  Car,
+  Building2,
+  Ticket,
+  ShoppingBag,
+  Calendar,
+  Zap,
+  ArrowDownLeft,
+  ArrowUpRight,
+  ArrowRight,
+  ArrowLeft,
+  Handshake,
+  Check,
+  type LucideIcon,
+} from 'lucide-react';
 import type { Member, ExpenseDraft, SplitType } from '../lib/data/types';
 import type { Split } from '../lib/engine/split';
 import { parseMoneyToMinor, formatMinor } from '../lib/engine/money';
@@ -21,15 +40,15 @@ interface ExpenseFormProps {
   onCancel?: () => void;
 }
 
-const CATEGORIES = [
-  { id: 'general', label: 'General', icon: '🧾' },
-  { id: 'food', label: 'Food & Dining', icon: '🍽️' },
-  { id: 'drinks', label: 'Drinks & Bar', icon: '☕' },
-  { id: 'groceries', label: 'Groceries', icon: '🛒' },
-  { id: 'transport', label: 'Transport', icon: '🚕' },
-  { id: 'hotel', label: 'Stay / Hotel', icon: '🏨' },
-  { id: 'entertainment', label: 'Entertainment', icon: '🎟️' },
-  { id: 'shopping', label: 'Shopping', icon: '🛍️' },
+const CATEGORIES: { id: string; label: string; icon: LucideIcon }[] = [
+  { id: 'general', label: 'General', icon: Receipt },
+  { id: 'food', label: 'Food & Dining', icon: Utensils },
+  { id: 'drinks', label: 'Drinks & Bar', icon: Wine },
+  { id: 'groceries', label: 'Groceries', icon: ShoppingCart },
+  { id: 'transport', label: 'Transport', icon: Car },
+  { id: 'hotel', label: 'Stay / Hotel', icon: Building2 },
+  { id: 'entertainment', label: 'Entertainment', icon: Ticket },
+  { id: 'shopping', label: 'Shopping', icon: ShoppingBag },
 ];
 
 export function ExpenseForm({
@@ -61,6 +80,55 @@ export function ExpenseForm({
   const [splitType, setSplitType] = useState<SplitType>(
     initialDraft?.splitType || 'equal'
   );
+
+  // Identify current user member and friends for presets
+  const myMember = members.find((m) => m.userId === currentUserId) || members[0];
+  const myMemberId = myMember?.id;
+  const otherMembers = members.filter((m) => m.id !== myMemberId);
+
+  type PresetType = 'owed_full' | 'owe_full' | 'paid_half' | 'friend_paid_half' | null;
+  const [selectedFriendId, setSelectedFriendId] = useState<string>(
+    otherMembers[0]?.id || ''
+  );
+  const [activePreset, setActivePreset] = useState<PresetType>(null);
+  const [controlledPayerId, setControlledPayerId] = useState<string | undefined>(undefined);
+  const [controlledParticipantIds, setControlledParticipantIds] = useState<string[] | undefined>(undefined);
+
+  const applyPreset = (type: PresetType, friendId = selectedFriendId) => {
+    if (activePreset === type) {
+      // Toggle off preset back to default
+      setActivePreset(null);
+      setControlledPayerId(undefined);
+      setControlledParticipantIds(members.map((m) => m.id));
+      return;
+    }
+
+    const targetFriendId = friendId || otherMembers[0]?.id;
+    if (!myMemberId || !targetFriendId) return;
+
+    setActivePreset(type);
+
+    if (type === 'owed_full') {
+      // I am owed the full amount: You paid full, friend owes full
+      setControlledPayerId(myMemberId);
+      setControlledParticipantIds([targetFriendId]);
+    } else if (type === 'owe_full') {
+      // I owe the full amount: Friend paid full, you owe full
+      setControlledPayerId(targetFriendId);
+      setControlledParticipantIds([myMemberId]);
+    } else if (type === 'paid_half') {
+      // I paid and my friend owes half amount: You paid, split equally between both
+      setControlledPayerId(myMemberId);
+      setControlledParticipantIds([myMemberId, targetFriendId]);
+    } else if (type === 'friend_paid_half') {
+      // My friend paid and I owe half amount: Friend paid, split equally between both
+      setControlledPayerId(targetFriendId);
+      setControlledParticipantIds([myMemberId, targetFriendId]);
+    }
+  };
+
+  const selectedFriend = otherMembers.find((m) => m.id === selectedFriendId) || otherMembers[0];
+  const friendName = selectedFriend?.displayName || 'Friend';
 
   const totalAmountMinor = parseMoneyToMinor(amountStr, currency) || 0;
 
@@ -189,7 +257,7 @@ export function ExpenseForm({
 
         <div className="flex items-center gap-2 pt-1">
           <div className="px-3 py-1.5 rounded-full border border-[#E5D9CC] bg-white text-xs font-semibold text-[#543A2A] shadow-xs flex items-center gap-1.5">
-            <span>📅</span>
+            <Calendar className="w-4 h-4 text-[#8D7868]" />
             <input
               type="date"
               value={expenseDate}
@@ -200,6 +268,136 @@ export function ExpenseForm({
         </div>
       </div>
 
+      {/* Quick Presets for Split */}
+      {otherMembers.length > 0 && (
+        <div className="space-y-2.5 p-3.5 sm:p-4 rounded-3xl border border-[#E5D9CC] bg-[#FAF6F0] shadow-xs">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-[#6E5849] uppercase tracking-wider flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-[#D36135]" /> Quick Presets
+            </label>
+            {otherMembers.length > 1 && (
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8D7868]">
+                <span>With:</span>
+                <select
+                  value={selectedFriendId}
+                  onChange={(e) => {
+                    setSelectedFriendId(e.target.value);
+                    if (activePreset) {
+                      applyPreset(activePreset, e.target.value);
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-full bg-white border border-[#E5D9CC] text-[#432E22] font-bold text-xs focus:outline-none cursor-pointer"
+                >
+                  {otherMembers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {/* 1. I am owed the full amount */}
+            <button
+              type="button"
+              onClick={() => applyPreset('owed_full')}
+              className={`p-3 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer flex items-center justify-between ${activePreset === 'owed_full'
+                  ? 'bg-[#543A2A] text-[#FAF6F0] border-[#543A2A] shadow-sm'
+                  : 'bg-white hover:bg-[#EFE4D6] text-[#432E22] border-[#E5D9CC]'
+                }`}
+            >
+              <div className="min-w-0 pr-2">
+                <div className="text-xs font-bold leading-tight flex items-center gap-1.5">
+                  <ArrowDownLeft className="w-3.5 h-3.5 text-[#2E7D32] shrink-0" />
+                  <span>You are owed full amount</span>
+                </div>
+                <div
+                  className={`text-[11px] font-medium truncate mt-0.5 ${activePreset === 'owed_full' ? 'text-[#FAF6F0]/80' : 'text-[#8D7868]'
+                    }`}
+                >
+                  You paid, {friendName} owes all
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 font-bold shrink-0" />
+            </button>
+
+            {/* 2. I owe the full amount */}
+            <button
+              type="button"
+              onClick={() => applyPreset('owe_full')}
+              className={`p-3 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer flex items-center justify-between ${activePreset === 'owe_full'
+                  ? 'bg-[#543A2A] text-[#FAF6F0] border-[#543A2A] shadow-sm'
+                  : 'bg-white hover:bg-[#EFE4D6] text-[#432E22] border-[#E5D9CC]'
+                }`}
+            >
+              <div className="min-w-0 pr-2">
+                <div className="text-xs font-bold leading-tight flex items-center gap-1.5">
+                  <ArrowUpRight className="w-3.5 h-3.5 text-[#C62828] shrink-0" />
+                  <span>You owe the full amount</span>
+                </div>
+                <div
+                  className={`text-[11px] font-medium truncate mt-0.5 ${activePreset === 'owe_full' ? 'text-[#FAF6F0]/80' : 'text-[#8D7868]'
+                    }`}
+                >
+                  {friendName} paid, you owe all
+                </div>
+              </div>
+              <ArrowLeft className="w-4 h-4 font-bold shrink-0" />
+            </button>
+
+            {/* 3. I paid and my friend owes half amount */}
+            <button
+              type="button"
+              onClick={() => applyPreset('paid_half')}
+              className={`p-3 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer flex items-center justify-between ${activePreset === 'paid_half'
+                  ? 'bg-[#543A2A] text-[#FAF6F0] border-[#543A2A] shadow-sm'
+                  : 'bg-white hover:bg-[#EFE4D6] text-[#432E22] border-[#E5D9CC]'
+                }`}
+            >
+              <div className="min-w-0 pr-2">
+                <div className="text-xs font-bold leading-tight flex items-center gap-1.5">
+                  <Handshake className="w-3.5 h-3.5 text-[#543A2A] shrink-0" />
+                  <span>You paid, {friendName} owes half</span>
+                </div>
+                <div
+                  className={`text-[11px] font-medium truncate mt-0.5 ${activePreset === 'paid_half' ? 'text-[#FAF6F0]/80' : 'text-[#8D7868]'
+                    }`}
+                >
+                  You paid, split 50/50
+                </div>
+              </div>
+              <span className="text-xs font-bold shrink-0">½</span>
+            </button>
+
+            {/* 4. My friend paid and I owe half amount */}
+            <button
+              type="button"
+              onClick={() => applyPreset('friend_paid_half')}
+              className={`p-3 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer flex items-center justify-between ${activePreset === 'friend_paid_half'
+                  ? 'bg-[#543A2A] text-[#FAF6F0] border-[#543A2A] shadow-sm'
+                  : 'bg-white hover:bg-[#EFE4D6] text-[#432E22] border-[#E5D9CC]'
+                }`}
+            >
+              <div className="min-w-0 pr-2">
+                <div className="text-xs font-bold leading-tight flex items-center gap-1.5">
+                  <Handshake className="w-3.5 h-3.5 text-[#543A2A] shrink-0" />
+                  <span>{friendName} paid, You owe half</span>
+                </div>
+                <div
+                  className={`text-[11px] font-medium truncate mt-0.5 ${activePreset === 'friend_paid_half' ? 'text-[#FAF6F0]/80' : 'text-[#8D7868]'
+                    }`}
+                >
+                  {friendName} paid, split 50/50
+                </div>
+              </div>
+              <span className="text-xs font-bold shrink-0">½</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Category Selector */}
       <div className="space-y-2">
         <label className="block text-xs font-bold text-[#6E5849] uppercase tracking-wider">
@@ -209,18 +407,18 @@ export function ExpenseForm({
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {CATEGORIES.map((c) => {
             const isSelected = category === c.id;
+            const CategoryIcon = c.icon;
             return (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => setCategory(c.id)}
-                className={`px-3.5 py-2 rounded-full text-xs font-bold shrink-0 transition flex items-center gap-1.5 cursor-pointer border ${
-                  isSelected
+                className={`px-3.5 py-2 rounded-full text-xs font-bold shrink-0 transition flex items-center gap-1.5 cursor-pointer border ${isSelected
                     ? 'bg-[#543A2A] text-[#FAF6F0] border-[#543A2A] shadow-sm'
                     : 'bg-white text-[#543A2A] border-[#E5D9CC] hover:bg-[#EFE4D6]'
-                }`}
+                  }`}
               >
-                <span>{c.icon}</span>
+                <CategoryIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-[#FAF6F0]' : 'text-[#7A6251]'}`} />
                 <span>{c.label}</span>
               </button>
             );
@@ -234,6 +432,7 @@ export function ExpenseForm({
         totalAmountMinor={totalAmountMinor}
         currency={currency}
         currentUserId={currentUserId}
+        selectedPayerId={controlledPayerId}
         initialPayers={initialDraft?.splits.map((s) => ({
           memberId: s.memberId,
           paidMinor: s.paidMinor,
@@ -251,6 +450,7 @@ export function ExpenseForm({
         currency={currency}
         initialSplitType={initialDraft?.splitType}
         initialSplits={initialDraft?.splits}
+        selectedParticipantIds={controlledParticipantIds}
         onChange={(splits, valid, type) => {
           setOwedSplits(splits);
           setIsSplitsValid(valid);
@@ -272,9 +472,9 @@ export function ExpenseForm({
             </>
           ) : (
             <>
-              <span>✓</span>
+              <Check className="w-4 h-4" />
               <span>
-                SAVE EXPENSE {totalAmountMinor > 0 ? `• ₹${formatMinor(totalAmountMinor, currency)}` : ''}
+                SAVE EXPENSE {totalAmountMinor > 0 ? `• ${formatMinor(totalAmountMinor, currency)}` : ''}
               </span>
             </>
           )}

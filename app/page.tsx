@@ -6,6 +6,18 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  Palmtree,
+  Home,
+  Wine,
+  Coffee,
+  ArrowDownLeft,
+  ArrowUpRight,
+  ArrowRight,
+  X,
+  Plus,
+  type LucideIcon,
+} from 'lucide-react';
+import {
   useRepository,
   useAllGroups,
   useDashboardTotals,
@@ -23,32 +35,28 @@ import { initDeepLinkListener } from '../lib/native/deeplink';
 
 const GROUP_TYPE_CONFIG: Record<
   GroupType,
-  { emoji: string; badgeIcon: string; label: string; tagBg: string; thumbnailBg: string }
+  { icon: LucideIcon; label: string; tagBg: string; thumbnailBg: string }
 > = {
   trip: {
-    emoji: '🏖️',
-    badgeIcon: '✈️',
+    icon: Palmtree,
     label: 'TRIP',
     tagBg: 'bg-[#D4B89B] text-[#432E22]',
     thumbnailBg: 'bg-[#EFE4D6]',
   },
   home: {
-    emoji: '🏠',
-    badgeIcon: '📶',
+    icon: Home,
     label: 'HOME',
     tagBg: 'bg-[#DEC4AC] text-[#432E22]',
     thumbnailBg: 'bg-[#F2E7DC]',
   },
   couple: {
-    emoji: '🍷',
-    badgeIcon: '❤️',
+    icon: Wine,
     label: 'COUPLE',
     tagBg: 'bg-[#E5BFB0] text-[#432E22]',
     thumbnailBg: 'bg-[#F7EAE5]',
   },
   other: {
-    emoji: '☕',
-    badgeIcon: '✨',
+    icon: Coffee,
     label: 'SHARED',
     tagBg: 'bg-[#DFC8B2] text-[#432E22]',
     thumbnailBg: 'bg-[#F4ECE2]',
@@ -83,11 +91,20 @@ export default function DashboardPage() {
   const [joinCode, setJoinCode] = useState('');
   const [joinError, setJoinError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string>('idle');
+
+  useEffect(() => {
+    if (!repo.syncManager) return;
+    setSyncStatus(repo.syncManager.getState().status);
+    return repo.syncManager.subscribe((st) => {
+      setSyncStatus(st.status);
+    });
+  }, [repo]);
 
   useEffect(() => {
     hasClientHydrated = true;
     setMounted(true);
-    repo.syncManager?.kick('dashboard_mount', false).catch(() => { });
+    repo.syncManager?.kick('dashboard_mount', activeGroups.length === 0).catch(() => { });
   }, [repo]);
 
   // Realtime subscription on Dashboard for changes across all user groups
@@ -391,7 +408,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div className="w-9 h-9 rounded-full bg-[#3D5638] text-white flex items-center justify-center text-sm font-bold shadow-xs">
-                ↙
+                <ArrowDownLeft className="w-4 h-4" />
               </div>
             </div>
           </section>
@@ -407,7 +424,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div className="w-9 h-9 rounded-full bg-[#9A3C2D] text-white flex items-center justify-center text-sm font-bold shadow-xs">
-                ↗
+                <ArrowUpRight className="w-4 h-4" />
               </div>
             </div>
           </section>
@@ -416,7 +433,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-[#EAEFE8] rounded-2xl border border-[#D5E2D2] p-3.5 space-y-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#3D5638] flex items-center gap-1">
-                  <span>↙</span> <span>You are owed</span>
+                  <ArrowDownLeft className="w-3.5 h-3.5" /> <span>You are owed</span>
                 </span>
                 <span className="text-lg sm:text-xl font-extrabold text-[#3D5638] block truncate">
                   +{formatMinor(primaryOwed, primaryCurrency)}
@@ -425,7 +442,7 @@ export default function DashboardPage() {
 
               <div className="bg-[#F8EDEA] rounded-2xl border border-[#EBD7D3] p-3.5 space-y-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#9A3C2D] flex items-center gap-1">
-                  <span>↗</span> <span>You owe</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" /> <span>You owe</span>
                 </span>
                 <span className="text-lg sm:text-xl font-extrabold text-[#9A3C2D] block truncate">
                   -{formatMinor(primaryOwe, primaryCurrency)}
@@ -447,27 +464,46 @@ export default function DashboardPage() {
           </div>
 
           {activeGroups.length === 0 ? (
-            <EmptyState
-              icon={
-                <div className="w-12 h-12 rounded-2xl bg-[#543A2A]/10 text-[#543A2A] flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-ghost preview-icon">
-                    <path d="M15 10v1" />
-                    <path d="M7.528 20.472a1.6 1.6 0 012.277 0l1.057 1.056a1.6 1.6 0 002.276 0l1.057-1.056a1.6 1.6 0 012.277 0l1.114 1.114a1.4 1.4 0 002.414-1V10a8 8 0 00-16 0v10.586a1.4 1.4 0 002.414 1z" />
-                    <path d="M9 10v1" />
-                  </svg>
+            syncStatus === 'syncing' ? (
+              <div className="space-y-3 animate-pulse">
+                <div className="h-20 bg-white rounded-2xl border border-[#E5D9CC] flex items-center p-4 gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-[#EFE4D6] shrink-0" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 bg-[#EFE4D6] rounded-md w-1/3" />
+                    <div className="h-3 bg-[#EFE4D6] rounded-md w-1/2" />
+                  </div>
                 </div>
-              }
-              title="No active groups yet"
-              description="Create a group or join with a code to start splitting expenses."
-              actionText="Create Your First Group"
-              onAction={() => setIsCreateModalOpen(true)}
-              secondaryActionText="Join with Code"
-              onSecondaryAction={() => {
-                setJoinError(null);
-                setJoinCode('');
-                setIsJoinModalOpen(true);
-              }}
-            />
+                <div className="h-20 bg-white rounded-2xl border border-[#E5D9CC] flex items-center p-4 gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-[#EFE4D6] shrink-0" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 bg-[#EFE4D6] rounded-md w-1/3" />
+                    <div className="h-3 bg-[#EFE4D6] rounded-md w-1/2" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <EmptyState
+                icon={
+                  <div className="w-12 h-12 rounded-2xl bg-[#543A2A]/10 text-[#543A2A] flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-ghost preview-icon">
+                      <path d="M15 10v1" />
+                      <path d="M7.528 20.472a1.6 1.6 0 012.277 0l1.057 1.056a1.6 1.6 0 002.276 0l1.057-1.056a1.6 1.6 0 012.277 0l1.114 1.114a1.4 1.4 0 002.414-1V10a8 8 0 00-16 0v10.586a1.4 1.4 0 002.414 1z" />
+                      <path d="M9 10v1" />
+                    </svg>
+                  </div>
+                }
+                title="No active groups yet"
+                description="Create a group or join with a code to start splitting expenses."
+                actionText="Create Your First Group"
+                onAction={() => setIsCreateModalOpen(true)}
+                secondaryActionText="Join with Code"
+                onSecondaryAction={() => {
+                  setJoinError(null);
+                  setJoinCode('');
+                  setIsJoinModalOpen(true);
+                }}
+              />
+            )
           ) : (
             <div className="space-y-3">
               {activeGroups.map((g) => {
@@ -487,9 +523,9 @@ export default function DashboardPage() {
                       {/* Icon & Group Name (No category pill tag) */}
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div
-                          className={`w-12 h-12 rounded-2xl ${config.thumbnailBg} flex items-center justify-center text-2xl border border-[#E5D9CC]/60 shrink-0`}
+                          className={`w-12 h-12 rounded-2xl ${config.thumbnailBg} flex items-center justify-center border border-[#E5D9CC]/60 shrink-0`}
                         >
-                          <span>{config.emoji}</span>
+                          {React.createElement(config.icon, { className: "w-5 h-5 text-[#543A2A]" })}
                         </div>
 
                         <div className="min-w-0">
@@ -503,12 +539,12 @@ export default function DashboardPage() {
                       <div className="text-right shrink-0">
                         {userBalance > 0 ? (
                           <div className="text-sm font-bold text-[#3D5638] flex items-center justify-end gap-1">
-                            <span>↙</span>
+                            <ArrowDownLeft className="w-3.5 h-3.5" />
                             <span>You are owed {formatMinor(userBalance, g.currency)}</span>
                           </div>
                         ) : userBalance < 0 ? (
                           <div className="text-sm font-bold text-[#9A3C2D] flex items-center justify-end gap-1">
-                            <span>↗</span>
+                            <ArrowUpRight className="w-3.5 h-3.5" />
                             <span>You owe {formatMinor(Math.abs(userBalance), g.currency)}</span>
                           </div>
                         ) : (
@@ -556,9 +592,9 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsSelectTargetModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-white hover:bg-[#EFE4D6] border border-[#E5D9CC] font-bold text-xs text-[#432E22] flex items-center justify-center transition"
+                className="w-8 h-8 rounded-full bg-white hover:bg-[#EFE4D6] border border-[#E5D9CC] font-bold text-xs text-[#432E22] flex items-center justify-center transition cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -584,7 +620,9 @@ export default function DashboardPage() {
                           }}
                           className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white border border-[#E5D9CC] hover:bg-[#EFE4D6]/50 active:scale-[0.99] transition text-left cursor-pointer"
                         >
-                          <span className="text-xl">{cfg.emoji}</span>
+                          <div className={`w-8 h-8 rounded-xl ${cfg.thumbnailBg} flex items-center justify-center border border-[#E5D9CC]/60 shrink-0`}>
+                            {React.createElement(cfg.icon, { className: "w-4 h-4 text-[#543A2A]" })}
+                          </div>
                           <span className="text-sm font-bold text-[#432E22] truncate">{g.name}</span>
                         </button>
                       );
@@ -657,9 +695,9 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-white hover:bg-[#EFE4D6] border border-[#E5D9CC] font-bold text-xs text-[#432E22] flex items-center justify-center transition"
+                className="w-8 h-8 rounded-full bg-white hover:bg-[#EFE4D6] border border-[#E5D9CC] font-bold text-xs text-[#432E22] flex items-center justify-center transition cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -701,7 +739,9 @@ export default function DashboardPage() {
                           : 'bg-white text-[#432E22] border-[#E5D9CC] hover:bg-[#EFE4D6]/50'
                           }`}
                       >
-                        <span>{cfg.emoji}</span>
+                        {React.createElement(cfg.icon, {
+                          className: `w-4 h-4 ${newGroupType === t ? 'text-white' : 'text-[#543A2A]'}`
+                        })}
                         <span>{cfg.label}</span>
                       </button>
                     );
@@ -729,9 +769,10 @@ export default function DashboardPage() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3.5 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] font-bold text-sm tracking-wider uppercase shadow-md active:scale-[0.99] transition cursor-pointer"
+                  className="w-full py-3.5 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] font-bold text-sm tracking-wider uppercase shadow-md active:scale-[0.99] transition cursor-pointer flex items-center justify-center gap-2"
                 >
-                  CREATE & OPEN GROUP →
+                  <span>CREATE & OPEN GROUP</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </form>
@@ -761,7 +802,7 @@ export default function DashboardPage() {
                 }}
                 className="w-8 h-8 rounded-full bg-white hover:bg-[#EFE4D6] border border-[#E5D9CC] font-bold text-xs text-[#432E22] flex items-center justify-center transition cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -791,9 +832,10 @@ export default function DashboardPage() {
                 <button
                   type="submit"
                   disabled={isJoining}
-                  className="w-full py-3.5 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] font-bold text-sm tracking-wider uppercase shadow-md active:scale-[0.99] disabled:opacity-50 transition cursor-pointer"
+                  className="w-full py-3.5 rounded-full bg-[#543A2A] hover:bg-[#432E20] text-[#FAF6F0] font-bold text-sm tracking-wider uppercase shadow-md active:scale-[0.99] disabled:opacity-50 transition cursor-pointer flex items-center justify-center gap-2"
                 >
-                  {isJoining ? 'JOINING GROUP...' : 'JOIN GROUP →'}
+                  <span>{isJoining ? 'JOINING GROUP...' : 'JOIN GROUP'}</span>
+                  {!isJoining && <ArrowRight className="w-4 h-4" />}
                 </button>
               </div>
             </form>

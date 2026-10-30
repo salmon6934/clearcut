@@ -4,6 +4,7 @@
 // Warm Cafe Pairwise Debt Breakdown & Debt Simplification
 
 import React, { useState } from 'react';
+import { Scale, CheckCircle2, ArrowRight } from 'lucide-react';
 import type { PairwiseDebt } from '../lib/engine/balances';
 import type { SuggestedPayment } from '../lib/data/types';
 import type { Member } from '../lib/data/types';
@@ -53,7 +54,7 @@ export function PairwiseBreakdown({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-bold text-[#432E22] flex items-center gap-2">
-            <span>⚖️</span>
+            <Scale className="w-4 h-4 text-[#543A2A]" />
             <span>Debt Simplification</span>
           </h3>
           <p className="text-xs text-[#8D7868] mt-0.5">
@@ -93,7 +94,7 @@ export function PairwiseBreakdown({
       {/* Debt List */}
       {isAllSettled ? (
         <div className="text-center py-6 px-4 rounded-2xl bg-[#FAF6F0] border border-[#E5D9CC]">
-          <span className="text-2xl mb-1 block">✓</span>
+          <CheckCircle2 className="w-8 h-8 mx-auto text-[#2E7D32] mb-1" />
           <p className="text-xs sm:text-sm font-bold text-[#432E22]">
             All settled up!
           </p>
@@ -141,9 +142,9 @@ export function PairwiseBreakdown({
                   </div>
 
                   <div className="min-w-0 text-xs">
-                    <div className="truncate font-bold text-[#432E22]">
+                    <div className="truncate font-bold text-[#432E22] flex items-center">
                       <span className={isDebtorMe ? 'text-[#A83232] font-extrabold' : ''}>{debtorName}</span>
-                      <span className="text-[#8D7868] font-normal mx-1.5">➔</span>
+                      <ArrowRight className="w-3 h-3 text-[#8D7868] mx-1.5 shrink-0 inline" />
                       <span className={isCreditorMe ? 'text-[#2E4226] font-extrabold' : ''}>{creditorName}</span>
                     </div>
                   </div>

@@ -6,6 +6,7 @@
 import React, { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, AlertTriangle, Users } from 'lucide-react';
 import { useRepository } from '../../lib/data/hooks';
 import { getAuthState } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
@@ -134,7 +135,7 @@ function JoinContent() {
             href="/"
             className="w-10 h-10 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] flex items-center justify-center text-[#543A2A] hover:bg-[#EFE4D6] shadow-sm active:scale-95 transition cursor-pointer"
           >
-            ←
+            <ArrowLeft className="w-4 h-4" />
           </Link>
           <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#432E22]">
             Join Group
@@ -144,14 +145,15 @@ function JoinContent() {
 
         <div className="p-6 sm:p-8 rounded-3xl border border-[#E5D9CC] bg-white shadow-xl space-y-5">
           {error && (
-            <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#FCE8E6] text-[#A83232] border border-[#F5C2C0] shadow-xs">
-              ⚠️ {error}
+            <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#FCE8E6] text-[#A83232] border border-[#F5C2C0] shadow-xs flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-[#A83232]" />
+              <span>{error}</span>
             </div>
           )}
 
           <div className="text-center space-y-1.5">
-            <div className="w-14 h-14 rounded-2xl bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center mx-auto text-2xl shadow-sm">
-              🤝
+            <div className="w-14 h-14 rounded-2xl bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center mx-auto shadow-sm">
+              <Users className="w-7 h-7 text-[#543A2A]" />
             </div>
             <h2 className="text-base font-bold text-[#432E22]">You&apos;re Invited!</h2>
             <p className="text-xs text-[#8D7868] font-medium">

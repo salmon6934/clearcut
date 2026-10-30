@@ -6,6 +6,7 @@
 import React, { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Users, AlertTriangle } from 'lucide-react';
 import { useRepository, useGroup, useGroupMembers } from '../../../lib/data/hooks';
 import { useAuth } from '../../../lib/auth';
 import { ExpenseForm } from '../../../components/ExpenseForm';
@@ -130,7 +131,7 @@ function ExpenseEntryContent() {
         {/* Group Sub-Chips */}
         <div className="flex items-center gap-2 pt-1">
           <div className="px-3 py-1 rounded-full border border-[#E5D9CC] bg-white text-xs font-bold uppercase shadow-sm flex items-center gap-1.5 text-[#432E22]">
-            <span>👥</span>
+            <Users className="w-3.5 h-3.5 text-[#543A2A]" />
             <span className="truncate">{group.name}</span>
           </div>
         </div>
@@ -139,7 +140,7 @@ function ExpenseEntryContent() {
         {isConflict && (
           <div className="p-4 rounded-2xl bg-[#FFF8EE] border border-[#ECD3B6] shadow-xs flex items-center justify-between gap-3 text-[#8C5E23]">
             <div className="flex items-center gap-2.5">
-              <span className="text-lg">⚠️</span>
+              <AlertTriangle className="w-5 h-5 text-[#8C5E23] shrink-0" />
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider">
                   Version Conflict (409)

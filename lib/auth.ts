@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { isNativePlatform } from './native/platform';
 import { LocalStorageAdapter } from './data/storage-adapter';
+import { resetRepository, getRepositoryInstance } from './data/hooks';
 import { registerPushToken, unregisterPushToken } from './native/push';
 import { scheduleWeeklySettleReminder, cancelWeeklySettleReminder } from './native/notifications';
 import type { Profile } from './data/types';
@@ -141,7 +142,10 @@ export function initAuth(): () => void {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         registerPushToken(user.id).catch((e) => console.warn('[Auth] Push registration warning:', e));
         scheduleWeeklySettleReminder().catch(() => {});
+        getRepositoryInstance(user.id).syncManager?.kick('user_login', true).catch(() => {});
       }
+    } else if (event === 'SIGNED_OUT') {
+      resetRepository();
     }
 
     currentAuthState = {
@@ -221,6 +225,7 @@ export async function signInWithGoogle(): Promise<{ session: Session | null; err
           isLoading: false,
         };
         notifyListeners();
+        getRepositoryInstance(user.id).syncManager?.kick('user_login', true).catch(() => {});
       }
 
       return { session: data.session, error: null };
@@ -307,6 +312,7 @@ export async function verifyOtp(
         isLoading: false,
       };
       notifyListeners();
+      getRepositoryInstance(user.id).syncManager?.kick('user_login', true).catch(() => {});
     }
 
     return { session: res.data.session, error: null };
@@ -337,11 +343,12 @@ export async function signOut(): Promise<void> {
     // Graceful fallback
   }
 
-  // 3. Clear local storage
+  // 3. Clear local storage and reset repository singletons and caches
   if (userId) {
     const userStorage = new LocalStorageAdapter(userId);
     userStorage.clear();
   }
+  resetRepository();
 
   // 4. Update reactive state and notify listeners
   currentAuthState = {

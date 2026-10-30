@@ -8,6 +8,17 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
+  AlertTriangle,
+  Check,
+  Link2,
+  Shield,
+  User,
+  Crown,
+  LogOut,
+  Trash2,
+  ArrowLeft,
+} from 'lucide-react';
+import {
   useRepository,
   useGroup,
   useGroupMembers,
@@ -265,7 +276,7 @@ function GroupMembersContent() {
             href={`/group?id=${groupId}`}
             className="w-10 h-10 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] flex items-center justify-center text-[#543A2A] hover:bg-[#EFE4D6] shadow-sm active:scale-95 transition cursor-pointer"
           >
-            ←
+            <ArrowLeft className="w-4 h-4" />
           </Link>
 
           <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#432E22]">
@@ -276,20 +287,23 @@ function GroupMembersContent() {
         </header>
 
         {errorMessage && (
-          <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#FCE8E6] text-[#A83232] border border-[#F5C2C0] shadow-xs">
-            ⚠️ {errorMessage}
+          <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#FCE8E6] text-[#A83232] border border-[#F5C2C0] shadow-xs flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-[#A83232]" />
+            <span>{errorMessage}</span>
           </div>
         )}
 
         {successMessage && (
-          <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#E8F0E4] text-[#2E4226] border border-[#C5D9BE] shadow-xs">
-            ✓ {successMessage}
+          <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#E8F0E4] text-[#2E4226] border border-[#C5D9BE] shadow-xs flex items-center gap-1.5">
+            <Check className="w-4 h-4 shrink-0 text-[#2E4226]" />
+            <span>{successMessage}</span>
           </div>
         )}
 
         {claimLinkStatus && (
-          <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#FAF0E6] text-[#8C5E23] border border-[#ECD3B6] shadow-xs">
-            🔗 {claimLinkStatus}
+          <div className="p-3.5 rounded-2xl text-xs font-semibold bg-[#FAF0E6] text-[#8C5E23] border border-[#ECD3B6] shadow-xs flex items-center gap-1.5">
+            <Link2 className="w-4 h-4 shrink-0 text-[#8C5E23]" />
+            <span>{claimLinkStatus}</span>
           </div>
         )}
 
@@ -415,7 +429,8 @@ function GroupMembersContent() {
                         onClick={() => handleGenerateClaimLink(m)}
                         className="text-xs font-bold text-[#543A2A] hover:underline flex items-center gap-1 cursor-pointer"
                       >
-                        🔗 Copy Invite Link
+                        <Link2 className="w-3.5 h-3.5" />
+                        <span>Copy Invite Link</span>
                       </button>
                     </div>
                   )}
@@ -462,7 +477,7 @@ function GroupMembersContent() {
                   className="w-full py-2.5 px-4 text-xs font-bold rounded-2xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] hover:bg-[#EFE4D6] text-left flex items-center justify-between shadow-xs cursor-pointer"
                 >
                   <span>Promote to Admin</span>
-                  <span>🛡️</span>
+                  <Shield className="w-4 h-4 text-[#543A2A]" />
                 </button>
               )}
 
@@ -472,7 +487,7 @@ function GroupMembersContent() {
                   className="w-full py-2.5 px-4 text-xs font-bold rounded-2xl border border-[#E5D9CC] bg-[#FAF6F0] text-[#432E22] hover:bg-[#EFE4D6] text-left flex items-center justify-between shadow-xs cursor-pointer"
                 >
                   <span>Demote to Member</span>
-                  <span>👤</span>
+                  <User className="w-4 h-4 text-[#543A2A]" />
                 </button>
               )}
 
@@ -483,7 +498,7 @@ function GroupMembersContent() {
                   className="w-full py-2.5 px-4 text-xs font-bold rounded-2xl border border-[#ECD3B6] bg-[#FAF0E6] text-[#8C5E23] hover:bg-[#F4E4D0] text-left flex items-center justify-between shadow-xs cursor-pointer"
                 >
                   <span>Transfer Group Ownership</span>
-                  <span>👑</span>
+                  <Crown className="w-4 h-4 text-[#8C5E23]" />
                 </button>
               )}
 
@@ -493,7 +508,7 @@ function GroupMembersContent() {
                 className="w-full py-2.5 px-4 text-xs font-bold rounded-2xl border border-[#F5C2C0] bg-[#FCE8E6] text-[#A83232] hover:bg-[#F8D8D5] text-left flex items-center justify-between shadow-xs cursor-pointer"
               >
                 <span>Remove from Group</span>
-                <span>🚪</span>
+                <LogOut className="w-4 h-4 text-[#A83232]" />
               </button>
             </div>
 
@@ -603,8 +618,8 @@ function GroupMembersContent() {
       {isSoleOwnerLeaveBlockedOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-sm bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-2xl text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl border border-[#ECD3B6] bg-[#FAF0E6] text-[#8C5E23] flex items-center justify-center mx-auto text-xl font-bold">
-              👑
+            <div className="w-12 h-12 rounded-2xl border border-[#ECD3B6] bg-[#FAF0E6] text-[#8C5E23] flex items-center justify-center mx-auto shadow-xs">
+              <Crown className="w-6 h-6 text-[#8C5E23]" />
             </div>
             <h2 className="text-base font-bold text-[#432E22]">Transfer Ownership First</h2>
             <p className="text-xs text-[#8D7868] leading-relaxed">
@@ -624,8 +639,8 @@ function GroupMembersContent() {
       {isLeaveModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-sm bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-2xl text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl border border-[#F5C2C0] bg-[#FCE8E6] text-[#A83232] flex items-center justify-center mx-auto text-xl font-bold">
-              !
+            <div className="w-12 h-12 rounded-2xl border border-[#F5C2C0] bg-[#FCE8E6] text-[#A83232] flex items-center justify-center mx-auto shadow-xs">
+              <AlertTriangle className="w-6 h-6 text-[#A83232]" />
             </div>
             <h2 className="text-base font-bold text-[#432E22]">Cannot Leave Group</h2>
             <p className="text-xs text-[#8D7868] leading-relaxed">
@@ -650,7 +665,9 @@ function GroupMembersContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-sm bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-2xl space-y-4">
             <div className="text-center space-y-1">
-              <span className="text-3xl">🗑️</span>
+              <div className="w-12 h-12 rounded-2xl border border-[#F5C2C0] bg-[#FCE8E6] flex items-center justify-center mx-auto mb-2">
+                <Trash2 className="w-6 h-6 text-[#A83232]" />
+              </div>
               <h2 className="text-base font-bold text-[#432E22]">Delete Group?</h2>
               <p className="text-xs text-[#8D7868]">
                 Are you sure you want to delete &quot;{group.name}&quot;? This will archive the group for all members.

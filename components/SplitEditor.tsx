@@ -5,6 +5,7 @@
 // Implements T-2.1.2 with real-time recalculation, invariant safety, and instant UI feedback.
 
 import React, { useState, useEffect } from 'react';
+import { Check } from 'lucide-react';
 import type { Member, SplitType } from '../lib/data/types';
 import type { Split } from '../lib/engine/split';
 import {
@@ -23,6 +24,7 @@ interface SplitEditorProps {
   currency: string;
   initialSplitType?: SplitType;
   initialSplits?: Split[];
+  selectedParticipantIds?: string[];
   onChange: (splits: Split[], isValid: boolean, splitType: SplitType) => void;
 }
 
@@ -41,12 +43,12 @@ export function SplitEditor({
   currency,
   initialSplitType = 'equal',
   initialSplits,
+  selectedParticipantIds,
   onChange,
 }: SplitEditorProps) {
   const [mode, setMode] = useState<UiSplitMode>(() => {
     if (initialSplitType === 'exact') return 'exact';
     if (initialSplitType === 'percentage') return 'percentage';
-    if (initialSplitType === 'shares') return 'shares';
     return 'equal';
   });
 
@@ -57,6 +59,14 @@ export function SplitEditor({
     }
     return new Set(members.map((m) => m.id));
   });
+
+  // Update equal participants when controlled selectedParticipantIds changes (e.g. from presets)
+  useEffect(() => {
+    if (selectedParticipantIds && selectedParticipantIds.length > 0) {
+      setEqualParticipantIds(new Set(selectedParticipantIds));
+      setMode('equal');
+    }
+  }, [selectedParticipantIds]);
 
   // Exact split per-member text inputs
   const [exactInputs, setExactInputs] = useState<Record<string, string>>(() => {
@@ -189,15 +199,15 @@ export function SplitEditor({
       <div className="pt-2 border-t border-[#E5D9CC] flex items-center justify-end text-xs font-semibold">
         {deltaMinor === 0 ? (
           <span className="font-bold text-[#2E4226] bg-[#E8F0E4] border border-[#C5D9BE] px-3 py-1 rounded-full shadow-xs">
-            Matched ({currency === 'INR' ? '₹' : ''}{formatMinor(totalAmountMinor, currency)})
+            Matched ({formatMinor(totalAmountMinor, currency)})
           </span>
         ) : deltaMinor > 0 ? (
           <span className="font-bold text-[#8C5E23] bg-[#FAF0E6] border border-[#ECD3B6] px-3 py-1 rounded-full shadow-xs">
-            {currency === 'INR' ? '₹' : ''}{formatMinor(deltaMinor, currency)} remaining
+            {formatMinor(deltaMinor, currency)} remaining
           </span>
         ) : (
           <span className="font-bold text-[#A83232] bg-[#FCE8E6] border border-[#F5C2C0] px-3 py-1 rounded-full shadow-xs">
-            Over by {currency === 'INR' ? '₹' : ''}{formatMinor(Math.abs(deltaMinor), currency)}
+            Over by {formatMinor(Math.abs(deltaMinor), currency)}
           </span>
         )}
       </div>
@@ -361,8 +371,8 @@ export function SplitEditor({
         </label>
       </div>
 
-      {/* 4-Mode Tabs Bar */}
-      <div className="grid grid-cols-4 gap-1 p-1 bg-white border border-[#E5D9CC] rounded-full text-xs font-bold">
+      {/* 3-Mode Tabs Bar */}
+      <div className="grid grid-cols-3 gap-1 p-1 bg-white border border-[#E5D9CC] rounded-full text-xs font-bold">
         <button
           type="button"
           onClick={() => setMode('equal')}
@@ -396,17 +406,6 @@ export function SplitEditor({
         >
           % Percent
         </button>
-        <button
-          type="button"
-          onClick={() => setMode('shares')}
-          className={`py-1.5 rounded-full transition-all cursor-pointer ${
-            mode === 'shares'
-              ? 'bg-[#543A2A] text-[#FAF6F0] shadow-xs'
-              : 'text-[#8D7868] hover:text-[#543A2A]'
-          }`}
-        >
-          Shares
-        </button>
       </div>
 
       {/* Per-Person Share Box */}
@@ -416,7 +415,7 @@ export function SplitEditor({
             Per-Person Share
           </span>
           <span className="px-3 py-1 rounded-full bg-[#EFE4D6] text-[#543A2A] font-bold text-sm">
-            ₹{formatMinor(equalPerPersonMinor, currency)}
+            {formatMinor(equalPerPersonMinor, currency)}
           </span>
         </div>
       )}
@@ -460,7 +459,7 @@ export function SplitEditor({
                         isChecked ? 'bg-[#543A2A] text-[#FAF6F0] border-[#543A2A]' : 'bg-white border-[#E5D9CC]'
                       }`}
                     >
-                      {isChecked ? '✓' : ''}
+                      {isChecked && <Check className="w-3.5 h-3.5 text-white" />}
                     </div>
 
                     <div className="w-8 h-8 rounded-full bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center font-bold text-xs shrink-0">
@@ -479,7 +478,7 @@ export function SplitEditor({
 
                   <div className="text-right shrink-0 space-y-0.5">
                     <div className="text-xs sm:text-sm font-bold text-[#432E22]">
-                      ₹{formatMinor(owedAmount, currency)}
+                      {formatMinor(owedAmount, currency)}
                     </div>
                     {isChecked && (
                       <span className="px-2 py-0.5 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] text-[9px] font-semibold text-[#8D7868]">
@@ -554,7 +553,7 @@ export function SplitEditor({
                       {m.displayName}
                     </span>
                     <span className="text-[10px] font-semibold text-[#8D7868]">
-                      ≈ ₹{formatMinor(owed, currency)}
+                      ≈ {formatMinor(owed, currency)}
                     </span>
                   </div>
                   <div className="relative w-28 shrink-0">
@@ -605,7 +604,7 @@ export function SplitEditor({
                       {m.displayName}
                     </span>
                     <span className="text-[10px] text-[#8D7868] font-semibold">
-                      ₹{formatMinor(owed, currency)}
+                      {formatMinor(owed, currency)}
                     </span>
                   </div>
 
@@ -661,7 +660,7 @@ export function SplitEditor({
                       {m.displayName}
                     </span>
                     <span className="text-[10px] font-bold text-[#543A2A] bg-[#EFE4D6] px-2 py-0.5 rounded-full">
-                      Total: ₹{formatMinor(owed, currency)}
+                      Total: {formatMinor(owed, currency)}
                     </span>
                   </div>
 

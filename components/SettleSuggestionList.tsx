@@ -4,6 +4,7 @@
 // Warm Cafe Minimal Transaction List derived from Deterministic Debt Simplification
 
 import React from 'react';
+import { Check, ArrowRight } from 'lucide-react';
 import type { SuggestedPayment, Member } from '../lib/data/types';
 import { formatMinor } from '../lib/engine/money';
 
@@ -38,7 +39,7 @@ export function SettleSuggestionList({
     return (
       <div className="text-center py-6 px-4 rounded-3xl bg-white border border-[#E5D9CC] shadow-xs">
         <div className="w-8 h-8 rounded-full bg-[#E8F0E4] text-[#2E4226] flex items-center justify-center mx-auto mb-2 text-sm font-bold">
-          ✓
+          <Check className="w-4 h-4 text-[#2E4226]" />
         </div>
         <p className="text-xs font-bold uppercase text-[#432E22]">
           No payments needed
@@ -77,17 +78,17 @@ export function SettleSuggestionList({
                 </div>
 
                 <div className="min-w-0">
-                  <div className="text-xs sm:text-sm font-bold text-[#432E22] truncate">
+                  <div className="text-xs sm:text-sm font-bold text-[#432E22] truncate flex items-center">
                     <span className={isYouDebtor ? 'font-extrabold text-[#A83232] bg-[#FCE8E6] px-1.5 py-0.5 rounded-full' : ''}>
                       {fromName}
-                    </span>{' '}
-                    <span className="text-[#8D7868] font-normal">→</span>{' '}
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-[#8D7868] inline mx-1.5 shrink-0" />
                     <span className={isYouCreditor ? 'font-extrabold text-[#2E4226] bg-[#E8F0E4] px-1.5 py-0.5 rounded-full' : ''}>
                       {toName}
                     </span>
                   </div>
                   <div className="text-xs font-bold text-[#543A2A] mt-0.5">
-                    ₹{formatMinor(sug.amountMinor, currency)}
+                    {formatMinor(sug.amountMinor, currency)}
                   </div>
                 </div>
               </div>

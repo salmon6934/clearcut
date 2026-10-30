@@ -4,6 +4,16 @@
 // Warm Cafe Settlement Transaction Row
 
 import React, { useState } from 'react';
+import {
+  Banknote,
+  QrCode,
+  Smartphone,
+  CreditCard,
+  Landmark,
+  Handshake,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react';
 import type { Settlement, Member } from '../lib/data/types';
 import { formatMinor } from '../lib/engine/money';
 
@@ -15,13 +25,13 @@ export interface SettlementRowProps {
   onDelete?: (settlementId: string) => void;
 }
 
-const METHOD_LABELS: Record<string, { label: string; icon: string }> = {
-  cash: { label: 'Cash', icon: '💵' },
-  upi: { label: 'UPI', icon: '⚡' },
-  venmo: { label: 'Venmo', icon: '📱' },
-  paypal: { label: 'PayPal', icon: '🅿️' },
-  bank: { label: 'Bank', icon: '🏦' },
-  other: { label: 'Other', icon: '🤝' },
+const METHOD_LABELS: Record<string, { label: string; icon: LucideIcon }> = {
+  cash: { label: 'Cash', icon: Banknote },
+  upi: { label: 'UPI', icon: QrCode },
+  venmo: { label: 'Venmo', icon: Smartphone },
+  paypal: { label: 'PayPal', icon: CreditCard },
+  bank: { label: 'Bank', icon: Landmark },
+  other: { label: 'Other', icon: Handshake },
 };
 
 export function SettlementRow({
@@ -51,8 +61,9 @@ export function SettlementRow({
       !settlement.createdBy);
 
   const methodInfo = settlement.method
-    ? METHOD_LABELS[settlement.method] || { label: settlement.method, icon: '💸' }
-    : { label: 'Payment', icon: '💸' };
+    ? METHOD_LABELS[settlement.method] || { label: settlement.method, icon: Wallet }
+    : { label: 'Payment', icon: Wallet };
+  const MethodIcon = methodInfo.icon;
 
   const dateStr = settlement.settledOn || settlement.createdAt || '';
   const formattedDate = dateStr
@@ -64,8 +75,8 @@ export function SettlementRow({
       <div className="flex items-start justify-between gap-3">
         {/* Left: Icon & Narrative */}
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-full bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center text-base shrink-0 shadow-xs">
-            {methodInfo.icon}
+          <div className="w-10 h-10 rounded-full bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center shrink-0 shadow-xs">
+            <MethodIcon className="w-4 h-4 text-[#543A2A]" />
           </div>
 
           <div className="min-w-0">
@@ -96,7 +107,7 @@ export function SettlementRow({
         {/* Right: Amount & Delete action */}
         <div className="text-right shrink-0">
           <div className="text-sm font-bold text-[#432E22]">
-            ₹{formatMinor(settlement.amountMinor, currency)}
+            {formatMinor(settlement.amountMinor, currency)}
           </div>
 
           {canDelete && (

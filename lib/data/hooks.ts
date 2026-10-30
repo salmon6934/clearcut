@@ -10,7 +10,7 @@ import { LocalStorageAdapter } from './storage-adapter';
 import { DomainRepository } from './repository';
 import { SyncLifecycleManager } from '../sync/lifecycle';
 import { supabase } from '../supabase';
-import { getAuthState } from '../auth';
+import { getAuthState, useAuth } from '../auth';
 import {
   useStoreSelector,
   selectAllGroups,
@@ -21,6 +21,7 @@ import {
   selectGroupLedger,
   selectDashboardTotals,
   selectFriendsBalances,
+  clearSelectorCaches,
   type GroupLedgerResult,
   type DashboardTotals,
   type FriendSummary,
@@ -35,6 +36,22 @@ let singletonSyncCleanup: (() => void) | null = null;
 let singletonRepo: DomainRepository | null = null;
 let currentStoreUserId: string | null = null;
 
+export function resetRepository(): void {
+  if (singletonSyncCleanup) {
+    try {
+      singletonSyncCleanup();
+    } catch {}
+    singletonSyncCleanup = null;
+  }
+  currentStoreUserId = null;
+  singletonAdapter = null;
+  singletonStore = null;
+  singletonQueue = null;
+  singletonSync = null;
+  singletonRepo = null;
+  clearSelectorCaches();
+}
+
 export function getRepositoryInstance(userId?: string): DomainRepository {
   const currentUserId = userId || getAuthState().user?.id || 'local_user';
 
@@ -45,6 +62,7 @@ export function getRepositoryInstance(userId?: string): DomainRepository {
       } catch {}
       singletonSyncCleanup = null;
     }
+    clearSelectorCaches();
     currentStoreUserId = currentUserId;
     singletonAdapter = new LocalStorageAdapter(currentUserId);
     singletonStore = new LocalStore(singletonAdapter);
@@ -57,13 +75,20 @@ export function getRepositoryInstance(userId?: string): DomainRepository {
     );
     singletonSyncCleanup = singletonSync.init();
     singletonRepo = new DomainRepository(singletonStore, singletonQueue, singletonSync);
+
+    // If switching to an authenticated user, immediately kick a full sync
+    if (currentUserId && currentUserId !== 'local_user') {
+      singletonSync.kick('user_login', true).catch(() => {});
+    }
   }
 
   return singletonRepo!;
 }
 
 export function useRepository(userId?: string): DomainRepository {
-  return useMemo(() => getRepositoryInstance(userId), [userId]);
+  const authState = useAuth();
+  const effectiveUserId = userId || authState.user?.id || 'local_user';
+  return useMemo(() => getRepositoryInstance(effectiveUserId), [effectiveUserId]);
 }
 
 export function useAllGroups(repo: DomainRepository, includeArchived = false): Group[] {

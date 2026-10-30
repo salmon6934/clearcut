@@ -4,6 +4,18 @@
 // Brew & Browse Warm Cafe Search & Category Filter Chips
 
 import React from 'react';
+import {
+  Search,
+  X,
+  Layers,
+  Utensils,
+  Car,
+  Lightbulb,
+  Ticket,
+  Building2,
+  Package,
+  type LucideIcon,
+} from 'lucide-react';
 
 export interface ExpenseFiltersProps {
   searchQuery: string;
@@ -14,14 +26,19 @@ export interface ExpenseFiltersProps {
   filteredCount: number;
 }
 
-export const FILTER_CATEGORIES = [
-  { id: 'all', label: 'All', icon: '🏷️' },
-  { id: 'food', label: 'Food', icon: '🍽️', matches: ['food', 'drinks', 'groceries'] },
-  { id: 'transport', label: 'Transit', icon: '🚕', matches: ['transport', 'taxi', 'fuel'] },
-  { id: 'utilities', label: 'Bills', icon: '💡', matches: ['utilities', 'bills'] },
-  { id: 'entertainment', label: 'Fun', icon: '🎟️', matches: ['entertainment', 'movies'] },
-  { id: 'lodging', label: 'Stay', icon: '🏨', matches: ['lodging', 'hotel', 'stay'] },
-  { id: 'other', label: 'Other', icon: '📦', matches: ['other', 'general', 'shopping'] },
+export const FILTER_CATEGORIES: {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  matches?: string[];
+}[] = [
+  { id: 'all', label: 'All', icon: Layers },
+  { id: 'food', label: 'Food', icon: Utensils, matches: ['food', 'drinks', 'groceries'] },
+  { id: 'transport', label: 'Transit', icon: Car, matches: ['transport', 'taxi', 'fuel'] },
+  { id: 'utilities', label: 'Bills', icon: Lightbulb, matches: ['utilities', 'bills'] },
+  { id: 'entertainment', label: 'Fun', icon: Ticket, matches: ['entertainment', 'movies'] },
+  { id: 'lodging', label: 'Stay', icon: Building2, matches: ['lodging', 'hotel', 'stay'] },
+  { id: 'other', label: 'Other', icon: Package, matches: ['other', 'general', 'shopping'] },
 ];
 
 export function ExpenseFilters({
@@ -44,14 +61,7 @@ export function ExpenseFilters({
       {/* Search Input Bar */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8D7868]">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
+          <Search className="w-4 h-4" />
         </div>
         <input
           type="text"
@@ -68,7 +78,7 @@ export function ExpenseFilters({
             aria-label="Clear search query"
           >
             <span className="w-5 h-5 rounded-full bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center text-[10px] font-bold">
-              ✕
+              <X className="w-3 h-3" />
             </span>
           </button>
         )}
@@ -79,6 +89,7 @@ export function ExpenseFilters({
         <div className="flex items-center gap-1.5 shrink-0">
           {FILTER_CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat.id;
+            const CatIcon = cat.icon;
             return (
               <button
                 key={cat.id}
@@ -90,7 +101,7 @@ export function ExpenseFilters({
                     : 'bg-white text-[#432E22] border border-[#E5D9CC] hover:bg-[#FAF6F0]'
                 }`}
               >
-                <span>{cat.icon}</span>
+                <CatIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-[#FAF6F0]' : 'text-[#7A6251]'}`} />
                 <span>{cat.label}</span>
               </button>
             );

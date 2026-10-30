@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
+import { Check, ArrowLeft } from 'lucide-react';
 import { LocalStorageAdapter } from '../../../lib/data/storage-adapter';
 import { MutationQueue, MutationRecord } from '../../../lib/data/queue';
 import { LocalStore } from '../../../lib/data/local-store';
@@ -143,7 +144,7 @@ function SyncDiagnosticsContent() {
           href="/settings"
           className="w-10 h-10 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] flex items-center justify-center text-[#543A2A] hover:bg-[#EFE4D6] shadow-sm active:scale-95 transition cursor-pointer"
         >
-          ←
+          <ArrowLeft className="w-4 h-4" />
         </Link>
         <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#432E22]">
           Sync Diagnostics
@@ -159,8 +160,8 @@ function SyncDiagnosticsContent() {
 
       {items.length === 0 ? (
         <div className="text-center py-12 px-6 rounded-3xl border border-[#E5D9CC] bg-white shadow-sm">
-          <div className="w-12 h-12 rounded-2xl border border-[#C5D9BE] bg-[#E8F0E4] text-[#2E4226] flex items-center justify-center mx-auto mb-3 text-xl font-bold">
-            ✓
+          <div className="w-12 h-12 rounded-2xl border border-[#C5D9BE] bg-[#E8F0E4] text-[#2E4226] flex items-center justify-center mx-auto mb-3 shadow-xs">
+            <Check className="w-6 h-6 text-[#2E4226]" />
           </div>
           <h2 className="text-base font-bold text-[#432E22] mb-1">All Synced!</h2>
           <p className="text-xs text-[#8D7868] font-medium">

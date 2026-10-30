@@ -167,9 +167,10 @@ export class SyncLifecycleManager {
       return this.getState();
     }
 
-    // Skip passive page-mount refreshes if we already synced within the last 30 seconds
+    // Skip passive page-mount refreshes if we already synced within the last 30 seconds AND store is not empty
     const isPassiveMount = reason?.endsWith('_mount');
-    if (isPassiveMount && Date.now() - this.lastSyncTimestamp < 30_000) {
+    const isStoreEmpty = this.store.getAllGroups(true).length === 0;
+    if (isPassiveMount && !isStoreEmpty && Date.now() - this.lastSyncTimestamp < 30_000) {
       return this.getState();
     }
 
@@ -177,7 +178,12 @@ export class SyncLifecycleManager {
       return this.getState();
     }
 
-    const isManual = reason === 'manual_refresh' || reason === 'user_clean_resync' || reason === 'online_event';
+    const isManual =
+      reason === 'manual_refresh' ||
+      reason === 'user_clean_resync' ||
+      reason === 'online_event' ||
+      reason === 'user_login' ||
+      reason === 'auth_change';
     if (isManual || fullRefresh) {
       resetBackoff();
     }
@@ -191,8 +197,8 @@ export class SyncLifecycleManager {
       // 1. Push drain pending mutations
       const pushResult = await drainQueue(this.queue, this.store, this.supabase, isManual || fullRefresh);
 
-      // 2. Pull remote changes (passive mounts use incremental diffs rather than full refresh)
-      const shouldFullRefresh = isPassiveMount ? false : fullRefresh;
+      // 2. Pull remote changes (passive mounts use incremental diffs unless store is empty or fullRefresh is requested)
+      const shouldFullRefresh = isPassiveMount ? (isStoreEmpty || fullRefresh) : fullRefresh;
       await pullChanges(this.store, this.queue, this.adapter, this.supabase, 500, shouldFullRefresh);
 
       const now = new Date();

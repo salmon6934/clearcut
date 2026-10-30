@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Check, AlertTriangle, RotateCw } from 'lucide-react';
 import {
   useAuth,
   updateProfile,
@@ -157,8 +158,9 @@ export default function ProfilePage() {
 
             <div className="flex items-center justify-between pt-1">
               {saveSuccess ? (
-                <span className="text-xs font-bold text-[#2E4226] bg-[#E8F0E4] px-3 py-1 rounded-full border border-[#C5D9BE]">
-                  ✓ Saved!
+                <span className="text-xs font-bold text-[#2E4226] bg-[#E8F0E4] px-3 py-1 rounded-full border border-[#C5D9BE] flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Saved!</span>
                 </span>
               ) : (
                 <span />
@@ -190,9 +192,16 @@ export default function ProfilePage() {
             type="button"
             onClick={handleHardRefresh}
             disabled={isRefreshing}
-            className="px-4 py-2 text-xs font-bold uppercase rounded-full bg-[#D4B89B] hover:bg-[#C8A27A] text-[#432E22] shadow-xs active:scale-95 disabled:opacity-50 transition cursor-pointer shrink-0"
+            className="px-4 py-2 text-xs font-bold uppercase rounded-full bg-[#D4B89B] hover:bg-[#C8A27A] text-[#432E22] shadow-xs active:scale-95 disabled:opacity-50 transition cursor-pointer shrink-0 flex items-center gap-1.5"
           >
-            {isRefreshing ? 'Refreshing...' : '↻ Re-fetch DB'}
+            {isRefreshing ? (
+              <span>Refreshing...</span>
+            ) : (
+              <>
+                <RotateCw className="w-3.5 h-3.5" />
+                <span>Re-fetch DB</span>
+              </>
+            )}
           </button>
         </div>
 
@@ -230,7 +239,7 @@ export default function ProfilePage() {
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
           <div className="max-w-md w-full bg-white border border-[#E5D9CC] rounded-3xl p-6 shadow-xl space-y-4">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">⚠️</span>
+              <AlertTriangle className="w-6 h-6 text-[#A83232] shrink-0" />
               <div>
                 <h3 className="text-base font-bold text-[#A83232]">
                   Delete Account Permanently?

@@ -44,6 +44,16 @@ const ledgerCache = new Map<string, GroupLedgerResult>();
 const dashboardCache = new Map<string, DashboardTotals>();
 const friendsCache = new Map<string, FriendSummary[]>();
 
+export function clearSelectorCaches(): void {
+  allGroupsCache.clear();
+  membersCache.clear();
+  expensesCache.clear();
+  settlementsCache.clear();
+  ledgerCache.clear();
+  dashboardCache.clear();
+  friendsCache.clear();
+}
+
 export function selectGroup(store: LocalStore, groupId: string): Group | undefined {
   return store.getGroup(groupId);
 }

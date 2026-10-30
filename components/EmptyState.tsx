@@ -4,6 +4,7 @@
 // Brew & Browse Warm Cafe Empty State Component
 
 import React from 'react';
+import { Coffee } from 'lucide-react';
 
 interface EmptyStateProps {
   icon?: React.ReactNode;
@@ -35,8 +36,8 @@ export function EmptyState({
           {icon}
         </div>
       ) : (
-        <div className="w-16 h-16 rounded-2xl bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center text-2xl mb-4">
-          ☕
+        <div className="w-16 h-16 rounded-2xl bg-[#EFE4D6] text-[#543A2A] flex items-center justify-center mb-4">
+          <Coffee className="w-8 h-8 text-[#543A2A]" />
         </div>
       )}
 

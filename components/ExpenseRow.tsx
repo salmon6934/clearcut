@@ -4,6 +4,19 @@
 // Neo-Brutalist Expense Row Component
 
 import React from 'react';
+import {
+  Receipt,
+  Utensils,
+  Wine,
+  ShoppingCart,
+  Car,
+  Building2,
+  Ticket,
+  ShoppingBag,
+  FileText,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import type { Expense, Member } from '../lib/data/types';
 import { formatMinor } from '../lib/engine/money';
 
@@ -15,15 +28,15 @@ interface ExpenseRowProps {
   onDelete?: () => void;
 }
 
-const CATEGORY_ICONS: Record<string, string> = {
-  general: '🧾',
-  food: '🍽️',
-  drinks: '🍻',
-  groceries: '🛒',
-  transport: '🚕',
-  hotel: '🏨',
-  entertainment: '🎟️',
-  shopping: '🛍️',
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  general: Receipt,
+  food: Utensils,
+  drinks: Wine,
+  groceries: ShoppingCart,
+  transport: Car,
+  hotel: Building2,
+  entertainment: Ticket,
+  shopping: ShoppingBag,
 };
 
 export function ExpenseRow({
@@ -70,7 +83,7 @@ export function ExpenseRow({
   const isBorrower = netUser < 0;
   const isNeutral = netUser === 0;
 
-  const icon = CATEGORY_ICONS[expense.category || 'general'] || '🧾';
+  const CategoryIcon = CATEGORY_ICONS[expense.category || 'general'] || Receipt;
 
   return (
     <div
@@ -91,14 +104,16 @@ export function ExpenseRow({
         {/* Category & Title */}
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-base shrink-0">{icon}</span>
+            <span className="p-1 rounded bg-[#F8F5F0] border border-[#E5D9CC] flex items-center justify-center shrink-0">
+              <CategoryIcon className="w-3.5 h-3.5 text-[#543A2A]" />
+            </span>
             <h4 className="text-sm font-bold truncate text-[#432E22]">
               {expense.title}
             </h4>
 
             {expense.receiptPath && (
               <span title="Receipt attached" className="text-[#8D7868] shrink-0 inline-flex items-center text-xs">
-                📄
+                <FileText className="w-3.5 h-3.5" />
               </span>
             )}
 
@@ -163,7 +178,7 @@ export function ExpenseRow({
             title="Delete expense"
             className="w-8 h-8 rounded-full border border-[#E5D9CC] bg-white hover:bg-[#F8EDEA] text-[#8D7868] hover:text-[#9A3C2D] font-bold flex items-center justify-center transition"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         )}
       </div>

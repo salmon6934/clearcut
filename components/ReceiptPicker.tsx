@@ -4,6 +4,7 @@
 // Stitch-Engineered Attached Bill Card with Neo-Brutalist Layout
 
 import React, { useState, useEffect, useRef } from 'react';
+import { Receipt, Camera, Plus, Folder, X } from 'lucide-react';
 import {
   captureReceiptPhoto,
   compressImageToJpeg,
@@ -118,7 +119,7 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm">🧾</span>
+          <Receipt className="w-4 h-4 text-[#543A2A]" />
           <span className="text-xs font-bold text-[#432E22] uppercase tracking-wider">
             Attached Bill
           </span>
@@ -173,7 +174,7 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
               onClick={handleRemove}
               className="w-8 h-8 rounded-full border border-[#F5C2C0] bg-[#FCE8E6] text-[#A83232] font-bold flex items-center justify-center hover:bg-[#F8D8D5] transition active:scale-95 cursor-pointer"
             >
-              ✕
+              <X className="w-4 h-4" />
             </button>
           </div>
 
@@ -184,7 +185,7 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
               onClick={() => handleCapture('camera')}
               className="py-2.5 px-3 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] hover:bg-[#EFE4D6] text-[#432E22] text-xs font-bold shadow-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <span>📷</span>
+              <Camera className="w-4 h-4" />
               <span>Retake</span>
             </button>
             <button
@@ -193,7 +194,7 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
               onClick={() => handleCapture('photos')}
               className="py-2.5 px-3 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] hover:bg-[#EFE4D6] text-[#432E22] text-xs font-bold shadow-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <span>➕</span>
+              <Plus className="w-4 h-4" />
               <span>Add More</span>
             </button>
           </div>
@@ -206,7 +207,7 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
             onClick={() => handleCapture('camera')}
             className="flex items-center justify-center gap-2 py-3 px-3 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] hover:bg-[#EFE4D6] text-[#432E22] text-xs font-bold shadow-xs transition active:scale-95 cursor-pointer"
           >
-            <span>📷</span>
+            <Camera className="w-4 h-4" />
             <span>Camera</span>
           </button>
           <button
@@ -215,7 +216,7 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
             onClick={() => handleCapture('photos')}
             className="flex items-center justify-center gap-2 py-3 px-3 rounded-full border border-[#E5D9CC] bg-[#FAF6F0] hover:bg-[#EFE4D6] text-[#432E22] text-xs font-bold shadow-xs transition active:scale-95 cursor-pointer"
           >
-            <span>📁</span>
+            <Folder className="w-4 h-4" />
             <span>Gallery / File</span>
           </button>
         </div>
@@ -230,9 +231,10 @@ export const ReceiptPicker: React.FC<ReceiptPickerProps> = ({
           <div className="relative max-w-lg max-h-[85vh] w-full flex flex-col items-center">
             <button
               onClick={() => setShowModal(false)}
-              className="absolute -top-12 right-0 px-3 py-1.5 bg-[#FAF6F0] border border-[#E5D9CC] rounded-full text-[#432E22] font-bold text-xs shadow-md cursor-pointer hover:bg-[#EFE4D6]"
+              className="absolute -top-12 right-0 px-3 py-1.5 bg-[#FAF6F0] border border-[#E5D9CC] rounded-full text-[#432E22] font-bold text-xs shadow-md cursor-pointer hover:bg-[#EFE4D6] flex items-center gap-1"
             >
-              Close ✕
+              <span>Close</span>
+              <X className="w-3.5 h-3.5" />
             </button>
             <img
               src={currentDisplayUrl}

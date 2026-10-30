@@ -5,6 +5,7 @@
 // Brew & Browse Warm Cafe Styling
 
 import React, { useEffect, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { haptics } from '../lib/native/haptics';
 
 export interface ToastProps {
@@ -51,7 +52,7 @@ export function Toast({
       <div className="relative overflow-hidden rounded-2xl bg-[#543A2A] text-[#FAF6F0] shadow-lg border border-[#3E291C] px-4 py-3.5 flex items-center justify-between gap-3">
         {/* Toast Message */}
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="text-base shrink-0">🗑️</span>
+          <Trash2 className="w-4 h-4 shrink-0 text-[#FAF6F0]" />
           <span className="text-xs sm:text-sm font-semibold truncate text-[#FAF6F0]">
             {message}
           </span>

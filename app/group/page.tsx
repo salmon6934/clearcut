@@ -6,6 +6,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Search, Folder, Receipt, Zap, type LucideIcon } from 'lucide-react';
 import {
   useRepository,
   useGroup,
@@ -30,7 +31,9 @@ import { Toast } from '../../components/Toast';
 import { GroupRealtimeManager, type RealtimeStatus } from '../../lib/sync/realtime';
 import { showToast } from '../../lib/ui/toast';
 import { haptics } from '../../lib/native/haptics';
-import type { SuggestedPayment, SettlementDraft, Expense } from '../../lib/data/types';
+import { ExpenseDetailModal } from '../../components/ExpenseDetailModal';
+import { ExpenseEditModal } from '../../components/ExpenseEditModal';
+import type { SuggestedPayment, SettlementDraft, Expense, ExpenseDraft } from '../../lib/data/types';
 
 type GroupTab = 'expenses' | 'balances' | 'activity';
 
@@ -58,6 +61,10 @@ function GroupDetailContent() {
 
   const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<SuggestedPayment | null>(null);
+
+  // Expense Inspection and Edit Modals
+  const [viewingExpense, setViewingExpense] = useState<Expense | null>(null);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   // Realtime postgres_changes subscription
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>('disconnected');
@@ -109,7 +116,7 @@ function GroupDetailContent() {
     return (
       <div className="min-h-screen bg-transparent text-[#432E22] p-6 flex flex-col items-center justify-center text-center">
         <EmptyState
-          icon={<span className="text-2xl">🔍</span>}
+          icon={<Search className="w-6 h-6 text-[#543A2A]" />}
           title="Group not found"
           description="This group may have been deleted or does not exist locally."
           actionText="Back to Groups"
@@ -132,7 +139,7 @@ function GroupDetailContent() {
     title: string;
     subtitle: string;
     amountMinor?: number;
-    badgeEmoji: string;
+    badgeIcon: LucideIcon;
   }
 
   const groupActivities: GroupActivityEvent[] = [];
@@ -144,7 +151,7 @@ function GroupDetailContent() {
       timestamp: group.createdAt || new Date().toISOString(),
       title: `Group "${group.name}" initialized`,
       subtitle: `${members.length} member${members.length > 1 ? 's' : ''} enrolled in ${group.currency}`,
-      badgeEmoji: '📁',
+      badgeIcon: Folder,
     });
   }
 
@@ -161,7 +168,7 @@ function GroupDetailContent() {
       title: `Added "${exp.title}"`,
       subtitle: payerNames ? `Paid by ${payerNames}` : `Expense recorded`,
       amountMinor: exp.amountMinor,
-      badgeEmoji: '🧾',
+      badgeIcon: Receipt,
     });
   }
 
@@ -176,7 +183,7 @@ function GroupDetailContent() {
       title: `${fromName} paid ${toName}`,
       subtitle: s.note || `Settlement recorded`,
       amountMinor: s.amountMinor,
-      badgeEmoji: '⚡',
+      badgeIcon: Zap,
     });
   }
 
@@ -221,6 +228,11 @@ function GroupDetailContent() {
   const handleSettle = (draft: SettlementDraft) => {
     repo.addSettlement(draft, currentUserId);
     setIsSettleModalOpen(false);
+  };
+
+  const handleEditExpense = (draft: ExpenseDraft) => {
+    repo.editExpense(draft, currentUserId);
+    showToast('Expense updated');
   };
 
   const handleDeleteExpense = (expense: Expense) => {
@@ -346,7 +358,7 @@ function GroupDetailContent() {
                     members={members}
                     currentMemberId={currentMemberId}
                     onClick={() => {
-                      router.push(`/group/expense?id=${group.id}&expenseId=${exp.id}`);
+                      setViewingExpense(exp);
                     }}
                     onDelete={() => handleDeleteExpense(exp)}
                   />
@@ -463,51 +475,54 @@ function GroupDetailContent() {
           <div className="space-y-3">
             {groupActivities.length === 0 ? (
               <EmptyState
-                icon={<span>⚡</span>}
+                icon={<Zap className="w-6 h-6 text-[#543A2A]" />}
                 title="No activity recorded yet"
                 description="When you record expenses or log settlements, activity will appear here."
               />
             ) : (
-              groupActivities.map((act) => (
-                <div
-                  key={act.id}
-                  className="rounded-3xl border border-[#E5D9CC] p-4 shadow-xs flex items-center justify-between gap-3 bg-white"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full border border-[#E5D9CC] flex items-center justify-center text-sm shrink-0 bg-[#EFE4D6] text-[#543A2A]">
-                      {act.badgeEmoji}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-[#432E22] tracking-tight">
-                          {act.title}
-                        </span>
+              groupActivities.map((act) => {
+                const BadgeIcon = act.badgeIcon;
+                return (
+                  <div
+                    key={act.id}
+                    className="rounded-3xl border border-[#E5D9CC] p-4 shadow-xs flex items-center justify-between gap-3 bg-white"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full border border-[#E5D9CC] flex items-center justify-center shrink-0 bg-[#EFE4D6] text-[#543A2A]">
+                        <BadgeIcon className="w-4 h-4 text-[#543A2A]" />
                       </div>
-                      <p className="text-xs text-[#8D7868] font-medium truncate mt-0.5">
-                        {act.subtitle}
-                      </p>
-                      <p className="text-[10px] text-[#A89689] font-medium mt-0.5">
-                        {new Date(act.timestamp).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {typeof act.amountMinor === 'number' && (
-                      <div className="text-right">
-                        <div className="font-bold text-sm text-[#432E22]">
-                          ₹ {formatMinor(act.amountMinor, group.currency)}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-[#432E22] tracking-tight">
+                            {act.title}
+                          </span>
                         </div>
+                        <p className="text-xs text-[#8D7868] font-medium truncate mt-0.5">
+                          {act.subtitle}
+                        </p>
+                        <p className="text-[10px] text-[#A89689] font-medium mt-0.5">
+                          {new Date(act.timestamp).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
                       </div>
-                    )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {typeof act.amountMinor === 'number' && (
+                        <div className="text-right">
+                          <div className="font-bold text-sm text-[#432E22]">
+                            {formatMinor(act.amountMinor, group.currency)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
@@ -537,6 +552,35 @@ function GroupDetailContent() {
         initialToMemberId={selectedSuggestion?.toMemberId}
         initialAmountMinor={selectedSuggestion?.amountMinor}
         onSettle={handleSettle}
+      />
+
+      {/* Expense Detail Modal */}
+      <ExpenseDetailModal
+        isOpen={!!viewingExpense}
+        onClose={() => setViewingExpense(null)}
+        expense={viewingExpense}
+        members={members}
+        currentMemberId={currentMemberId}
+        onEdit={(exp) => {
+          setViewingExpense(null);
+          setEditingExpense(exp);
+        }}
+        onDelete={(exp) => {
+          handleDeleteExpense(exp);
+          setViewingExpense(null);
+        }}
+      />
+
+      {/* Expense Edit Modal */}
+      <ExpenseEditModal
+        isOpen={!!editingExpense}
+        onClose={() => setEditingExpense(null)}
+        expense={editingExpense}
+        groupId={group.id}
+        currency={group.currency}
+        members={members}
+        currentUserId={currentUserId}
+        onSave={handleEditExpense}
       />
 
       {/* 5-Second Undo Toast */}
