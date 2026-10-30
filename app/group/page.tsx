@@ -112,7 +112,7 @@ function GroupDetailContent() {
     );
   }
 
-  if (!groupId || !group) {
+  if (!groupId || !group || Boolean(group.deletedAt)) {
     return (
       <div className="min-h-screen bg-transparent text-[#432E22] p-6 flex flex-col items-center justify-center text-center">
         <EmptyState
@@ -120,7 +120,7 @@ function GroupDetailContent() {
           title="Group not found"
           description="This group may have been deleted or does not exist locally."
           actionText="Back to Groups"
-          onAction={() => router.push('/')}
+          onAction={() => router.replace('/')}
         />
       </div>
     );

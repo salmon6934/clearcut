@@ -4,6 +4,7 @@ import { supabase } from './supabase';
 import { isNativePlatform } from './native/platform';
 import { LocalStorageAdapter } from './data/storage-adapter';
 import { resetRepository, getRepositoryInstance } from './data/hooks';
+import { clearSelectorCaches } from './data/selectors';
 import { registerPushToken, unregisterPushToken } from './native/push';
 import { scheduleWeeklySettleReminder, cancelWeeklySettleReminder } from './native/notifications';
 import type { Profile } from './data/types';
@@ -385,33 +386,65 @@ export async function updateProfile(
       })
       .catch(() => {});
 
-    // 2. Try updating existing profile row first (profiles_update_policy allows this)
-    const { data: updateData, error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        display_name: trimmedName,
-        default_currency: currency,
-        updated_at: now,
-      })
-      .eq('id', user.id)
-      .select();
+    // 2. Try atomic RPC first (which updates profiles and synchronizes group_members in PostgreSQL)
+    let rpcSuccess = false;
+    try {
+      const { error: rpcError } = await supabase.rpc('update_profile_v1', {
+        p_display_name: trimmedName,
+        p_default_currency: currency,
+      });
+      if (!rpcError) {
+        rpcSuccess = true;
+      }
+    } catch {
+      // Fallback to direct table updates below
+    }
 
-    // 3. If no row existed yet, attempt upsert/insert
-    if (!updateError && (!updateData || updateData.length === 0)) {
+    // 3. Fallback direct table updates if RPC was not available
+    if (!rpcSuccess) {
+      // Try updating existing profile row (profiles_update_policy allows this)
+      const { data: updateData, error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          display_name: trimmedName,
+          default_currency: currency,
+          updated_at: now,
+        })
+        .eq('id', user.id)
+        .select();
+
+      // If no row existed yet, attempt upsert/insert
+      if (!updateError && (!updateData || updateData.length === 0)) {
+        try {
+          await supabase
+            .from('profiles')
+            .upsert({
+              id: user.id,
+              display_name: trimmedName,
+              default_currency: currency,
+              updated_at: now,
+            });
+        } catch {
+          // Graceful fallback
+        }
+      }
+
+      // Also attempt to update active group_members for this user
       try {
         await supabase
-          .from('profiles')
-          .upsert({
-            id: user.id,
+          .from('group_members')
+          .update({
             display_name: trimmedName,
-            default_currency: currency,
             updated_at: now,
-          });
+          })
+          .eq('user_id', user.id)
+          .is('left_at', null);
       } catch {
-        // Fallback gracefully if table RLS prevents insert before migration is applied
+        // Handled by Postgres trigger if migration is applied
       }
     }
 
+    // 4. Update reactive auth state and notify listeners
     currentAuthState = {
       ...currentAuthState,
       profile: {
@@ -422,6 +455,27 @@ export async function updateProfile(
       },
     };
     notifyListeners();
+
+    // 5. Update local store memberships across all groups for the current user
+    try {
+      const repo = getRepositoryInstance(user.id);
+      const store = repo.store;
+      const allMembers = store.getAllMembers();
+      const userMembers = allMembers.filter((m) => m.userId === user.id && !m.leftAt);
+      for (const m of userMembers) {
+        store.upsertMember({
+          ...m,
+          displayName: trimmedName,
+          updatedAt: now,
+        });
+      }
+      clearSelectorCaches();
+
+      // Trigger sync manager to kick push/pull so peer devices receive the update
+      repo.syncManager?.kick('profile_update', true).catch(() => {});
+    } catch (storeErr) {
+      console.warn('[updateProfile] Local store sync warning:', storeErr);
+    }
 
     return { error: null };
   } catch (err) {

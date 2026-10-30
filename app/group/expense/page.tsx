@@ -39,12 +39,12 @@ function ExpenseEntryContent() {
     : undefined;
   const serverSnapshot = conflictMutation?.conflictDetail?.server_snapshot || conflictMutation?.conflictDetail;
 
-  if (!groupId || !group) {
+  if (!groupId || !group || Boolean(group.deletedAt)) {
     return (
       <div className="min-h-screen bg-transparent text-[#432E22] p-6 flex flex-col items-center justify-center text-center">
         <h2 className="text-base font-bold text-[#432E22] mb-2">Group not found</h2>
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.replace('/')}
           className="px-5 py-2.5 text-xs font-bold rounded-full bg-[#543A2A] text-[#FAF6F0] hover:bg-[#432E20] shadow-sm transition active:scale-95 cursor-pointer"
         >
           Back to Groups

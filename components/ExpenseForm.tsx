@@ -21,6 +21,8 @@ import {
   ArrowLeft,
   Handshake,
   Check,
+  SlidersHorizontal,
+  ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
 import type { Member, ExpenseDraft, SplitType } from '../lib/data/types';
@@ -79,6 +81,9 @@ export function ExpenseForm({
   const [isSplitsValid, setIsSplitsValid] = useState(false);
   const [splitType, setSplitType] = useState<SplitType>(
     initialDraft?.splitType || 'equal'
+  );
+  const [showMoreSplitOptions, setShowMoreSplitOptions] = useState<boolean>(
+    Boolean(initialDraft?.splitType && initialDraft.splitType !== 'equal')
   );
 
   // Identify current user member and friends for presets
@@ -268,7 +273,52 @@ export function ExpenseForm({
         </div>
       </div>
 
-      {/* Quick Presets for Split */}
+      {/* Category Selector */}
+      <div className="space-y-2">
+        <label className="block text-xs font-bold text-[#6E5849] uppercase tracking-wider">
+          CATEGORY
+        </label>
+
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {CATEGORIES.map((c) => {
+            const isSelected = category === c.id;
+            const CategoryIcon = c.icon;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategory(c.id)}
+                className={`px-3.5 py-2 rounded-full text-xs font-bold shrink-0 transition flex items-center gap-1.5 cursor-pointer border ${isSelected
+                    ? 'bg-[#543A2A] text-[#FAF6F0] border-[#543A2A] shadow-sm'
+                    : 'bg-white text-[#543A2A] border-[#E5D9CC] hover:bg-[#EFE4D6]'
+                  }`}
+              >
+                <CategoryIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-[#FAF6F0]' : 'text-[#7A6251]'}`} />
+                <span>{c.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Who Paid Section */}
+      <PayerEditor
+        members={members}
+        totalAmountMinor={totalAmountMinor}
+        currency={currency}
+        currentUserId={currentUserId}
+        selectedPayerId={controlledPayerId}
+        initialPayers={initialDraft?.splits.map((s) => ({
+          memberId: s.memberId,
+          paidMinor: s.paidMinor,
+        }))}
+        onChange={(p, valid) => {
+          setPayers(p);
+          setIsPayersValid(valid);
+        }}
+      />
+
+      {/* Quick Presets for Split (Placed below Category and Paid By) */}
       {otherMembers.length > 0 && (
         <div className="space-y-2.5 p-3.5 sm:p-4 rounded-3xl border border-[#E5D9CC] bg-[#FAF6F0] shadow-xs">
           <div className="flex items-center justify-between">
@@ -398,65 +448,46 @@ export function ExpenseForm({
         </div>
       )}
 
-      {/* Category Selector */}
-      <div className="space-y-2">
-        <label className="block text-xs font-bold text-[#6E5849] uppercase tracking-wider">
-          CATEGORY
-        </label>
+      {/* More Split Options Section (Hidden by default, appears at the bottom on click) */}
+      <div className="space-y-3 pt-1">
+        <button
+          type="button"
+          onClick={() => setShowMoreSplitOptions((prev) => !prev)}
+          className="w-full py-3 px-4 rounded-2xl border border-[#E5D9CC] bg-[#FAF6F0] hover:bg-[#EFE4D6] text-[#543A2A] text-xs font-bold uppercase tracking-wider transition active:scale-[0.99] flex items-center justify-between cursor-pointer shadow-xs"
+        >
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4 text-[#7A6251]" />
+            <span>{showMoreSplitOptions ? 'Hide Split Options' : 'More Split Options'}</span>
+            {!showMoreSplitOptions && splitType !== 'equal' && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#543A2A] text-[#FAF6F0]">
+                {splitType.toUpperCase()}
+              </span>
+            )}
+          </div>
+          <ChevronDown
+            className={`w-4 h-4 text-[#8D7868] transition-transform duration-200 ${
+              showMoreSplitOptions ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
 
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {CATEGORIES.map((c) => {
-            const isSelected = category === c.id;
-            const CategoryIcon = c.icon;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setCategory(c.id)}
-                className={`px-3.5 py-2 rounded-full text-xs font-bold shrink-0 transition flex items-center gap-1.5 cursor-pointer border ${isSelected
-                    ? 'bg-[#543A2A] text-[#FAF6F0] border-[#543A2A] shadow-sm'
-                    : 'bg-white text-[#543A2A] border-[#E5D9CC] hover:bg-[#EFE4D6]'
-                  }`}
-              >
-                <CategoryIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-[#FAF6F0]' : 'text-[#7A6251]'}`} />
-                <span>{c.label}</span>
-              </button>
-            );
-          })}
+        {/* Split Distribution (Hidden by default) */}
+        <div className={showMoreSplitOptions ? 'block space-y-3 animate-fadeIn' : 'hidden'}>
+          <SplitEditor
+            members={members}
+            totalAmountMinor={totalAmountMinor}
+            currency={currency}
+            initialSplitType={initialDraft?.splitType}
+            initialSplits={initialDraft?.splits}
+            selectedParticipantIds={controlledParticipantIds}
+            onChange={(splits, valid, type) => {
+              setOwedSplits(splits);
+              setIsSplitsValid(valid);
+              setSplitType(type);
+            }}
+          />
         </div>
       </div>
-
-      {/* Who Paid Section */}
-      <PayerEditor
-        members={members}
-        totalAmountMinor={totalAmountMinor}
-        currency={currency}
-        currentUserId={currentUserId}
-        selectedPayerId={controlledPayerId}
-        initialPayers={initialDraft?.splits.map((s) => ({
-          memberId: s.memberId,
-          paidMinor: s.paidMinor,
-        }))}
-        onChange={(p, valid) => {
-          setPayers(p);
-          setIsPayersValid(valid);
-        }}
-      />
-
-      {/* Split Section */}
-      <SplitEditor
-        members={members}
-        totalAmountMinor={totalAmountMinor}
-        currency={currency}
-        initialSplitType={initialDraft?.splitType}
-        initialSplits={initialDraft?.splits}
-        selectedParticipantIds={controlledParticipantIds}
-        onChange={(splits, valid, type) => {
-          setOwedSplits(splits);
-          setIsSplitsValid(valid);
-          setSplitType(type);
-        }}
-      />
 
       {/* Sticky Save Expense CTA */}
       <div className="pt-2 sticky bottom-4 z-30">
