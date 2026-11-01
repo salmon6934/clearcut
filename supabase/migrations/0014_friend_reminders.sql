@@ -58,11 +58,15 @@ begin
   -- 6. Build push dispatch payload
   v_url := coalesce(
     current_setting('app.settings.notify_group_url', true),
-    'https://<project-ref>.supabase.co/functions/v1/notify-group'
+    'https://btzqkyxmziksmdkjgqmf.supabase.co/functions/v1/notify-group'
   );
   v_secret := coalesce(
     current_setting('app.settings.webhook_secret', true),
     'clearcut-webhook-secret-key'
+  );
+  v_anon_key := coalesce(
+    current_setting('app.settings.anon_key', true),
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0enFreXhtemlrc21ka2pncW1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3MjE1MDksImV4cCI6MjEwNzI5NzUwOX0.aiXTFKJMWx4FAM5IUn995WUgk3GBe554zBTxL65cskA'
   );
 
   v_payload := jsonb_build_object(
@@ -83,6 +87,8 @@ begin
       url := v_url,
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || v_anon_key,
+        'apikey', v_anon_key,
         'x-webhook-secret', v_secret
       ),
       body := v_payload
