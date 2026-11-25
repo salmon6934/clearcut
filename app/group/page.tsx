@@ -47,7 +47,7 @@ function GroupDetailContent() {
   const repo = useRepository(currentUserId);
   const group = useGroup(repo, groupId);
   const members = useGroupMembers(repo, groupId);
-  const allExpenses = useGroupExpenses(repo, groupId, false);
+  const allExpenses = useGroupExpenses(repo, groupId, true);
   const settlements = useGroupSettlements(repo, groupId, false);
   const ledger = useGroupLedger(repo, groupId);
 
@@ -236,9 +236,6 @@ function GroupDetailContent() {
   };
 
   const handleDeleteExpense = (expense: Expense) => {
-    if (!window.confirm(`Are you sure you want to delete "${expense.title}"?`)) {
-      return;
-    }
     repo.deleteExpense(expense.id);
     setUndoToast({ id: expense.id, title: expense.title });
   };

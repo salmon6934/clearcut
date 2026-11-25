@@ -320,10 +320,9 @@ async function executeMutationRpc(
     }
 
     case 'DELETE_EXPENSE': {
-      const { expenseId, groupId, baseVersion } = payload;
+      const { expenseId, baseVersion } = payload;
       const { data, error } = await supabase.rpc('delete_expense_v1', {
         p_expense_id: expenseId,
-        p_group_id: groupId,
         p_base_version: baseVersion,
         p_mutation_id: clientMutationId,
       });
@@ -351,10 +350,9 @@ async function executeMutationRpc(
     }
 
     case 'DELETE_SETTLEMENT': {
-      const { settlementId, groupId } = payload;
+      const { settlementId } = payload;
       const { data, error } = await supabase.rpc('delete_settlement_v1', {
         p_settlement_id: settlementId,
-        p_group_id: groupId,
         p_mutation_id: clientMutationId,
       });
       if (error) throw error;
@@ -569,7 +567,17 @@ function updateLocalStoreEntityOnSync(
     }
 
     case 'DELETE_EXPENSE': {
-      store.softDeleteExpense(entityId);
+      const exp = store.getExpense(entityId);
+      if (exp) {
+        store.upsertExpense({
+          ...exp,
+          deletedAt: rpcResponse?.deleted_at || exp.deletedAt || new Date().toISOString(),
+          version: exp.version + 1,
+          _sync: 'synced',
+        });
+      } else {
+        store.softDeleteExpense(entityId);
+      }
       break;
     }
 
@@ -582,7 +590,16 @@ function updateLocalStoreEntityOnSync(
     }
 
     case 'DELETE_SETTLEMENT': {
-      store.softDeleteSettlement(entityId);
+      const set = store.getSettlement(entityId);
+      if (set) {
+        store.upsertSettlement({
+          ...set,
+          deletedAt: rpcResponse?.deleted_at || set.deletedAt || new Date().toISOString(),
+          _sync: 'synced',
+        });
+      } else {
+        store.softDeleteSettlement(entityId);
+      }
       break;
     }
   }

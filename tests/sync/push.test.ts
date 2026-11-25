@@ -324,4 +324,93 @@ describe('T-1.7.1: Push Drain Engine with Error Classification', () => {
     expect(joinedMember?.displayName).toBe('Friend');
     expect(joinedMember?._sync).toBe('synced');
   });
+
+  it('successfully executes DELETE_EXPENSE and DELETE_SETTLEMENT mutations and marks entities synced', async () => {
+    const { store, queue } = setup();
+
+    const expense: Expense = {
+      id: 'exp-del-1',
+      groupId: 'grp-del-1',
+      title: 'Dinner',
+      amountMinor: 5000,
+      currency: 'INR',
+      expenseDate: '2026-11-25',
+      splitType: 'equal',
+      splits: [],
+      createdBy: 'u-1',
+      version: 1,
+      _sync: 'synced',
+    };
+    store.upsertExpense(expense);
+
+    queue.enqueue('DELETE_EXPENSE', 'exp-del-1', {
+      expenseId: 'exp-del-1',
+      groupId: 'grp-del-1',
+      baseVersion: 1,
+    });
+
+    const mockSupabase = {
+      rpc: vi.fn().mockImplementation((fn: string, params: any) => {
+        if (fn === 'delete_expense_v1') {
+          // Verify arguments match Postgres function signature (no extra p_group_id)
+          expect(params.p_expense_id).toBe('exp-del-1');
+          expect(params.p_base_version).toBe(1);
+          expect(params.p_mutation_id).toBeDefined();
+          expect(params.p_group_id).toBeUndefined();
+          return Promise.resolve({
+            data: { id: 'exp-del-1', deleted_at: '2026-11-25T12:00:00Z' },
+            error: null,
+          });
+        }
+        if (fn === 'delete_settlement_v1') {
+          expect(params.p_settlement_id).toBe('set-del-1');
+          expect(params.p_mutation_id).toBeDefined();
+          expect(params.p_group_id).toBeUndefined();
+          return Promise.resolve({
+            data: { id: 'set-del-1', deleted_at: '2026-11-25T12:00:00Z' },
+            error: null,
+          });
+        }
+        return Promise.resolve({ data: null, error: null });
+      }),
+      auth: { refreshSession: vi.fn() },
+    };
+
+    let res = await drainQueue(queue, store, mockSupabase as any);
+    expect(res.processed).toBe(1);
+    expect(res.synced).toBe(1);
+    expect(queue.getPendingCount()).toBe(0);
+
+    const deletedExp = store.getExpense('exp-del-1');
+    expect(deletedExp?.deletedAt).toBe('2026-11-25T12:00:00Z');
+    expect(deletedExp?._sync).toBe('synced');
+    expect(deletedExp?.version).toBe(2);
+
+    // Now test DELETE_SETTLEMENT
+    const settlement = {
+      id: 'set-del-1',
+      groupId: 'grp-del-1',
+      fromMemberId: 'm-1',
+      toMemberId: 'm-2',
+      amountMinor: 2500,
+      createdBy: 'm-1',
+      version: 1,
+      _sync: 'synced' as const,
+    };
+    store.upsertSettlement(settlement as any);
+
+    queue.enqueue('DELETE_SETTLEMENT', 'set-del-1', {
+      settlementId: 'set-del-1',
+      groupId: 'grp-del-1',
+    });
+
+    res = await drainQueue(queue, store, mockSupabase as any);
+    expect(res.processed).toBe(1);
+    expect(res.synced).toBe(1);
+    expect(queue.getPendingCount()).toBe(0);
+
+    const deletedSet = store.getSettlement('set-del-1');
+    expect(deletedSet?.deletedAt).toBe('2026-11-25T12:00:00Z');
+    expect(deletedSet?._sync).toBe('synced');
+  });
 });
